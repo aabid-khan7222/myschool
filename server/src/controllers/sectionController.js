@@ -36,7 +36,6 @@ const getAllSections = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch sections',
-      error: error.message
     });
   }
 };
@@ -83,7 +82,6 @@ const getSectionById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch section',
-      error: error.message
     });
   }
 };
@@ -125,7 +123,6 @@ const getSectionsByClass = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch sections',
-      error: error.message
     });
   }
 };

@@ -73,7 +73,6 @@ const getAllTeachers = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch teachers',
-      error: error.message
     });
   }
 };
@@ -158,7 +157,6 @@ const getTeacherById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch teacher',
-      error: error.message
     });
   }
 };
@@ -238,7 +236,6 @@ const getTeachersByClass = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch teachers',
-      error: error.message
     });
   }
 };

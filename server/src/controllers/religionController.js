@@ -26,7 +26,6 @@ const getAllReligions = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch religions',
-      error: error.message
     });
   }
 };
@@ -64,7 +63,6 @@ const getReligionById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch religion',
-      error: error.message
     });
   }
 };

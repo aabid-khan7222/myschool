@@ -1,13 +1,13 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Database configuration
+// Database configuration - sensitive values from .env only (no hardcoded fallbacks)
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
   database: process.env.DB_NAME || 'schooldb',
   user: process.env.DB_USER || 'schooluser',
-  password: process.env.DB_PASSWORD || 'Webster@123456',
+  password: process.env.DB_PASSWORD,
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
   connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
@@ -46,8 +46,10 @@ const query = async (text, params) => {
   const start = Date.now();
   try {
     const res = await pool.query(text, params);
-    const duration = Date.now() - start;
-    console.log('Executed query', { text, duration, rows: res.rowCount });
+    if (process.env.NODE_ENV === 'development') {
+      const duration = Date.now() - start;
+      console.log('Executed query', { duration, rows: res.rowCount });
+    }
     return res;
   } catch (error) {
     console.error('Query error:', error);

@@ -1,4 +1,5 @@
 const { query } = require('../config/database');
+const { parsePagination } = require('../utils/pagination');
 
 // Create new parent
 const createParent = async (req, res) => {
@@ -53,7 +54,6 @@ const createParent = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to create parent',
-      error: error.message
     });
   }
 };
@@ -106,7 +106,6 @@ const updateParent = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to update parent',
-      error: error.message
     });
   }
 };
@@ -114,6 +113,16 @@ const updateParent = async (req, res) => {
 // Get all parents
 const getAllParents = async (req, res) => {
   try {
+    const { page, limit, offset } = parsePagination(req.query);
+
+    const countResult = await query(`
+      SELECT COUNT(*)::int as total
+      FROM parents p
+      LEFT JOIN students s ON p.student_id = s.id
+      WHERE s.is_active = true
+    `);
+    const total = countResult.rows[0].total;
+
     const result = await query(`
       SELECT
         p.id,
@@ -142,20 +151,21 @@ const getAllParents = async (req, res) => {
       LEFT JOIN sections sec ON s.section_id = sec.id
       WHERE s.is_active = true
       ORDER BY s.first_name ASC, s.last_name ASC
-    `);
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
     
     res.status(200).json({
       status: 'SUCCESS',
       message: 'Parents fetched successfully',
       data: result.rows,
-      count: result.rows.length
+      count: result.rows.length,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
     });
   } catch (error) {
     console.error('Error fetching parents:', error);
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch parents',
-      error: error.message
     });
   }
 };
@@ -211,7 +221,6 @@ const getParentById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch parent',
-      error: error.message
     });
   }
 };
@@ -267,7 +276,6 @@ const getParentByStudentId = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch parent',
-      error: error.message
     });
   }
 };

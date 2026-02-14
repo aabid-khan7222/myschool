@@ -25,7 +25,6 @@ const getAllPickupPoints = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch pickup points',
-      error: error.message
     });
   }
 };
@@ -47,7 +46,6 @@ const getPickupPointById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch pickup point',
-      error: error.message
     });
   }
 };

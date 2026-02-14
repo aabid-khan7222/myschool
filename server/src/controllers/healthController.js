@@ -33,9 +33,7 @@ const healthCheck = async (req, res) => {
     console.error('Health check error:', error);
     res.status(500).json({
       status: 'ERROR',
-      timestamp: new Date().toISOString(),
-      error: 'Health check failed',
-      details: error.message || 'Unknown error'
+      message: 'Health check failed'
     });
   }
 };
@@ -57,8 +55,7 @@ const databaseTest = async (req, res) => {
     console.error('Database test error:', error);
     res.status(500).json({
       status: 'ERROR',
-      message: 'Database test failed',
-      error: error.message || 'Unknown error'
+      message: 'Database test failed'
     });
   }
 };

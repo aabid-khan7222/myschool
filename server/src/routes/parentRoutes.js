@@ -1,5 +1,7 @@
 const express = require('express');
 const { getAllParents, getParentById, getParentByStudentId, createParent, updateParent } = require('../controllers/parentController');
+const { validate } = require('../utils/validate');
+const { createParentSchema, updateParentSchema } = require('../validations/parentValidation');
 
 const router = express.Router();
 
@@ -7,15 +9,15 @@ const router = express.Router();
 router.get('/', getAllParents);
 
 // Create new parent
-router.post('/', createParent);
+router.post('/', validate(createParentSchema), createParent);
+
+// Get parent by student ID (must be before /:id)
+router.get('/student/:studentId', getParentByStudentId);
 
 // Get parent by ID
 router.get('/:id', getParentById);
 
 // Update parent by ID
-router.put('/:id', updateParent);
-
-// Get parent by student ID
-router.get('/student/:studentId', getParentByStudentId);
+router.put('/:id', validate(updateParentSchema), updateParent);
 
 module.exports = router;

@@ -33,7 +33,6 @@ const getAllSubjects = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch subjects',
-      error: error.message
     });
   }
 };
@@ -78,7 +77,6 @@ const getSubjectById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch subject',
-      error: error.message
     });
   }
 };
@@ -118,7 +116,6 @@ const getSubjectsByClass = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch subjects',
-      error: error.message
     });
   }
 };

@@ -22,7 +22,6 @@ const getAllRoomTypes = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch room types',
-      error: error.message
     });
   }
 };
@@ -55,7 +54,6 @@ const getRoomTypeById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch room type',
-      error: error.message
     });
   }
 };

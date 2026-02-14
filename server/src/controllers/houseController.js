@@ -27,7 +27,6 @@ const getAllHouses = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch houses',
-      error: error.message
     });
   }
 };
@@ -65,7 +64,6 @@ const getHouseById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch house',
-      error: error.message
     });
   }
 };

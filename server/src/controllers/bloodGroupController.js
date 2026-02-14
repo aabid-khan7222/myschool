@@ -26,7 +26,6 @@ const getAllBloodGroups = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch blood groups',
-      error: error.message
     });
   }
 };
@@ -64,7 +63,6 @@ const getBloodGroupById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch blood group',
-      error: error.message
     });
   }
 };

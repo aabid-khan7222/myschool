@@ -25,7 +25,6 @@ const getAllRoutes = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch transport routes',
-      error: error.message
     });
   }
 };
@@ -47,7 +46,6 @@ const getRouteById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch transport route',
-      error: error.message
     });
   }
 };

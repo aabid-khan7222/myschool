@@ -1,42 +1,56 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const isDev = import.meta.env.DEV;
+const TOKEN_KEY = 'preskool_token';
+
+const getToken = () => localStorage.getItem(TOKEN_KEY);
 
 class ApiService {
   async makeRequest(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
-    console.log('Making API request to:', url);
-    
+    if (isDev) console.log('Making API request to:', url);
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      ...(options.headers || {}),
+    };
+
+    const token = getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     try {
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers,
         mode: 'cors',
         credentials: 'omit',
         ...options,
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-      console.log('Response ok:', response.ok);
+      if (isDev) {
+        console.log('Response status:', response.status);
+      }
 
       if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem('preskool_user');
+          window.dispatchEvent(new CustomEvent('auth:sessionExpired'));
+        }
         const errorText = await response.text();
-        console.error('Response error text:', errorText);
+        if (isDev) console.error('Response error text:', errorText);
         throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
 
       const data = await response.json();
-      console.log('Response data:', data);
+      if (isDev) console.log('Response data:', data);
       return data;
     } catch (error) {
-      console.error('API request failed:', error);
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
+      if (isDev) {
+        console.error('API request failed:', error);
+      }
       throw error;
     }
   }
@@ -255,6 +269,18 @@ class ApiService {
     return this.makeRequest(`/user-roles/${id}`);
   }
 
+  // Dashboard stats
+  async getDashboardStats() {
+    return this.makeRequest('/dashboard/stats');
+  }
+
+  async getLeaveApplications(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.limit != null) searchParams.set('limit', params.limit);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/leave-applications${qs ? `?${qs}` : ''}`);
+  }
+
   // Transport
   async getTransportRoutes() {
     return this.makeRequest('/transport/routes');
@@ -331,6 +357,18 @@ class ApiService {
   // Health check
   async getHealthStatus() {
     return this.makeRequest('/health');
+  }
+
+  // Auth
+  async login(username, password) {
+    return this.makeRequest('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+  }
+
+  async getMe() {
+    return this.makeRequest('/auth/me');
   }
 }
 

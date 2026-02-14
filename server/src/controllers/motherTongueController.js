@@ -27,7 +27,6 @@ const getAllMotherTongues = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch mother tongues',
-      error: error.message
     });
   }
 };
@@ -66,7 +65,6 @@ const getMotherTongueById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch mother tongue',
-      error: error.message
     });
   }
 };

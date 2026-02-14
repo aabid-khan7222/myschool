@@ -25,7 +25,6 @@ const getAllHostelRooms = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch hostel rooms',
-      error: error.message
     });
   }
 };
@@ -61,7 +60,6 @@ const getHostelRoomById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch hostel room',
-      error: error.message
     });
   }
 };

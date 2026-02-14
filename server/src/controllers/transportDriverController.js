@@ -36,7 +36,6 @@ const getAllDrivers = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch transport drivers',
-      error: error.message
     });
   }
 };
@@ -58,7 +57,6 @@ const getDriverById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch transport driver',
-      error: error.message
     });
   }
 };

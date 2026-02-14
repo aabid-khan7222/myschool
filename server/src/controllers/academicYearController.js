@@ -16,7 +16,6 @@ const getAllAcademicYears = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch academic years',
-      error: error.message
     });
   }
 };
@@ -45,7 +44,6 @@ const getAcademicYearById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch academic year',
-      error: error.message
     });
   }
 };

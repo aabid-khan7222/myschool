@@ -1,9 +1,10 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
   setDataLayout,
   setDataTheme,
 } from "../../data/redux/themeSettingSlice";
+import { clearAuth, selectUser } from "../../data/redux/authSlice";
 import ImageWithBasePath from "../imageWithBasePath";
 import {
   setExpandMenu,
@@ -15,6 +16,13 @@ import { useAcademicYears } from "../../hooks/useAcademicYears";
 const Header = () => {
   const routes = all_routes;
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const user = useSelector(selectUser);
+
+  const handleLogout = () => {
+    dispatch(clearAuth());
+    navigate(routes.login);
+  };
   const dataTheme = useSelector((state: any) => state.themeSetting.dataTheme);
   const dataLayout = useSelector((state: any) => state.themeSetting.dataLayout);
   const [notificationVisible, setNotificationVisible] = useState(false);
@@ -562,8 +570,8 @@ const Header = () => {
                         />
                       </span>
                       <div>
-                        <h6>Kevin Larry</h6>
-                        <p className="text-primary mb-0">Administrator</p>
+                        <h6>{user?.displayName || "User"}</h6>
+                        <p className="text-primary mb-0">{user?.role || "Administrator"}</p>
                       </div>
                     </div>
                     <hr className="m-0" />
@@ -584,7 +592,8 @@ const Header = () => {
                     <hr className="m-0" />
                     <Link
                       className="dropdown-item d-inline-flex align-items-center p-2"
-                      to={routes.login}
+                      to="#"
+                      onClick={(e) => { e.preventDefault(); handleLogout(); }}
                     >
                       <i className="ti ti-login me-2" />
                       Logout
@@ -612,7 +621,7 @@ const Header = () => {
             <Link className="dropdown-item" to={routes.profilesettings}>
               Settings
             </Link>
-            <Link className="dropdown-item" to={routes.login}>
+            <Link className="dropdown-item" to="#" onClick={(e) => { e.preventDefault(); handleLogout(); }}>
               Logout
             </Link>
           </div>

@@ -27,7 +27,6 @@ const getAllCasts = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch casts',
-      error: error.message
     });
   }
 };
@@ -66,7 +65,6 @@ const getCastById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch cast',
-      error: error.message
     });
   }
 };

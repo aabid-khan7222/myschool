@@ -175,7 +175,6 @@ const getAllClassSchedules = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch class schedules',
-      error: error.message
     });
   }
 };
@@ -250,7 +249,6 @@ const getClassScheduleById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch class schedule',
-      error: error.message
     });
   }
 };
@@ -289,7 +287,7 @@ const getClassSchedulesDebug = async (req, res) => {
     }
     res.status(200).json({ status: 'SUCCESS', ...out });
   } catch (error) {
-    res.status(500).json({ status: 'ERROR', message: error.message });
+    res.status(500).json({ status: 'ERROR', message: 'Failed to process request' });
   }
 };
 

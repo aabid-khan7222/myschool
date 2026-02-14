@@ -1,4 +1,5 @@
-const { query } = require('../config/database');
+const { query, executeTransaction } = require('../config/database');
+const { parsePagination } = require('../utils/pagination');
 
 // Create new student
 const createStudent = async (req, res) => {
@@ -20,65 +21,63 @@ const createStudent = async (req, res) => {
       });
     }
 
-    // Check if admission number already exists
-    const existingStudent = await query(
-      'SELECT id FROM students WHERE admission_number = $1 AND is_active = true',
-      [admission_number]
-    );
-
-    if (existingStudent.rows.length > 0) {
-      return res.status(400).json({
-        status: 'ERROR',
-        message: 'Student with this admission number already exists'
-      });
-    }
-
-    const result = await query(`
-      INSERT INTO students (
-        academic_year_id, admission_number, admission_date, roll_number,
-        first_name, last_name, class_id, section_id, gender, date_of_birth,
-        blood_group_id, house_id, religion_id, cast_id, phone, email,
-        mother_tongue_id, is_active, created_at, modified_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
-      RETURNING *
-    `, [
-      academic_year_id || null, admission_number, admission_date || null, roll_number || null,
-      first_name, last_name, class_id || null, section_id || null, gender || null,
-      date_of_birth || null, blood_group_id || null, house_id || null, religion_id || null,
-      cast_id || null, phone || null, email || null, mother_tongue_id || null,
-      status === 'Active' ? true : false
-    ]);
-
-    const student = result.rows[0];
-
-    // Check if any parent information is provided
     const hasParentInfo = father_name || father_email || father_phone || father_occupation ||
                          mother_name || mother_email || mother_phone || mother_occupation;
 
-    if (hasParentInfo) {
-      // Create parent record
-      const parentResult = await query(`
-        INSERT INTO parents (
-          student_id, father_name, father_email, father_phone, father_occupation, father_image_url,
-          mother_name, mother_email, mother_phone, mother_occupation, mother_image_url,
-          created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
-        RETURNING id
+    const student = await executeTransaction(async (client) => {
+      const existingStudent = await client.query(
+        'SELECT id FROM students WHERE admission_number = $1 AND is_active = true',
+        [admission_number]
+      );
+
+      if (existingStudent.rows.length > 0) {
+        const err = new Error('Student with this admission number already exists');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      const result = await client.query(`
+        INSERT INTO students (
+          academic_year_id, admission_number, admission_date, roll_number,
+          first_name, last_name, class_id, section_id, gender, date_of_birth,
+          blood_group_id, house_id, religion_id, cast_id, phone, email,
+          mother_tongue_id, is_active, created_at, modified_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
+        RETURNING *
       `, [
-        student.id, father_name || null, father_email || null, father_phone || null,
-        father_occupation || null, father_image_url || null, mother_name || null,
-        mother_email || null, mother_phone || null, mother_occupation || null,
-        mother_image_url || null
+        academic_year_id || null, admission_number, admission_date || null, roll_number || null,
+        first_name, last_name, class_id || null, section_id || null, gender || null,
+        date_of_birth || null, blood_group_id || null, house_id || null, religion_id || null,
+        cast_id || null, phone || null, email || null, mother_tongue_id || null,
+        status === 'Active' ? true : false
       ]);
 
-      // Update student's parent_id to point to the newly created parent record
-      await query(`
-        UPDATE students SET parent_id = $1, modified_at = NOW() WHERE id = $2
-      `, [parentResult.rows[0].id, student.id]);
+      const studentRow = result.rows[0];
 
-      // Update the student object to include the parent_id
-      student.parent_id = parentResult.rows[0].id;
-    }
+      if (hasParentInfo) {
+        const parentResult = await client.query(`
+          INSERT INTO parents (
+            student_id, father_name, father_email, father_phone, father_occupation, father_image_url,
+            mother_name, mother_email, mother_phone, mother_occupation, mother_image_url,
+            created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+          RETURNING id
+        `, [
+          studentRow.id, father_name || null, father_email || null, father_phone || null,
+          father_occupation || null, father_image_url || null, mother_name || null,
+          mother_email || null, mother_phone || null, mother_occupation || null,
+          mother_image_url || null
+        ]);
+
+        await client.query(`
+          UPDATE students SET parent_id = $1, modified_at = NOW() WHERE id = $2
+        `, [parentResult.rows[0].id, studentRow.id]);
+
+        studentRow.parent_id = parentResult.rows[0].id;
+      }
+
+      return studentRow;
+    });
 
     res.status(201).json({
       status: 'SUCCESS',
@@ -87,10 +86,12 @@ const createStudent = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating student:', error);
+    if (error.statusCode === 400) {
+      return res.status(400).json({ status: 'ERROR', message: error.message });
+    }
     res.status(500).json({
       status: 'ERROR',
-      message: 'Failed to create student',
-      error: error.message
+      message: 'Failed to create student'
     });
   }
 };
@@ -116,125 +117,119 @@ const updateStudent = async (req, res) => {
       });
     }
 
-    // Check if admission number already exists for another student
-    const existingStudent = await query(
-      'SELECT id FROM students WHERE admission_number = $1 AND id != $2 AND is_active = true',
-      [admission_number, id]
-    );
-
-    if (existingStudent.rows.length > 0) {
-      return res.status(400).json({
-        status: 'ERROR',
-        message: 'Student with this admission number already exists'
-      });
-    }
-
-    const result = await query(`
-      UPDATE students SET
-        academic_year_id = $1,
-        admission_number = $2,
-        admission_date = $3,
-        roll_number = $4,
-        first_name = $5,
-        last_name = $6,
-        class_id = $7,
-        section_id = $8,
-        gender = $9,
-        date_of_birth = $10,
-        blood_group_id = $11,
-        house_id = $12,
-        religion_id = $13,
-        cast_id = $14,
-        phone = $15,
-        email = $16,
-        mother_tongue_id = $17,
-        is_active = $18,
-        modified_at = NOW()
-      WHERE id = $19
-      RETURNING *
-    `, [
-      academic_year_id || null, admission_number, admission_date || null, roll_number || null,
-      first_name, last_name, class_id || null, section_id || null, gender || null,
-      date_of_birth || null, blood_group_id || null, house_id || null, religion_id || null,
-      cast_id || null, phone || null, email || null, mother_tongue_id || null,
-      status === 'Active' ? true : false, id
-    ]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        status: 'ERROR',
-        message: 'Student not found'
-      });
-    }
-
-    const student = result.rows[0];
-
-    // Check if any parent information is provided
     const hasParentInfo = father_name || father_email || father_phone || father_occupation ||
                          mother_name || mother_email || mother_phone || mother_occupation;
 
-    if (hasParentInfo) {
-      // Check if parent record already exists for this student
-      const existingParent = await query(
-        'SELECT id FROM parents WHERE student_id = $1',
-        [student.id]
+    const student = await executeTransaction(async (client) => {
+      const existingStudent = await client.query(
+        'SELECT id FROM students WHERE admission_number = $1 AND id != $2 AND is_active = true',
+        [admission_number, id]
       );
 
-      if (existingParent.rows.length > 0) {
-        // Update existing parent record
-        await query(`
-          UPDATE parents SET
-            father_name = $1,
-            father_email = $2,
-            father_phone = $3,
-            father_occupation = $4,
-            father_image_url = $5,
-            mother_name = $6,
-            mother_email = $7,
-            mother_phone = $8,
-            mother_occupation = $9,
-            mother_image_url = $10,
-            updated_at = NOW()
-          WHERE student_id = $11
-        `, [
-          father_name || null, father_email || null, father_phone || null,
-          father_occupation || null, father_image_url || null, mother_name || null,
-          mother_email || null, mother_phone || null, mother_occupation || null,
-          mother_image_url || null, student.id
-        ]);
-
-        // Update student's parent_id if it's not set
-        if (!student.parent_id) {
-          await query(`
-            UPDATE students SET parent_id = $1, modified_at = NOW() WHERE id = $2
-          `, [existingParent.rows[0].id, student.id]);
-          student.parent_id = existingParent.rows[0].id;
-        }
-      } else {
-        // Create new parent record
-        const parentResult = await query(`
-          INSERT INTO parents (
-            student_id, father_name, father_email, father_phone, father_occupation, father_image_url,
-            mother_name, mother_email, mother_phone, mother_occupation, mother_image_url,
-            created_at, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
-          RETURNING id
-        `, [
-          student.id, father_name || null, father_email || null, father_phone || null,
-          father_occupation || null, father_image_url || null, mother_name || null,
-          mother_email || null, mother_phone || null, mother_occupation || null,
-          mother_image_url || null
-        ]);
-
-        // Update student's parent_id to point to the newly created parent record
-        await query(`
-          UPDATE students SET parent_id = $1, modified_at = NOW() WHERE id = $2
-        `, [parentResult.rows[0].id, student.id]);
-
-        // Update the student object to include the parent_id
-        student.parent_id = parentResult.rows[0].id;
+      if (existingStudent.rows.length > 0) {
+        const err = new Error('Student with this admission number already exists');
+        err.statusCode = 400;
+        throw err;
       }
-    }
+
+      const result = await client.query(`
+        UPDATE students SET
+          academic_year_id = $1,
+          admission_number = $2,
+          admission_date = $3,
+          roll_number = $4,
+          first_name = $5,
+          last_name = $6,
+          class_id = $7,
+          section_id = $8,
+          gender = $9,
+          date_of_birth = $10,
+          blood_group_id = $11,
+          house_id = $12,
+          religion_id = $13,
+          cast_id = $14,
+          phone = $15,
+          email = $16,
+          mother_tongue_id = $17,
+          is_active = $18,
+          modified_at = NOW()
+        WHERE id = $19
+        RETURNING *
+      `, [
+        academic_year_id || null, admission_number, admission_date || null, roll_number || null,
+        first_name, last_name, class_id || null, section_id || null, gender || null,
+        date_of_birth || null, blood_group_id || null, house_id || null, religion_id || null,
+        cast_id || null, phone || null, email || null, mother_tongue_id || null,
+        status === 'Active' ? true : false, id
+      ]);
+
+      if (result.rows.length === 0) {
+        const err = new Error('Student not found');
+        err.statusCode = 404;
+        throw err;
+      }
+
+      const studentRow = result.rows[0];
+
+      if (hasParentInfo) {
+        const existingParent = await client.query(
+          'SELECT id FROM parents WHERE student_id = $1',
+          [studentRow.id]
+        );
+
+        if (existingParent.rows.length > 0) {
+          await client.query(`
+            UPDATE parents SET
+              father_name = $1,
+              father_email = $2,
+              father_phone = $3,
+              father_occupation = $4,
+              father_image_url = $5,
+              mother_name = $6,
+              mother_email = $7,
+              mother_phone = $8,
+              mother_occupation = $9,
+              mother_image_url = $10,
+              updated_at = NOW()
+            WHERE student_id = $11
+          `, [
+            father_name || null, father_email || null, father_phone || null,
+            father_occupation || null, father_image_url || null, mother_name || null,
+            mother_email || null, mother_phone || null, mother_occupation || null,
+            mother_image_url || null, studentRow.id
+          ]);
+
+          if (!studentRow.parent_id) {
+            await client.query(`
+              UPDATE students SET parent_id = $1, modified_at = NOW() WHERE id = $2
+            `, [existingParent.rows[0].id, studentRow.id]);
+            studentRow.parent_id = existingParent.rows[0].id;
+          }
+        } else {
+          const parentResult = await client.query(`
+            INSERT INTO parents (
+              student_id, father_name, father_email, father_phone, father_occupation, father_image_url,
+              mother_name, mother_email, mother_phone, mother_occupation, mother_image_url,
+              created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+            RETURNING id
+          `, [
+            studentRow.id, father_name || null, father_email || null, father_phone || null,
+            father_occupation || null, father_image_url || null, mother_name || null,
+            mother_email || null, mother_phone || null, mother_occupation || null,
+            mother_image_url || null
+          ]);
+
+          await client.query(`
+            UPDATE students SET parent_id = $1, modified_at = NOW() WHERE id = $2
+          `, [parentResult.rows[0].id, studentRow.id]);
+
+          studentRow.parent_id = parentResult.rows[0].id;
+        }
+      }
+
+      return studentRow;
+    });
 
     res.status(200).json({
       status: 'SUCCESS',
@@ -243,10 +238,15 @@ const updateStudent = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating student:', error);
+    if (error.statusCode === 400) {
+      return res.status(400).json({ status: 'ERROR', message: error.message });
+    }
+    if (error.statusCode === 404) {
+      return res.status(404).json({ status: 'ERROR', message: error.message });
+    }
     res.status(500).json({
       status: 'ERROR',
-      message: 'Failed to update student',
-      error: error.message
+      message: 'Failed to update student'
     });
   }
 };
@@ -254,6 +254,13 @@ const updateStudent = async (req, res) => {
 // Get all students
 const getAllStudents = async (req, res) => {
   try {
+    const { page, limit, offset } = parsePagination(req.query);
+
+    const countResult = await query(
+      'SELECT COUNT(*)::int as total FROM students WHERE is_active = true'
+    );
+    const total = countResult.rows[0].total;
+
     const result = await query(`
       SELECT
         s.id,
@@ -315,20 +322,21 @@ const getAllStudents = async (req, res) => {
       LEFT JOIN addresses addr ON s.user_id = addr.user_id
       WHERE s.is_active = true
       ORDER BY s.first_name ASC, s.last_name ASC
-    `);
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
     
     res.status(200).json({
       status: 'SUCCESS',
       message: 'Students fetched successfully',
       data: result.rows,
-      count: result.rows.length
+      count: result.rows.length,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
     });
   } catch (error) {
     console.error('Error fetching students:', error);
     res.status(500).json({
       status: 'ERROR',
-      message: 'Failed to fetch students',
-      error: error.message
+      message: 'Failed to fetch students'
     });
   }
 };
@@ -554,8 +562,7 @@ const getStudentById = async (req, res) => {
     console.error('Error fetching student:', error);
     res.status(500).json({
       status: 'ERROR',
-      message: 'Failed to fetch student',
-      error: error.message
+      message: 'Failed to fetch student'
     });
   }
 };
@@ -638,8 +645,7 @@ const getStudentsByClass = async (req, res) => {
     console.error('Error fetching students by class:', error);
     res.status(500).json({
       status: 'ERROR',
-      message: 'Failed to fetch students',
-      error: error.message
+      message: 'Failed to fetch students'
     });
   }
 };

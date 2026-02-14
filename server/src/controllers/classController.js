@@ -36,7 +36,6 @@ const getAllClasses = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch classes',
-      error: error.message
     });
   }
 };
@@ -83,7 +82,6 @@ const getClassById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch class',
-      error: error.message
     });
   }
 };
@@ -125,7 +123,6 @@ const getClassesByAcademicYear = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch classes',
-      error: error.message
     });
   }
 };

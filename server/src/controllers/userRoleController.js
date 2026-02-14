@@ -22,7 +22,6 @@ const getAllUserRoles = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch user roles',
-      error: error.message,
     });
   }
 };
@@ -58,7 +57,6 @@ const getUserRoleById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch user role',
-      error: error.message,
     });
   }
 };

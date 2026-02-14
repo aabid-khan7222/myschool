@@ -8,9 +8,11 @@ const {
   getAddressesByUserId,
   deleteAddress
 } = require('../controllers/addressController');
+const { validate } = require('../utils/validate');
+const { createAddressSchema, updateAddressSchema } = require('../validations/addressValidation');
 
 // Create new address
-router.post('/', createAddress);
+router.post('/', validate(createAddressSchema), createAddress);
 
 // Get all addresses
 router.get('/', getAllAddresses);
@@ -22,7 +24,7 @@ router.get('/:id', getAddressById);
 router.get('/user/:userId', getAddressesByUserId);
 
 // Update address
-router.put('/:id', updateAddress);
+router.put('/:id', validate(updateAddressSchema), updateAddress);
 
 // Delete address
 router.delete('/:id', deleteAddress);

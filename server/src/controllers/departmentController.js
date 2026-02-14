@@ -22,7 +22,6 @@ const getAllDepartments = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch departments',
-      error: error.message,
     });
   }
 };
@@ -58,7 +57,6 @@ const getDepartmentById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch department',
-      error: error.message,
     });
   }
 };

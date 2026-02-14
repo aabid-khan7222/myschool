@@ -11,10 +11,16 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import AdminDashboardModal from "./adminDashboardModal";
+import { useDashboardStats } from "../../../core/hooks/useDashboardStats";
+import { useLeaveApplications } from "../../../core/hooks/useLeaveApplications";
+import { useCurrentUser } from "../../../core/hooks/useCurrentUser";
 
 const AdminDashboard = () => {
   const routes = all_routes;
   const [date, setDate] = useState<Nullable<Date>>(null);
+  const { stats } = useDashboardStats();
+  const { leaveApplications, loading: leaveLoading, error: leaveError } = useLeaveApplications({ limit: 10 });
+  const { user: currentUser, loading: userLoading } = useCurrentUser();
   function SampleNextArrow(props: any) {
     const { style, onClick } = props;
     return (
@@ -437,10 +443,10 @@ const AdminDashboard = () => {
                         <div className="mb-3 mb-xl-0">
                           <div className="d-flex align-items-center flex-wrap mb-2">
                             <h1 className="text-white me-2">
-                              Welcome Back, Mr. Herald
+                              Welcome Back, {userLoading ? '...' : (currentUser?.name || 'User')}
                             </h1>
                             <Link
-                              to="profile"
+                              to={routes.profile}
                               className="avatar avatar-sm img-rounded bg-gray-800 dark-hover"
                             >
                               <i className="ti ti-edit text-white" />
@@ -473,7 +479,7 @@ const AdminDashboard = () => {
                         <div className="overflow-hidden flex-fill">
                           <div className="d-flex align-items-center justify-content-between">
                             <h2 className="counter">
-                              <CountUp end={3654} />
+                              <CountUp end={stats.students.total} />
                             </h2>
                             <span className="badge bg-danger">1.2%</span>
                           </div>
@@ -483,12 +489,12 @@ const AdminDashboard = () => {
                       <div className="d-flex align-items-center justify-content-between border-top mt-3 pt-3">
                         <p className="mb-0">
                           Active :{" "}
-                          <span className="text-dark fw-semibold">3643</span>
+                          <span className="text-dark fw-semibold">{stats.students.active}</span>
                         </p>
                         <span className="text-light">|</span>
                         <p>
                           Inactive :{" "}
-                          <span className="text-dark fw-semibold">11</span>
+                          <span className="text-dark fw-semibold">{stats.students.inactive}</span>
                         </p>
                       </div>
                     </div>
@@ -509,7 +515,7 @@ const AdminDashboard = () => {
                         <div className="overflow-hidden flex-fill">
                           <div className="d-flex align-items-center justify-content-between">
                             <h2 className="counter">
-                              <CountUp end={284} />
+                              <CountUp end={stats.teachers.total} />
                             </h2>
                             <span className="badge bg-pending">1.2%</span>
                           </div>
@@ -519,12 +525,12 @@ const AdminDashboard = () => {
                       <div className="d-flex align-items-center justify-content-between border-top mt-3 pt-3">
                         <p className="mb-0">
                           Active :{" "}
-                          <span className="text-dark fw-semibold">254</span>
+                          <span className="text-dark fw-semibold">{stats.teachers.active}</span>
                         </p>
                         <span className="text-light">|</span>
                         <p>
                           Inactive :{" "}
-                          <span className="text-dark fw-semibold">30</span>
+                          <span className="text-dark fw-semibold">{stats.teachers.inactive}</span>
                         </p>
                       </div>
                     </div>
@@ -545,7 +551,7 @@ const AdminDashboard = () => {
                         <div className="overflow-hidden flex-fill">
                           <div className="d-flex align-items-center justify-content-between">
                             <h2 className="counter">
-                              <CountUp end={162} />
+                              <CountUp end={stats.staff.total} />
                             </h2>
                             <span className="badge bg-warning">1.2%</span>
                           </div>
@@ -555,12 +561,12 @@ const AdminDashboard = () => {
                       <div className="d-flex align-items-center justify-content-between border-top mt-3 pt-3">
                         <p className="mb-0">
                           Active :{" "}
-                          <span className="text-dark fw-semibold">161</span>
+                          <span className="text-dark fw-semibold">{stats.staff.active}</span>
                         </p>
                         <span className="text-light">|</span>
                         <p>
                           Inactive :{" "}
-                          <span className="text-dark fw-semibold">02</span>
+                          <span className="text-dark fw-semibold">{stats.staff.inactive}</span>
                         </p>
                       </div>
                     </div>
@@ -581,7 +587,7 @@ const AdminDashboard = () => {
                         <div className="overflow-hidden flex-fill">
                           <div className="d-flex align-items-center justify-content-between">
                             <h2 className="counter">
-                              <CountUp end={82} />
+                              <CountUp end={stats.subjects.total} />
                             </h2>
                             <span className="badge bg-success">1.2%</span>
                           </div>
@@ -591,12 +597,12 @@ const AdminDashboard = () => {
                       <div className="d-flex align-items-center justify-content-between border-top mt-3 pt-3">
                         <p className="mb-0">
                           Active :{" "}
-                          <span className="text-dark fw-semibold">81</span>
+                          <span className="text-dark fw-semibold">{stats.subjects.active}</span>
                         </p>
                         <span className="text-light">|</span>
                         <p>
                           Inactive :{" "}
-                          <span className="text-dark fw-semibold">01</span>
+                          <span className="text-dark fw-semibold">{stats.subjects.inactive}</span>
                         </p>
                       </div>
                     </div>
@@ -1395,106 +1401,67 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                     <div className="card-body">
-                      <div className="card mb-2">
-                        <div className="card-body p-3">
-                          <div className="d-flex align-items-center justify-content-between mb-3">
-                            <div className="d-flex align-items-center overflow-hidden me-2">
-                              <Link
-                                to="#"
-                                className="avatar avatar-lg flex-shrink-0 me-2"
-                              >
-                                <ImageWithBasePath
-                                  src="assets/img/profiles/avatar-14.jpg"
-                                  alt="student"
-                                />
-                              </Link>
-                              <div className="overflow-hidden">
-                                <h6 className="mb-1 text-truncate">
-                                  <Link to="#">James</Link>
-                                  <span className="badge badge-soft-danger ms-1">
-                                    Emergency
-                                  </span>
-                                </h6>
-                                <p className="text-truncate">Physics Teacher</p>
+                      {leaveLoading && (
+                        <p className="mb-0 text-muted small">Loading leave requests...</p>
+                      )}
+                      {!leaveLoading && leaveError && (
+                        <p className="mb-0 text-danger small">{leaveError}</p>
+                      )}
+                      {!leaveLoading && !leaveError && leaveApplications.length === 0 && (
+                        <p className="mb-0 text-muted small">No leave requests.</p>
+                      )}
+                      {!leaveLoading && !leaveError && leaveApplications.length > 0 && leaveApplications.map((item, idx) => (
+                        <div key={item.key} className={`card ${idx < leaveApplications.length - 1 ? "mb-2" : "mb-0"}`}>
+                          <div className="card-body p-3">
+                            <div className="d-flex align-items-center justify-content-between mb-3">
+                              <div className="d-flex align-items-center overflow-hidden me-2">
+                                <Link
+                                  to="#"
+                                  className="avatar avatar-lg flex-shrink-0 me-2"
+                                >
+                                  <ImageWithBasePath
+                                    src={item.photoUrl}
+                                    alt={item.name}
+                                  />
+                                </Link>
+                                <div className="overflow-hidden">
+                                  <h6 className="mb-1 text-truncate">
+                                    <Link to="#">{item.name}</Link>
+                                    <span className={`badge ${item.badgeClass} ms-1`}>
+                                      {item.leaveType}
+                                    </span>
+                                  </h6>
+                                  <p className="text-truncate">{item.role}</p>
+                                </div>
+                              </div>
+                              <div className="d-flex align-items-center">
+                                <Link
+                                  to="#"
+                                  className="avatar avatar-xs p-0 btn btn-success me-1"
+                                >
+                                  <i className="ti ti-checks" />
+                                </Link>
+                                <Link
+                                  to="#"
+                                  className="avatar avatar-xs p-0 btn btn-danger"
+                                >
+                                  <i className="ti ti-x" />
+                                </Link>
                               </div>
                             </div>
-                            <div className="d-flex align-items-center">
-                              <Link
-                                to="#"
-                                className="avatar avatar-xs p-0 btn btn-success me-1"
-                              >
-                                <i className="ti ti-checks" />
-                              </Link>
-                              <Link
-                                to="#"
-                                className="avatar avatar-xs p-0 btn btn-danger"
-                              >
-                                <i className="ti ti-x" />
-                              </Link>
+                            <div className="d-flex align-items-center justify-content-between border-top pt-3">
+                              <p className="mb-0">
+                                Leave :{" "}
+                                <span className="fw-semibold">{item.leaveRange}</span>
+                              </p>
+                              <p>
+                                Apply on :{" "}
+                                <span className="fw-semibold">{item.applyOn}</span>
+                              </p>
                             </div>
-                          </div>
-                          <div className="d-flex align-items-center justify-content-between border-top pt-3">
-                            <p className="mb-0">
-                              Leave :{" "}
-                              <span className="fw-semibold">12 -13 May</span>
-                            </p>
-                            <p>
-                              Apply on :{" "}
-                              <span className="fw-semibold">12 May</span>
-                            </p>
                           </div>
                         </div>
-                      </div>
-                      <div className="card mb-0">
-                        <div className="card-body p-3">
-                          <div className="d-flex align-items-center justify-content-between mb-3">
-                            <div className="d-flex align-items-center overflow-hidden me-2">
-                              <Link
-                                to="#"
-                                className="avatar avatar-lg flex-shrink-0 me-2"
-                              >
-                                <ImageWithBasePath
-                                  src="assets/img/profiles/avatar-19.jpg"
-                                  alt="student"
-                                />
-                              </Link>
-                              <div className="overflow-hidden">
-                                <h6 className="mb-1 text-truncate ">
-                                  <Link to="#">Ramien</Link>
-                                  <span className="badge badge-soft-warning ms-1">
-                                    Casual
-                                  </span>
-                                </h6>
-                                <p className="text-truncate">Accountant</p>
-                              </div>
-                            </div>
-                            <div className="d-flex align-items-center">
-                              <Link
-                                to="#"
-                                className="avatar avatar-xs p-0 btn btn-success me-1"
-                              >
-                                <i className="ti ti-checks" />
-                              </Link>
-                              <Link
-                                to="#"
-                                className="avatar avatar-xs p-0 btn btn-danger"
-                              >
-                                <i className="ti ti-x" />
-                              </Link>
-                            </div>
-                          </div>
-                          <div className="d-flex align-items-center justify-content-between border-top pt-3">
-                            <p className="mb-0">
-                              Leave :{" "}
-                              <span className="fw-semibold">12 -13 May</span>
-                            </p>
-                            <p>
-                              Apply on :{" "}
-                              <span className="fw-semibold">11 May</span>
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 </div>

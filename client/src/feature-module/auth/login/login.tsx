@@ -1,18 +1,64 @@
-import  { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import ImageWithBasePath from "../../../core/common/imageWithBasePath";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { all_routes } from "../../router/all_routes";
+import { useDispatch, useSelector } from "react-redux";
+import { setAuth } from "../../../core/data/redux/authSlice";
+import { apiService } from "../../../core/services/apiService";
 
 const Login = () => {
   const routes = all_routes;
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const [isPasswordVisible, setPasswordVisible] = useState(false);
 
   const togglePasswordVisibility = () => {
     setPasswordVisible((prevState) => !prevState);
   };
+  const isAuthenticated = useSelector((state: any) => state.auth?.isAuthenticated);
+
   useEffect(() => {
     localStorage.setItem("menuOpened", "Dashboard");
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(routes.adminDashboard);
+    }
+  }, [isAuthenticated, navigate, routes.adminDashboard]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!username.trim() || !password) {
+      setError("Please enter username and password");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await apiService.login(username.trim(), password);
+      if (res.status === "SUCCESS" && res.data) {
+        dispatch(
+          setAuth({
+            token: res.data.token,
+            user: res.data.user,
+          })
+        );
+        navigate(routes.adminDashboard);
+      } else {
+        setError(res.message || "Login failed");
+      }
+    } catch (err: any) {
+      const msg = err?.message || "Login failed. Please try again.";
+      setError(msg.includes("401") ? "Invalid username or password" : msg);
+    } finally {
+      setLoading(false);
+    }
+  };
   const date = () => {
     return new Date().getFullYear();
   };
@@ -96,7 +142,7 @@ const Login = () => {
           <div className="col-lg-6 col-md-12 col-sm-12">
             <div className="row justify-content-center align-items-center vh-100 overflow-auto flex-wrap ">
               <div className="col-md-8 mx-auto p-4">
-                <form>
+                <form onSubmit={handleSubmit}>
                   <div>
                     <div className=" mx-auto mb-5 text-center">
                       <ImageWithBasePath
@@ -156,23 +202,35 @@ const Login = () => {
                         <div className="login-or">
                           <span className="span-or">Or</span>
                         </div>
+                        {error && (
+                          <div className="alert alert-danger mb-3" role="alert">
+                            {error}
+                          </div>
+                        )}
                         <div className="mb-3 ">
-                          <label className="form-label">Email Address</label>
+                          <label className="form-label">Username or Phone</label>
                           <div className="input-icon mb-3 position-relative">
                             <span className="input-icon-addon">
-                              <i className="ti ti-mail" />
+                              <i className="ti ti-user" />
                             </span>
                             <input
                               type="text"
-                              defaultValue=""
+                              value={username}
+                              onChange={(e) => setUsername(e.target.value)}
                               className="form-control"
+                              placeholder="Enter username or phone"
+                              disabled={loading}
                             />
                           </div>
-                          <label className="form-label">Password</label>
+                          <label className="form-label">Password (Phone Number)</label>
                           <div className="pass-group">
                             <input
                               type={isPasswordVisible ? "text" : "password"}
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
                               className="pass-input form-control"
+                              placeholder="Enter phone number as password"
+                              disabled={loading}
                             />
                             <span
                               className={`ti toggle-password ${
@@ -201,12 +259,13 @@ const Login = () => {
                       </div>
                       <div className="p-4 pt-0">
                         <div className="mb-3">
-                          <Link
-                            to={routes.adminDashboard}
+                          <button
+                            type="submit"
                             className="btn btn-primary w-100"
+                            disabled={loading}
                           >
-                            Sign In
-                          </Link>
+                            {loading ? "Signing In..." : "Sign In"}
+                          </button>
                         </div>
                         <div className="text-center">
                           <h6 className="fw-normal text-dark mb-0">

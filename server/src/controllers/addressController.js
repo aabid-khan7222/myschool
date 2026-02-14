@@ -38,7 +38,6 @@ const createAddress = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to create address',
-      error: error.message
     });
   }
 };
@@ -93,7 +92,6 @@ const updateAddress = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to update address',
-      error: error.message
     });
   }
 };
@@ -129,7 +127,6 @@ const getAllAddresses = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch addresses',
-      error: error.message
     });
   }
 };
@@ -173,7 +170,6 @@ const getAddressById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch address',
-      error: error.message
     });
   }
 };
@@ -212,7 +208,6 @@ const getAddressesByUserId = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch addresses',
-      error: error.message
     });
   }
 };
@@ -257,7 +252,6 @@ const deleteAddress = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to delete address',
-      error: error.message
     });
   }
 };

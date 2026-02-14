@@ -5,6 +5,7 @@ import "../src/style/css/feather.css";
 import "../src/index.scss";
 import store from "./core/data/redux/store";
 import { Provider } from "react-redux";
+import { clearAuth } from "./core/data/redux/authSlice";
 import "../src/style/icon/boxicons/boxicons/css/boxicons.min.css";
 import "../src/style/icon/weather/weathericons.css";
 import "../src/style/icon/typicons/typicons.css";
@@ -16,15 +17,22 @@ import ALLRoutes from "./feature-module/router/router";
 import "../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js";
 import { BrowserRouter } from 'react-router';
 import React from 'react';
+import ErrorBoundary from './core/components/ErrorBoundary';
 
-
+// Handle session expiry (401) - clear auth and redirect to login
+window.addEventListener('auth:sessionExpired', () => {
+  store.dispatch(clearAuth());
+  window.location.href = `${base_path}login`;
+});
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <Provider store={store}>
-      <BrowserRouter basename={base_path}>
-        <ALLRoutes />
-      </BrowserRouter>
-    </Provider>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <BrowserRouter basename={base_path}>
+          <ALLRoutes />
+        </BrowserRouter>
+      </Provider>
+    </ErrorBoundary>
   </React.StrictMode>
 )

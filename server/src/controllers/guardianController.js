@@ -39,7 +39,6 @@ const getAllGuardians = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch guardians',
-      error: error.message
     });
   }
 };
@@ -90,7 +89,6 @@ const getGuardianById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch guardian',
-      error: error.message
     });
   }
 };
@@ -141,7 +139,6 @@ const getGuardianByStudentId = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch guardian',
-      error: error.message
     });
   }
 };

@@ -6,14 +6,18 @@ const {
   createStudent,
   updateStudent
 } = require('../controllers/studentController');
+const { validate } = require('../utils/validate');
+const { createStudentSchema, updateStudentSchema } = require('../validations/studentValidation');
 
 const router = express.Router();
 
-// Debug middleware to log all requests
-router.use((req, res, next) => {
-  console.log(`[DEBUG] ${req.method} ${req.path} - ${new Date().toISOString()}`);
-  next();
-});
+// Debug middleware - only in development
+if (process.env.NODE_ENV === 'development') {
+  router.use((req, res, next) => {
+    console.log(`[DEBUG] ${req.method} ${req.path} - ${new Date().toISOString()}`);
+    next();
+  });
+}
 
 // Get all students
 router.get('/', getAllStudents);
@@ -25,9 +29,9 @@ router.get('/class/:classId', getStudentsByClass);
 router.get('/:id', getStudentById);
 
 // Create new student
-router.post('/', createStudent);
+router.post('/', validate(createStudentSchema), createStudent);
 
 // Update student
-router.put('/:id', updateStudent);
+router.put('/:id', validate(updateStudentSchema), updateStudent);
 
 module.exports = router;

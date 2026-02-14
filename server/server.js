@@ -2,11 +2,13 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 // Import configurations
 const serverConfig = require('./src/config/server');
 const { testConnection } = require('./src/config/database');
+const { error: errorResponse } = require('./src/utils/responseHelper');
 
 // Import routes
 const healthRoutes = require('./src/routes/healthRoutes');
@@ -34,6 +36,10 @@ const departmentRoutes = require('./src/routes/departmentRoutes');
 const designationRoutes = require('./src/routes/designationRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const userRoleRoutes = require('./src/routes/userRoleRoutes');
+const dashboardRoutes = require('./src/routes/dashboardRoutes');
+const leaveApplicationRoutes = require('./src/routes/leaveApplicationRoutes');
+const authRoutes = require('./src/routes/authRoutes');
+const { protectApi } = require('./src/middleware/authMiddleware');
 
 // Create Express app
 const app = express();
@@ -48,8 +54,22 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Routes
+// Rate limiting - 100 requests per 15 minutes per IP
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
+  message: { status: 'ERROR', message: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use('/api', limiter);
+
+// Auth routes - public, no token needed
+app.use('/api/auth', authRoutes);
 app.use('/api', healthRoutes);
+
+// Protect all other API routes - require valid JWT
+app.use('/api', protectApi);
 app.use('/api/academic-years', academicYearRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/sections', sectionRoutes);
@@ -74,6 +94,8 @@ app.use('/api/departments', departmentRoutes);
 app.use('/api/designations', designationRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/user-roles', userRoleRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/leave-applications', leaveApplicationRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -87,26 +109,30 @@ app.get('/', (req, res) => {
 
 // 404 handler
 app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'Route not found',
-    path: req.originalUrl,
-    method: req.method
-  });
+  errorResponse(res, 404, `Route not found: ${req.method} ${req.originalUrl}`);
 });
 
-// Global error handler
-app.use((error, req, res, next) => {
-  console.error('Global error handler:', error);
-  res.status(500).json({
-    error: 'Internal server error',
-    message: error.message || 'Something went wrong',
-    timestamp: new Date().toISOString()
-  });
+// Global error handler - never leak internal error details to client
+app.use((err, req, res, next) => {
+  console.error('Global error handler:', err);
+  errorResponse(res, 500, 'Internal server error');
 });
 
 // Start server
 const startServer = async () => {
   try {
+    // Validate required env vars in production
+    const nodeEnv = process.env.NODE_ENV || 'development';
+    if (nodeEnv === 'production') {
+      const required = ['DB_PASSWORD', 'JWT_SECRET'];
+      const missing = required.filter((key) => !process.env[key]);
+      if (missing.length > 0) {
+        console.error('❌ Missing required env vars in production:', missing.join(', '));
+        console.error('   Set them in .env file. See .env.example for reference.');
+        process.exit(1);
+      }
+    }
+
     // Test database connection
     console.log('🔍 Testing database connection...');
     const dbConnected = await testConnection();

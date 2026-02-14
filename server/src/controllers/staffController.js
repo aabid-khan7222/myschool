@@ -29,7 +29,6 @@ const getAllStaff = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch staff',
-      error: error.message,
     });
   }
 };
@@ -73,7 +72,6 @@ const getStaffById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch staff',
-      error: error.message,
     });
   }
 };

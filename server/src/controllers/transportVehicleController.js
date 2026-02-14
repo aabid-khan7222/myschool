@@ -116,7 +116,6 @@ const getAllVehicles = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch transport vehicles',
-      error: error.message
     });
   }
 };
@@ -166,7 +165,6 @@ const getVehicleById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch transport vehicle',
-      error: error.message
     });
   }
 };

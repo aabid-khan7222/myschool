@@ -22,7 +22,6 @@ const getAllDesignations = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch designations',
-      error: error.message,
     });
   }
 };
@@ -58,7 +57,6 @@ const getDesignationById = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch designation',
-      error: error.message,
     });
   }
 };
