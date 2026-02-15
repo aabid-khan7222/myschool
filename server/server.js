@@ -49,13 +49,22 @@ const app = express();
 // Middleware
 app.use(helmet()); // Security headers
 app.use(morgan('combined')); // Logging
-// CORS: localhost in dev; in production set CORS_ORIGIN to your frontend URL (e.g. https://your-static.onrender.com)
+// CORS: allow frontend to read response. In production without CORS_ORIGIN, reflect request origin.
 const corsOrigins = ['http://localhost:3000', 'http://localhost:5173'];
 if (serverConfig.corsOrigin) {
   const extra = serverConfig.corsOrigin.split(',').map((s) => s.trim()).filter(Boolean);
   corsOrigins.push(...extra);
 }
-app.use(cors({ origin: corsOrigins, credentials: true }));
+const isProduction = process.env.NODE_ENV === 'production';
+const corsOptions = {
+  origin: isProduction && corsOrigins.length <= 2
+    ? true
+    : corsOrigins.length > 0 ? corsOrigins : true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
