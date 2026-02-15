@@ -11,7 +11,7 @@ const Datatable: React.FC<DatatableProps> = ({ columns, dataSource , Selection }
   const [Selections, setSelections] = useState<any>(true);
   const [filteredDataSource, setFilteredDataSource] = useState(dataSource);
 
-  const onSelectChange = (newSelectedRowKeys: any[], selectedRows: any[]) => {
+  const onSelectChange = (newSelectedRowKeys: any[], _selectedRows: any[]) => {
     setSelectedRowKeys(newSelectedRowKeys);
   };
 
@@ -28,7 +28,7 @@ const Datatable: React.FC<DatatableProps> = ({ columns, dataSource , Selection }
   const rowSelection = {
     selectedRowKeys,
     onChange: onSelectChange,
-    getCheckboxProps: (record: any) => ({
+    getCheckboxProps: (_record: any) => ({
       // Add any custom checkbox props here if needed
     }),
   };

@@ -214,7 +214,7 @@ const GuardianGrid = () => {
             )}
 
             {/* Guardians Grid */}
-            {!loading && !error && data.map((guardian, index) => (
+            {!loading && !error && data.map((guardian, _index) => (
               <div key={guardian.id} className="col-xl-4 col-md-6 d-flex">
                 <div className="card flex-fill">
                   <div className="card-header d-flex align-items-center justify-content-between">

@@ -214,7 +214,7 @@ const ParentGrid = () => {
             )}
 
             {/* Parents Grid */}
-            {!loading && !error && data.map((parent, index) => (
+            {!loading && !error && data.map((parent, _index) => (
               <div key={parent.id} className="col-xl-4 col-md-6 d-flex">
                 <div className="card flex-fill">
                   <div className="card-header d-flex align-items-center justify-content-between">

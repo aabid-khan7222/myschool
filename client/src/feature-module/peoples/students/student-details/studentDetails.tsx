@@ -35,8 +35,8 @@ const StudentDetails = () => {
         if (res?.data) setStudent(res.data)
         else setStudent(null)
       })
-      .catch((err) => {
-        setLoadError(err?.message ?? 'Failed to load student')
+      .catch((err: unknown) => {
+        setLoadError((err as Error)?.message ?? 'Failed to load student')
         setStudent(null)
       })
       .finally(() => setLoading(false))

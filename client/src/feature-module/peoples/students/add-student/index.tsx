@@ -9,11 +9,8 @@ import {
   Hostel,
   PickupPoint,
   VehicleNumber,
-  academicYear,
   allClass,
-  allSection,
   gender,
-  house,
   names,
   rollno,
   route,
@@ -46,8 +43,39 @@ const AddStudent = () => {
   const [loadingStudent, setLoadingStudent] = useState<boolean>(false);
   
   // Form state for Personal Information section
-  const [formData, setFormData] = useState({
-    academic_year_id: null, // Will be set to current academic year
+  const [formData, setFormData] = useState<{
+    academic_year_id: string | null;
+    admission_number: string;
+    admission_date: dayjs.Dayjs | null;
+    roll_number: string;
+    status: string;
+    first_name: string;
+    last_name: string;
+    class_id: string | null;
+    section_id: string | null;
+    gender: string;
+    date_of_birth: dayjs.Dayjs | null;
+    blood_group_id: string | null;
+    house_id: string | null;
+    religion_id: string | null;
+    cast_id: string | null;
+    phone: string;
+    email: string;
+    mother_tongue_id: string | null;
+    current_address: string;
+    permanent_address: string;
+    father_name: string;
+    father_email: string;
+    father_phone: string;
+    father_occupation: string;
+    father_image_url: string;
+    mother_name: string;
+    mother_email: string;
+    mother_phone: string;
+    mother_occupation: string;
+    mother_image_url: string;
+  }>({
+    academic_year_id: null,
     admission_number: '',
     admission_date: null,
     roll_number: '',
@@ -589,7 +617,6 @@ const AddStudent = () => {
                       <div className="col-xxl col-xl-3 col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Gender</label>
-                          {console.log('Gender field - formData.gender:', formData.gender, 'options:', gender)}
                           <CommonSelect
                             className="select"
                             options={gender}
@@ -673,7 +700,6 @@ const AddStudent = () => {
                       <div className="col-xxl col-xl-3 col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Religion</label>
-                          {console.log('Religion field - formData.religion_id:', formData.religion_id, 'religions:', religions)}
                           {religionsLoading ? (
                             <div className="form-control">
                               <i className="ti ti-loader ti-spin me-2"></i>
@@ -700,7 +726,6 @@ const AddStudent = () => {
                       <div className="col-xxl col-xl-3 col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Category</label>
-                          {console.log('Category field - formData.cast_id:', formData.cast_id, 'casts:', casts)}
                           {castsLoading ? (
                             <div className="form-control">
                               <i className="ti ti-loader ti-spin me-2"></i>
@@ -751,7 +776,6 @@ const AddStudent = () => {
                       <div className="col-xxl col-xl-3 col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Mother Tongue</label>
-                          {console.log('Mother Tongue field - formData.mother_tongue_id:', formData.mother_tongue_id, 'motherTongues:', motherTongues)}
                           {motherTonguesLoading ? (
                             <div className="form-control">
                               <i className="ti ti-loader ti-spin me-2"></i>

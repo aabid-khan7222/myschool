@@ -5,7 +5,7 @@ import { all_routes } from "../../../router/all_routes";
 import Table from "../../../../core/common/dataTable/index";
 import type { TableData } from "../../../../core/data/interface";
 import CommonSelect from '../../../../core/common/commonSelect';
-import { promotion, allClass, allSection } from '../../../../core/common/selectoption/selectoption';
+import { promotion, allClass } from '../../../../core/common/selectoption/selectoption';
 import PredefinedDateRanges from '../../../../core/common/datePicker';
 import TooltipOption from '../../../../core/common/tooltipOption';
 import { useAcademicYears } from '../../../../core/hooks/useAcademicYears';

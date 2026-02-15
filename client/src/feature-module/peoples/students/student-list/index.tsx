@@ -150,7 +150,7 @@ const StudentList = () => {
     {
       title: "Action",
       dataIndex: "action",
-      render: (text: string, record: any) => (
+      render: (_text: string, record: any) => (
         <>
           <div className="d-flex align-items-center">
             <Link
