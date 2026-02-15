@@ -2,8 +2,9 @@
 
 Use this checklist so the app works when you open the **production links**.
 
-**If login shows "Unexpected end of JSON input" or "Server returned empty response":**  
-Set **CORS_ORIGIN** on the Web Service (your frontend URL) and **VITE_API_URL** on the Static Site (your backend URL + `/api`), then redeploy both. See below.
+**Runtime API URL:** The frontend loads `public/config.json` in production. That file contains `apiUrl` pointing at your backend (e.g. `https://myschool-backend-myyn.onrender.com/api`). So login works even if you didn’t set `VITE_API_URL` at build time. If you use a different backend URL, edit `client/public/config.json` and redeploy the Static Site.
+
+**CORS:** The backend allows any origin in production, so you don’t need to set `CORS_ORIGIN` for login to work. You can still set it to restrict which sites can call your API.
 
 ---
 
@@ -16,7 +17,7 @@ In Render → your **Web Service** → **Environment**, set:
 | `DATABASE_URL` | *(Internal Database URL from Render Postgres)* | Required. Use the **Internal** URL. |
 | `JWT_SECRET` | *(strong random string)* | Required. |
 | `NODE_ENV` | `production` | Required. |
-| `CORS_ORIGIN` | `https://YOUR-STATIC-SITE-URL.onrender.com` | Your **Static Site** URL (no trailing slash). Required so the browser can call the API. |
+| `CORS_ORIGIN` | `https://YOUR-STATIC-SITE-URL.onrender.com` | Optional. Your **Static Site** URL (no trailing slash). If unset, the API allows any origin in production. |
 
 If you have more than one frontend URL, set:
 
@@ -30,7 +31,7 @@ In Render → your **Static Site** → **Environment**, set:
 
 | Key | Value | Notes |
 |-----|--------|--------|
-| `VITE_API_URL` | `https://YOUR-WEB-SERVICE-URL.onrender.com/api` | Your **Web Service** URL + `/api`. Required so the frontend calls the correct API. |
+| `VITE_API_URL` | `https://YOUR-WEB-SERVICE-URL.onrender.com/api` | Optional at build time. The app uses `public/config.json` in production for the API URL; set this if you want the build to use a different URL. |
 
 Replace `YOUR-WEB-SERVICE-URL` with your actual Web Service host (e.g. `myschool-abc123` → `https://myschool-abc123.onrender.com/api`).
 
@@ -50,7 +51,5 @@ After changing env, run **Manual Deploy** on the Static Site (build must run aga
 1. Open your **Static Site** URL in the browser.
 2. Log in (or sign up if applicable).
 3. If you see CORS or “Failed to fetch” errors, check:
-   - Web Service has `CORS_ORIGIN` = exact Static Site URL (same as in the address bar).
-   - Static Site has `VITE_API_URL` = Web Service URL + `/api` and you redeployed after setting it.
-
-No code changes are required; only the above env vars need to be set correctly on Render.
+   - `client/public/config.json` has `apiUrl` set to your Web Service URL + `/api`, and you redeployed the Static Site after changing it.
+   - Web Service has been redeployed so it uses the latest code (CORS allows any origin in production).

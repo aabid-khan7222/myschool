@@ -49,7 +49,7 @@ const app = express();
 // Middleware
 app.use(helmet()); // Security headers
 app.use(morgan('combined')); // Logging
-// CORS: allow frontend to read response. In production without CORS_ORIGIN, reflect request origin.
+// CORS: in production allow any origin so frontend can read response; in dev use localhost.
 const corsOrigins = ['http://localhost:3000', 'http://localhost:5173'];
 if (serverConfig.corsOrigin) {
   const extra = serverConfig.corsOrigin.split(',').map((s) => s.trim()).filter(Boolean);
@@ -57,9 +57,9 @@ if (serverConfig.corsOrigin) {
 }
 const isProduction = process.env.NODE_ENV === 'production';
 const corsOptions = {
-  origin: isProduction && corsOrigins.length <= 2
-    ? true
-    : corsOrigins.length > 0 ? corsOrigins : true,
+  origin: isProduction
+    ? function (origin, callback) { callback(null, true); }
+    : corsOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],

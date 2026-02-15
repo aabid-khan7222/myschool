@@ -1,12 +1,37 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const BUILD_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const isDev = import.meta.env.DEV;
+const isProd = import.meta.env.PROD;
 const TOKEN_KEY = 'preskool_token';
+
+let cachedBaseUrl = null;
+
+async function getApiBaseUrl() {
+  if (cachedBaseUrl) return cachedBaseUrl;
+  if (!isProd) {
+    cachedBaseUrl = BUILD_API_URL;
+    return cachedBaseUrl;
+  }
+  try {
+    const res = await fetch('/config.json', { cache: 'no-store' });
+    if (res.ok) {
+      const config = await res.json();
+      if (config && config.apiUrl) {
+        cachedBaseUrl = config.apiUrl.replace(/\/+$/, '');
+        if (!cachedBaseUrl.endsWith('/api')) cachedBaseUrl += '/api';
+        return cachedBaseUrl;
+      }
+    }
+  } catch (_) {}
+  cachedBaseUrl = BUILD_API_URL;
+  return cachedBaseUrl;
+}
 
 const getToken = () => localStorage.getItem(TOKEN_KEY);
 
 class ApiService {
   async makeRequest(endpoint, options = {}) {
-    const url = `${API_BASE_URL}${endpoint}`;
+    const base = await getApiBaseUrl();
+    const url = `${base}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
     if (isDev) console.log('Making API request to:', url);
 
     const headers = {

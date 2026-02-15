@@ -11,7 +11,10 @@ const loginSchema = Joi.object({
   password: Joi.string().required()
 });
 
-router.post('/login', validate(loginSchema), login);
+router.post('/login', (req, res, next) => {
+  if (process.env.NODE_ENV === 'production') console.log('POST /api/auth/login received');
+  next();
+}, validate(loginSchema), login);
 router.get('/me', authenticate, getMe);
 
 module.exports = router;
