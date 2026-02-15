@@ -1,3 +1,5 @@
+console.log("=== NEW DEPLOY VERSION ===");
+
 // Load env first (local .env; on Render, env is injected by platform)
 require('dotenv').config();
 
