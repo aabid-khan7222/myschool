@@ -44,7 +44,16 @@ class ApiService {
         throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
 
-      const data = await response.json();
+      const text = await response.text();
+      if (!text || !text.trim()) {
+        throw new Error('Server returned empty response. Check that the API URL is correct and CORS is configured for this site.');
+      }
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (_) {
+        throw new Error('Server returned invalid JSON. Check API URL and backend logs.');
+      }
       if (isDev) console.log('Response data:', data);
       return data;
     } catch (error) {

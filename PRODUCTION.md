@@ -2,6 +2,9 @@
 
 Use this checklist so the app works when you open the **production links**.
 
+**If login shows "Unexpected end of JSON input" or "Server returned empty response":**  
+Set **CORS_ORIGIN** on the Web Service (your frontend URL) and **VITE_API_URL** on the Static Site (your backend URL + `/api`), then redeploy both. See below.
+
 ---
 
 ## 1. Web Service (Backend) – Environment
