@@ -1,5 +1,3 @@
-console.log("=== NEW DEPLOY VERSION ===");
-
 // Load env first (local .env; on Render, env is injected by platform)
 require('dotenv').config();
 
@@ -51,10 +49,13 @@ const app = express();
 // Middleware
 app.use(helmet()); // Security headers
 app.use(morgan('combined')); // Logging
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173'],
-  credentials: true
-}));
+// CORS: localhost in dev; in production set CORS_ORIGIN to your frontend URL (e.g. https://your-static.onrender.com)
+const corsOrigins = ['http://localhost:3000', 'http://localhost:5173'];
+if (serverConfig.corsOrigin) {
+  const extra = serverConfig.corsOrigin.split(',').map((s) => s.trim()).filter(Boolean);
+  corsOrigins.push(...extra);
+}
+app.use(cors({ origin: corsOrigins, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
