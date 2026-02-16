@@ -2,6 +2,7 @@ const { query } = require('../config/database');
 
 function getDriverDisplayName(driverRow) {
   if (!driverRow) return null;
+  if (driverRow.driver_name != null && String(driverRow.driver_name).trim() !== '') return String(driverRow.driver_name).trim();
   if (driverRow.name != null && String(driverRow.name).trim() !== '') return String(driverRow.name).trim();
   const first = driverRow.first_name != null ? String(driverRow.first_name).trim() : '';
   const last = driverRow.last_name != null ? String(driverRow.last_name).trim() : '';

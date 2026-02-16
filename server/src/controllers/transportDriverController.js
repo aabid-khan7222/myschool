@@ -1,6 +1,7 @@
 const { query } = require('../config/database');
 
 function getDriverDisplayName(row) {
+  if (row.driver_name != null && String(row.driver_name).trim() !== '') return String(row.driver_name).trim();
   if (row.name != null && String(row.name).trim() !== '') return String(row.name).trim();
   const first = row.first_name != null ? String(row.first_name).trim() : '';
   const last = row.last_name != null ? String(row.last_name).trim() : '';
@@ -10,7 +11,7 @@ function getDriverDisplayName(row) {
 function mapDriverRow(row) {
   return {
     id: row.id,
-    driver_code: row.driver_code ?? row.code ?? row.id,
+    driver_code: row.driver_code ?? row.employee_code ?? row.code ?? row.id,
     name: getDriverDisplayName(row) ?? '',
     phone: row.phone ?? null,
     license_number: row.license_number ?? row.license_no ?? null,
