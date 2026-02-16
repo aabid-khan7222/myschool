@@ -28,6 +28,7 @@ export const useTransportDrivers = () => {
           status: row.is_active ? 'Active' : 'Inactive',
           statusClass: row.is_active ? 'badge badge-soft-success' : 'badge badge-soft-danger',
           img: row.photo_url || defaultImg,
+          originalData: row, // Store original data for edit modal
         };
         });
         setData(mapped);

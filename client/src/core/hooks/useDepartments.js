@@ -36,6 +36,7 @@ export const useDepartments = () => {
             id,
             department: departmentName,
             status,
+            originalData: dept, // Store original data for edit modal
           };
         });
 

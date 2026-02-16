@@ -3,16 +3,36 @@ const { query } = require('../config/database');
 // Get all hostel rooms
 const getAllHostelRooms = async (req, res) => {
   try {
-    // Use exact table names: hostel_rooms (plural) with hostels (plural) - SELECT * to get all available columns
+    // Join with hostels and room_types tables to get complete data
+    // Use COALESCE to handle multiple possible column names for room type
     const result = await query(`
       SELECT 
-        hr.*,
-        h.hostel_name
+        hr.id,
+        hr.room_number,
+        hr.hostel_id,
+        hr.room_type_id,
+        hr.current_occupancy,
+        hr.monthly_fee,
+        hr.is_active,
+        hr.created_at,
+        hr.modified_at,
+        h.hostel_name,
+        rt.room_type,
+        rt.description as room_type_description
       FROM hostel_rooms hr
       LEFT JOIN hostels h ON hr.hostel_id = h.id
+      LEFT JOIN room_types rt ON hr.room_type_id = rt.id
       WHERE hr.is_active = true
       ORDER BY hr.id ASC
     `);
+    
+    // Log for debugging
+    console.log('=== HOSTEL ROOMS BACKEND DEBUG ===');
+    console.log('Total rooms:', result.rows.length);
+    if (result.rows.length > 0) {
+      console.log('First room data:', result.rows[0]);
+      console.log('First room columns:', Object.keys(result.rows[0]));
+    }
     
     res.status(200).json({
       status: 'SUCCESS',
@@ -21,10 +41,20 @@ const getAllHostelRooms = async (req, res) => {
       count: result.rows.length
     });
   } catch (error) {
-    console.error('Error fetching hostel rooms:', error);
+    console.error('=== ERROR FETCHING HOSTEL ROOMS ===');
+    console.error('Error:', error);
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+    console.error('Error hint:', error.hint);
+    console.error('Error detail:', error.detail);
     res.status(500).json({
       status: 'ERROR',
-      message: 'Failed to fetch hostel rooms',
+      message: `Failed to fetch hostel rooms: ${error.message || 'Unknown error'}`,
+      error: process.env.NODE_ENV === 'development' ? {
+        code: error.code,
+        hint: error.hint,
+        detail: error.detail
+      } : undefined
     });
   }
 };
@@ -33,13 +63,25 @@ const getAllHostelRooms = async (req, res) => {
 const getHostelRoomById = async (req, res) => {
   try {
     const { id } = req.params;
-    // Use exact table names: hostel_rooms (plural) with hostels (plural) - SELECT * to get all available columns
+    // Join with hostels and room_types tables to get complete data
+    // Use COALESCE to handle multiple possible column names for room type
     const result = await query(`
       SELECT 
-        hr.*,
-        h.hostel_name
+        hr.id,
+        hr.room_number,
+        hr.hostel_id,
+        hr.room_type_id,
+        hr.current_occupancy,
+        hr.monthly_fee,
+        hr.is_active,
+        hr.created_at,
+        hr.modified_at,
+        h.hostel_name,
+        rt.room_type,
+        rt.description as room_type_description
       FROM hostel_rooms hr
       LEFT JOIN hostels h ON hr.hostel_id = h.id
+      LEFT JOIN room_types rt ON hr.room_type_id = rt.id
       WHERE hr.id = $1 AND hr.is_active = true
     `, [id]);
 
@@ -56,10 +98,19 @@ const getHostelRoomById = async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
-    console.error('Error fetching hostel room:', error);
+    console.error('=== ERROR FETCHING HOSTEL ROOM BY ID ===');
+    console.error('Error:', error);
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+    console.error('Error hint:', error.hint);
     res.status(500).json({
       status: 'ERROR',
-      message: 'Failed to fetch hostel room',
+      message: `Failed to fetch hostel room: ${error.message || 'Unknown error'}`,
+      error: process.env.NODE_ENV === 'development' ? {
+        code: error.code,
+        hint: error.hint,
+        detail: error.detail
+      } : undefined
     });
   }
 };

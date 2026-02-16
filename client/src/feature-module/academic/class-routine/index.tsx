@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Table from "../../../core/common/dataTable/index";
 import { useClassSchedules } from "../../../core/hooks/useClassSchedules";
 import PredefinedDateRanges from "../../../core/common/datePicker";
@@ -15,12 +15,16 @@ import { TimePicker } from "antd";
 import { Link } from "react-router-dom";
 import { all_routes } from "../../router/all_routes";
 import TooltipOption from "../../../core/common/tooltipOption";
+import dayjs from "dayjs";
 
 const ClassRoutine = () => {
   const routes = all_routes;
   const { data: apiData, loading, error, fallbackData } = useClassSchedules();
   // Real data only: use API result when loaded; use fallback only while loading so layout doesn't jump
   const data = loading ? fallbackData : (apiData ?? []);
+  
+  // State for edit modal
+  const [selectedRoutine, setSelectedRoutine] = useState<any>(null);
 
   const getModalContainer = () => {
     const modalElement = document.getElementById("modal-datepicker");
@@ -49,14 +53,18 @@ const ClassRoutine = () => {
     {
       title: "ID",
       dataIndex: "id",
-      render: (record: any) => (
+      render: (text: any, record: any) => (
         <>
           <Link to="#" className="link-primary">
-            {record.id}
+            {text || record.id || 'N/A'}
           </Link>
         </>
       ),
-      sorter: (a: any, b: any) => a.id.length - b.id.length,
+      sorter: (a: any, b: any) => {
+        const idA = String(a.id || '').length;
+        const idB = String(b.id || '').length;
+        return idA - idB;
+      },
     },
 
     {
@@ -102,44 +110,62 @@ const ClassRoutine = () => {
     {
       title: "Action",
       dataIndex: "action",
-      render: () => (
-        <>
-          <div className="dropdown">
-            <Link
-              to="#"
-              className="btn btn-white btn-icon btn-sm d-flex align-items-center justify-content-center rounded-circle p-0"
-              data-bs-toggle="dropdown"
-              aria-expanded="false"
-            >
-              <i className="ti ti-dots-vertical fs-14" />
-            </Link>
-            <ul className="dropdown-menu dropdown-menu-right p-3">
-              <li>
-                <Link
-                  className="dropdown-item rounded-1"
-                  to="#"
-                  data-bs-toggle="modal"
-                  data-bs-target="#edit_class_routine"
-                >
-                  <i className="ti ti-edit-circle me-2" />
-                  Edit
-                </Link>
-              </li>
-              <li>
-                <Link
-                  className="dropdown-item rounded-1"
-                  to="#"
-                  data-bs-toggle="modal"
-                  data-bs-target="#delete-modal"
-                >
-                  <i className="ti ti-trash-x me-2" />
-                  Delete
-                </Link>
-              </li>
-            </ul>
-          </div>
-        </>
-      ),
+      render: (text: any, record: any) => {
+        const handleEditClick = (e: React.MouseEvent) => {
+          e.preventDefault();
+          setSelectedRoutine(record);
+          const modalElement = document.getElementById('edit_class_routine');
+          if (modalElement) {
+            const bootstrap = (window as any).bootstrap;
+            if (bootstrap && bootstrap.Modal) {
+              const modal = bootstrap.Modal.getInstance(modalElement);
+              if (modal) {
+                modal.show();
+              } else {
+                new bootstrap.Modal(modalElement).show();
+              }
+            }
+          }
+        };
+        
+        return (
+          <>
+            <div className="dropdown">
+              <Link
+                to="#"
+                className="btn btn-white btn-icon btn-sm d-flex align-items-center justify-content-center rounded-circle p-0"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                <i className="ti ti-dots-vertical fs-14" />
+              </Link>
+              <ul className="dropdown-menu dropdown-menu-right p-3">
+                <li>
+                  <Link
+                    className="dropdown-item rounded-1"
+                    to="#"
+                    onClick={handleEditClick}
+                  >
+                    <i className="ti ti-edit-circle me-2" />
+                    Edit
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    className="dropdown-item rounded-1"
+                    to="#"
+                    data-bs-toggle="modal"
+                    data-bs-target="#delete-modal"
+                  >
+                    <i className="ti ti-trash-x me-2" />
+                    Delete
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </>
+        );
+      },
     },
   ];
   return (
@@ -480,23 +506,39 @@ const ClassRoutine = () => {
                     <div className="col-md-12">
                       <div className="mb-3">
                         <label className="form-label">Teacher</label>
-                        <CommonSelect className="select" options={teacher} defaultValue={teacher[2]}/>
+                        <CommonSelect 
+                          className="select" 
+                          options={teacher} 
+                          defaultValue={selectedRoutine?.teacher ? teacher.find((t: any) => t.value === selectedRoutine.teacher || t.label === selectedRoutine.teacher) || teacher[0] : teacher[0]}
+                          key={`teacher-${selectedRoutine?.id || 'new'}`}
+                        />
                       </div>
                       <div className="mb-3">
                         <label className="form-label">Class</label>
-                        <CommonSelect className="select" options={allClass} defaultValue={allClass[2]}/>
+                        <CommonSelect 
+                          className="select" 
+                          options={allClass} 
+                          defaultValue={selectedRoutine?.class ? allClass.find((c: any) => c.value === selectedRoutine.class || c.label === selectedRoutine.class) || allClass[0] : allClass[0]}
+                          key={`class-${selectedRoutine?.id || 'new'}`}
+                        />
                       </div>
                       <div className="mb-3">
                         <label className="form-label">Section</label>
                         <CommonSelect
                           className="select"
                           options={classSection}
-                          defaultValue={classSection[2]}
+                          defaultValue={selectedRoutine?.section ? classSection.find((s: any) => s.value === selectedRoutine.section || s.label === selectedRoutine.section) || classSection[0] : classSection[0]}
+                          key={`section-${selectedRoutine?.id || 'new'}`}
                         />
                       </div>
                       <div className="mb-3">
                         <label className="form-label">Day</label>
-                        <CommonSelect className="select" options={weak} />
+                        <CommonSelect 
+                          className="select" 
+                          options={weak} 
+                          defaultValue={selectedRoutine?.day ? weak.find((d: any) => d.value === selectedRoutine.day || d.label === selectedRoutine.day) || weak[0] : weak[0]}
+                          key={`day-${selectedRoutine?.id || 'new'}`}
+                        />
                       </div>
                       <div className="row">
                         <div className="col-md-6">
@@ -509,6 +551,22 @@ const ClassRoutine = () => {
                                 placeholder="Choose"
                                 format="h:mm A"
                                 className="form-control timepicker"
+                                defaultValue={selectedRoutine?.originalData?.startTime ? (() => {
+                                  const timeStr = String(selectedRoutine.originalData.startTime || '').trim();
+                                  if (!timeStr) return null;
+                                  // Try different formats - backend returns "HH:mm" format
+                                  if (dayjs(timeStr, 'HH:mm:ss', true).isValid()) {
+                                    return dayjs(timeStr, 'HH:mm:ss');
+                                  } else if (dayjs(timeStr, 'HH:mm', true).isValid()) {
+                                    return dayjs(timeStr, 'HH:mm');
+                                  } else if (dayjs(timeStr, 'h:mm A', true).isValid()) {
+                                    return dayjs(timeStr, 'h:mm A');
+                                  }
+                                  // Try parsing as-is
+                                  const parsed = dayjs(timeStr);
+                                  return parsed.isValid() ? parsed : null;
+                                })() : null}
+                                key={`startTime-${selectedRoutine?.id || 'new'}`}
                               />
                               <span className="cal-icon">
                                 <i className="ti ti-clock" />
@@ -526,6 +584,22 @@ const ClassRoutine = () => {
                                 placeholder="Choose"
                                 format="h:mm A"
                                 className="form-control timepicker"
+                                defaultValue={selectedRoutine?.originalData?.endTime ? (() => {
+                                  const timeStr = String(selectedRoutine.originalData.endTime || '').trim();
+                                  if (!timeStr) return null;
+                                  // Try different formats - backend returns "HH:mm" format
+                                  if (dayjs(timeStr, 'HH:mm:ss', true).isValid()) {
+                                    return dayjs(timeStr, 'HH:mm:ss');
+                                  } else if (dayjs(timeStr, 'HH:mm', true).isValid()) {
+                                    return dayjs(timeStr, 'HH:mm');
+                                  } else if (dayjs(timeStr, 'h:mm A', true).isValid()) {
+                                    return dayjs(timeStr, 'h:mm A');
+                                  }
+                                  // Try parsing as-is
+                                  const parsed = dayjs(timeStr);
+                                  return parsed.isValid() ? parsed : null;
+                                })() : null}
+                                key={`endTime-${selectedRoutine?.id || 'new'}`}
                               />
                               <span className="cal-icon">
                                 <i className="ti ti-clock" />
@@ -536,7 +610,12 @@ const ClassRoutine = () => {
                       </div>
                       <div className="mb-3">
                         <label className="form-label">Class Room</label>
-                        <CommonSelect className="select" options={count} />
+                        <CommonSelect 
+                          className="select" 
+                          options={count} 
+                          defaultValue={selectedRoutine?.classRoom ? count.find((c: any) => c.value === selectedRoutine.classRoom || c.label === selectedRoutine.classRoom) || count[0] : count[0]}
+                          key={`classRoom-${selectedRoutine?.id || 'new'}`}
+                        />
                       </div>
                       <div className="d-flex align-items-center justify-content-between">
                         <div className="status-title">
@@ -549,6 +628,8 @@ const ClassRoutine = () => {
                             type="checkbox"
                             role="switch"
                             id="switch-sm2"
+                            defaultChecked={selectedRoutine?.originalData?.is_active !== false}
+                            key={`status-${selectedRoutine?.id || 'new'}`}
                           />
                         </div>
                       </div>

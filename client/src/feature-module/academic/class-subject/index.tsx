@@ -1,4 +1,4 @@
-import  { useRef } from "react";
+import  { useRef, useState } from "react";
 import Table from "../../../core/common/dataTable/index";
 
 import {
@@ -18,15 +18,20 @@ import { useSubjects } from "../../../core/hooks/useSubjects";
 const ClassSubject = () => {
   const routes = all_routes;
   const { subjects, loading, error, refetch } = useSubjects();
+  
+  // State for edit modal
+  const [selectedSubject, setSelectedSubject] = useState<any>(null);
 
   // Transform API data to match table structure
   const data = (subjects ?? []).map((subject: any, index: number) => ({
-    key: (index + 1).toString(),
-    id: subject.subject_code || `SU${subject.id}`,
+    key: subject.id?.toString() || (index + 1).toString(),
+    id: subject.id?.toString() || subject.subject_code || `SU${String(index + 1).padStart(6, '0')}`,
     name: subject.subject_name || 'N/A',
     code: subject.subject_code || 'N/A',
     type: (subject.practical_hours && subject.practical_hours > 0) ? 'Practical' : 'Theory',
-    status: subject.is_active ? 'Active' : 'Inactive'
+    status: subject.is_active ? 'Active' : 'Inactive',
+    // Store original data for edit modal
+    originalData: subject
   }));
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   const handleApplyClick = () => {
@@ -38,14 +43,18 @@ const ClassSubject = () => {
     {
       title: "ID",
       dataIndex: "id",
-      render: ( record: any) => (
+      render: (text: any, record: any) => (
         <>
           <Link to="#" className="link-primary">
-            {record.id}
+            {text || record.id || 'N/A'}
           </Link>
         </>
       ),
-      sorter: (a: TableData, b: TableData) => a.id.length - b.id.length,
+      sorter: (a: TableData, b: TableData) => {
+        const idA = String(a.id || '').length;
+        const idB = String(b.id || '').length;
+        return idA - idB;
+      },
     },
 
     {
@@ -104,8 +113,22 @@ const ClassSubject = () => {
                   <Link
                     className="dropdown-item rounded-1"
                     to="#"
-                    data-bs-toggle="modal"
-                    data-bs-target="#edit_subject"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setSelectedSubject(record);
+                      const modalElement = document.getElementById('edit_subject');
+                      if (modalElement) {
+                        const bootstrap = (window as any).bootstrap;
+                        if (bootstrap && bootstrap.Modal) {
+                          const modal = bootstrap.Modal.getInstance(modalElement);
+                          if (modal) {
+                            modal.show();
+                          } else {
+                            new bootstrap.Modal(modalElement).show();
+                          }
+                        }
+                      }
+                    }}
                   >
                     <i className="ti ti-edit-circle me-2" />
                     Edit
@@ -420,7 +443,8 @@ const ClassSubject = () => {
                           type="text"
                           className="form-control"
                           placeholder="Enter Name"
-                          defaultValue="English"
+                          defaultValue={selectedSubject?.originalData?.subject_name || selectedSubject?.name || ''}
+                          key={`name-${selectedSubject?.id || 'new'}`}
                         />
                       </div>
                       <div className="mb-3">
@@ -428,8 +452,8 @@ const ClassSubject = () => {
                         <CommonSelect
                           className="select"
                           options={count}
-                          defaultValue={count[0]}
-                          
+                          defaultValue={selectedSubject?.originalData?.subject_code || selectedSubject?.code ? count.find((c: any) => c.value === (selectedSubject?.originalData?.subject_code || selectedSubject?.code) || c.label === (selectedSubject?.originalData?.subject_code || selectedSubject?.code)) || count[0] : count[0]}
+                          key={`code-${selectedSubject?.id || 'new'}`}
                         />
                       </div>
                       <div className="mb-3">
@@ -437,8 +461,8 @@ const ClassSubject = () => {
                         <CommonSelect
                           className="select"
                           options={typetheory}
-                          defaultValue={typetheory[0]}
-                          
+                          defaultValue={selectedSubject?.type === 'Practical' ? typetheory.find((t: any) => t.label === 'Practical') || typetheory[0] : typetheory.find((t: any) => t.label === 'Theory') || typetheory[0]}
+                          key={`type-${selectedSubject?.id || 'new'}`}
                         />
                       </div>
                       <div className="d-flex align-items-center justify-content-between">
@@ -452,6 +476,8 @@ const ClassSubject = () => {
                             type="checkbox"
                             role="switch"
                             id="switch-sm2"
+                            defaultChecked={selectedSubject?.originalData?.is_active !== false}
+                            key={`status-${selectedSubject?.id || 'new'}`}
                           />
                         </div>
                       </div>

@@ -86,6 +86,7 @@ const ClassSection = () => {
     
     if (!selectedSection || !selectedSection.id) {
       console.error('No section selected for editing');
+      alert('No section selected for editing');
       return;
     }
 
@@ -96,10 +97,12 @@ const ClassSection = () => {
 
     try {
       setIsUpdating(true);
-      console.log('Updating section:', {
-        id: selectedSection.id,
-        section_name: editSectionName,
-        is_active: editSectionStatus
+      console.log('=== UPDATING SECTION ===');
+      console.log('Section ID:', selectedSection.id);
+      console.log('Update data:', {
+        section_name: editSectionName.trim(),
+        is_active: editSectionStatus,
+        is_active_type: typeof editSectionStatus
       });
 
       const updateData = {
@@ -107,11 +110,15 @@ const ClassSection = () => {
         is_active: editSectionStatus
       };
 
+      console.log('Calling apiService.updateSection...');
       const response = await apiService.updateSection(selectedSection.id, updateData);
       
       console.log('Update response:', response);
+      console.log('Response status:', response?.status);
 
-      if (response.status === 'SUCCESS') {
+      if (response && response.status === 'SUCCESS') {
+        console.log('Update successful!');
+        
         // Close modal
         const modalElement = document.getElementById('edit_class_section');
         if (modalElement) {
@@ -125,18 +132,30 @@ const ClassSection = () => {
         }
 
         // Refresh sections list
+        console.log('Refreshing sections list...');
         await refetch();
+        console.log('Sections list refreshed');
         
         // Reset form
         setSelectedSection(null);
         setEditSectionName('');
         setEditSectionStatus(true);
       } else {
-        alert(response.message || 'Failed to update section');
+        const errorMsg = response?.message || 'Failed to update section';
+        console.error('Update failed:', errorMsg);
+        alert(errorMsg);
       }
-    } catch (err) {
-      console.error('Error updating section:', err);
-      alert('Failed to update section. Please try again.');
+    } catch (err: any) {
+      console.error('=== ERROR UPDATING SECTION ===');
+      console.error('Error:', err);
+      console.error('Error message:', err?.message);
+      console.error('Error stack:', err?.stack);
+      
+      let errorMessage = 'Failed to update section. Please try again.';
+      if (err?.message) {
+        errorMessage = `Error: ${err.message}`;
+      }
+      alert(errorMessage);
     } finally {
       setIsUpdating(false);
     }
@@ -164,79 +183,52 @@ const ClassSection = () => {
   const transformedData = sections.map((section: any, index: number) => {
     const rawValue = section.is_active;
     
-    // Comprehensive logging
-    console.log(`[Frontend Transform] Section ${index + 1}:`, {
-      id: section.id,
-      section_name: section.section_name,
-      raw_is_active: rawValue,
-      type: typeof rawValue,
-      stringified: JSON.stringify(rawValue),
-      strict_true: rawValue === true,
-      strict_false: rawValue === false,
-      truthy: !!rawValue,
-      falsy: !rawValue
-    });
-    
-    // Convert to boolean - be very explicit
+    // Convert to boolean - backend should already normalize, but be defensive
     let isActive = false;
     
     // Primary check: boolean true
     if (rawValue === true) {
       isActive = true;
-      console.log(`  → Detected boolean TRUE`);
     }
     // Primary check: boolean false
     else if (rawValue === false) {
       isActive = false;
-      console.log(`  → Detected boolean FALSE`);
     }
     // String check
     else if (typeof rawValue === 'string') {
       const lowerVal = rawValue.toLowerCase().trim();
       if (lowerVal === 'true' || lowerVal === 't' || lowerVal === '1') {
         isActive = true;
-        console.log(`  → Detected string TRUE: "${rawValue}"`);
       } else {
         isActive = false;
-        console.log(`  → Detected string FALSE: "${rawValue}"`);
       }
     }
     // Number check
     else if (typeof rawValue === 'number') {
       isActive = rawValue === 1 || rawValue > 0;
-      console.log(`  → Detected number: ${rawValue} → ${isActive}`);
     }
-    // Null/undefined check
+    // Null/undefined check - default to false
     else if (rawValue === null || rawValue === undefined) {
       isActive = false;
-      console.log(`  → Detected null/undefined → FALSE`);
     }
-    // Fallback
+    // Fallback - default to false
     else {
       isActive = false;
-      console.warn(`  → ⚠️ Unexpected type: ${typeof rawValue}, value: ${JSON.stringify(rawValue)} → FALSE`);
     }
     
     // Ensure status is always a string
     const status: string = isActive === true ? 'Active' : 'Inactive';
     
-    console.log(`  → FINAL: isActive=${isActive} (${typeof isActive}), status="${status}"`);
-    
-    // Double-check: log the final object being returned
-    const finalObj = {
+    return {
       key: section.id?.toString() || (index + 1).toString(),
       id: section.id?.toString() || `SE${String(index + 1).padStart(6, '0')}`,
       sectionName: section.section_name || 'N/A',
-      status: status, // Explicitly set status
+      status: status,
       sectionData: {
         ...section,
         is_active: isActive // Ensure sectionData also has normalized boolean
       }
     };
-    
-    console.log(`  → Returning object with status: "${finalObj.status}"`);
-    
-    return finalObj;
   });
 
   const columns = [

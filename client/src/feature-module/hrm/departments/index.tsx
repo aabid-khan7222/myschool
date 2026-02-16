@@ -1,4 +1,4 @@
-import  { useRef } from 'react'
+import  { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Table from "../../../core/common/dataTable/index";
 import { activeList, departmentSelect } from '../../../core/common/selectoption/selectoption';
@@ -13,6 +13,7 @@ const Departments = () => {
   const routes = all_routes;
   const { departments, loading, error, refetch } = useDepartments();
   const data = departments;
+  const [selectedDepartment, setSelectedDepartment] = useState<any>(null);
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   const handleApplyClick = () => {
     if (dropdownMenuRef.current) {
@@ -23,12 +24,12 @@ const Departments = () => {
     {
       title: "ID",
       dataIndex: "id",
-      render: ( record: any) => (
+      render: (text: any, record: any) => (
         <>
-          <Link to="#" className="link-primary">{record.id}</Link>
+          <Link to="#" className="link-primary">{text || record.id || 'N/A'}</Link>
         </>
       ),
-      sorter: (a: TableData, b: TableData) => a.id.length - b.id.length,
+      sorter: (a: TableData, b: TableData) => String(a.id || '').length - String(b.id || '').length,
     },
     {
       title: "Department",
@@ -63,7 +64,7 @@ const Departments = () => {
     {
       title: "Action",
       dataIndex: "action",
-      render: () => (
+      render: (text: any, record: any) => (
         <>
           <div className="d-flex align-items-center">
             <div className="dropdown">
@@ -80,8 +81,20 @@ const Departments = () => {
                   <Link
                     className="dropdown-item rounded-1"
                     to="#"
-                    data-bs-toggle="modal"
-                    data-bs-target="#edit_department"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setSelectedDepartment(record);
+                      setTimeout(() => {
+                        const modalElement = document.getElementById('edit_department');
+                        if (modalElement) {
+                          const bootstrap = (window as any).bootstrap;
+                          if (bootstrap && bootstrap.Modal) {
+                            const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+                            modal.show();
+                          }
+                        }
+                      }, 100);
+                    }}
                   >
                     <i className="ti ti-edit-circle me-2" />
                     Edit
@@ -371,7 +384,8 @@ const Departments = () => {
                     type="text"
                     className="form-control"
                     placeholder="Enter Department Name"
-                    defaultValue="Admin"
+                    defaultValue={selectedDepartment?.originalData?.department_name || selectedDepartment?.originalData?.department || selectedDepartment?.department || ""}
+                    key={`dept-name-${selectedDepartment?.id || 'new'}`}
                   />
                 </div>
               </div>
@@ -386,6 +400,8 @@ const Departments = () => {
                     type="checkbox"
                     role="switch"
                     id="switch-sm2"
+                    defaultChecked={selectedDepartment?.originalData?.is_active !== false && selectedDepartment?.status !== 'Inactive'}
+                    key={`dept-status-${selectedDepartment?.id || 'new'}`}
                   />
                 </div>
               </div>

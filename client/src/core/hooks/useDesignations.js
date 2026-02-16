@@ -36,6 +36,7 @@ export const useDesignations = () => {
             id,
             designation: designationName,
             status,
+            originalData: desig, // Store original data for edit modal
           };
         });
 

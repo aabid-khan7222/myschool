@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { all_routes } from "../../router/all_routes";
 import { Link } from "react-router-dom";
 import PredefinedDateRanges from "../../../core/common/datePicker";
@@ -23,6 +23,7 @@ const TransportAssignVehicle = () => {
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   const { data: apiData, loading, error, fallbackData } = useTransportAssignments();
   const data = apiData?.length ? apiData : fallbackData;
+  const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const handleApplyClick = () => {
     if (dropdownMenuRef.current) {
       dropdownMenuRef.current.classList.remove("show");
@@ -32,12 +33,12 @@ const TransportAssignVehicle = () => {
     {
       title: "ID",
       dataIndex: "id",
-      render: (text: string) => (
+      render: (text: any, record: any) => (
         <Link to="#" className="link-primary">
-          {text}
+          {text || record.id || 'N/A'}
         </Link>
       ),
-      sorter: (a: TableData, b: TableData) => a.id.length - b.id.length,
+      sorter: (a: TableData, b: TableData) => String(a.id || '').length - String(b.id || '').length,
     },
     {
       title: "Route",
@@ -348,7 +349,7 @@ const TransportAssignVehicle = () => {
         </div>
       </div>
       {/* /Page Wrapper */}
-      <TransportModal />
+      <TransportModal selectedAssignment={selectedAssignment} />
     </>
   );
 };

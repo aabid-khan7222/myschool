@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { TableData } from "../../../core/data/interface";
 import Table from "../../../core/common/dataTable/index";
 import PredefinedDateRanges from "../../../core/common/datePicker";
@@ -13,16 +13,17 @@ const Designation = () => {
   const routes = all_routes;
   const { designations, loading, error, refetch } = useDesignations();
   const data = designations;
+  const [selectedDesignation, setSelectedDesignation] = useState<any>(null);
     const columns = [
       {
         title: "ID",
         dataIndex: "id",
-        render: (record: any) => (
+        render: (text: any, record: any) => (
           <>
-           <Link to="#" className="link-primary">{record.id}</Link>
+           <Link to="#" className="link-primary">{text || record.id || 'N/A'}</Link>
           </>
         ),
-        sorter: (a: TableData, b: TableData) => a.id.length - b.id.length,
+        sorter: (a: TableData, b: TableData) => String(a.id || '').length - String(b.id || '').length,
       },
   
       {
@@ -56,7 +57,7 @@ const Designation = () => {
       {
         title: "Action",
         dataIndex: "action",
-        render: () => (
+        render: (text: any, record: any) => (
           <>
             <div className="dropdown">
               <Link
@@ -72,8 +73,20 @@ const Designation = () => {
                   <Link
                     className="dropdown-item rounded-1"
                     to="#"
-                    data-bs-toggle="modal"
-                    data-bs-target="#edit_designation"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setSelectedDesignation(record);
+                      setTimeout(() => {
+                        const modalElement = document.getElementById('edit_designation');
+                        if (modalElement) {
+                          const bootstrap = (window as any).bootstrap;
+                          if (bootstrap && bootstrap.Modal) {
+                            const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+                            modal.show();
+                          }
+                        }
+                      }, 100);
+                    }}
                   >
                     <i className="ti ti-edit-circle me-2" />
                     Edit
@@ -368,7 +381,8 @@ const Designation = () => {
                           type="text"
                           className="form-control"
                           placeholder="Enter Designation"
-                          defaultValue="Teacher"
+                          defaultValue={selectedDesignation?.originalData?.designation_name || selectedDesignation?.originalData?.designation || selectedDesignation?.designation || ""}
+                          key={`desig-name-${selectedDesignation?.id || 'new'}`}
                         />
                       </div>
                     </div>
@@ -383,6 +397,8 @@ const Designation = () => {
                           type="checkbox"
                           role="switch"
                           id="switch-sm2"
+                          defaultChecked={selectedDesignation?.originalData?.is_active !== false && selectedDesignation?.status !== 'Inactive'}
+                          key={`desig-status-${selectedDesignation?.id || 'new'}`}
                         />
                       </div>
                     </div>

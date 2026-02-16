@@ -6,7 +6,14 @@ import ImageWithBasePath from "../../../core/common/imageWithBasePath";
 import dayjs from "dayjs";
 import { DatePicker } from "antd";
 
-const TransportModal = () => {
+interface TransportModalProps {
+  selectedRoute?: any;
+  selectedPickupPoint?: any;
+  selectedDriver?: any;
+  selectedAssignment?: any;
+}
+
+const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, selectedAssignment }: TransportModalProps) => {
     const today = new Date()
     const year = today.getFullYear()
     const month = String(today.getMonth() + 1).padStart(2, '0') // Month is zero-based, so we add 1
@@ -108,7 +115,8 @@ const TransportModal = () => {
                           type="text"
                           className="form-control"
                           placeholder="Enter Route Name"
-                          defaultValue="Seattle"
+                          defaultValue={selectedRoute?.originalData?.route_name || selectedRoute?.routes || ""}
+                          key={`route-name-${selectedRoute?.id || 'new'}`}
                         />
                       </div>
                     </div>
@@ -122,7 +130,8 @@ const TransportModal = () => {
                           type="checkbox"
                           id="user2"
                           className="check"
-                          defaultChecked
+                          defaultChecked={selectedRoute?.originalData?.is_active !== false && selectedRoute?.status !== 'Inactive'}
+                          key={`route-status-${selectedRoute?.id || 'new'}`}
                         />
                         <label htmlFor="user2" className="checktoggle">
                           {" "}
@@ -248,7 +257,8 @@ const TransportModal = () => {
                         <CommonSelect
                           className="select"
                           options={routesList}
-                          defaultValue={routesList[0]}
+                          defaultValue={selectedAssignment?.originalData?.route || selectedAssignment?.route ? routesList.find((r: any) => r.value === selectedAssignment.originalData?.route || r.label === selectedAssignment.route) || routesList[0] : routesList[0]}
+                          key={`assign-route-${selectedAssignment?.id || 'new'}`}
                         />
                       </div>
                       <div className="mb-3">
@@ -258,7 +268,8 @@ const TransportModal = () => {
                         <CommonSelect
                           className="select"
                           options={PickupPoint2}
-                          defaultValue={PickupPoint2[0]}
+                          defaultValue={selectedAssignment?.originalData?.pickup_point || selectedAssignment?.pickupPoint ? PickupPoint2.find((p: any) => p.value === selectedAssignment.originalData?.pickup_point || p.label === selectedAssignment.pickupPoint) || PickupPoint2[0] : PickupPoint2[0]}
+                          key={`assign-pickup-${selectedAssignment?.id || 'new'}`}
                         />
                       </div>
                       <div className="mb-3">
@@ -266,7 +277,8 @@ const TransportModal = () => {
                         <CommonSelect
                           className="select"
                           options={VehicleNumber}
-                          defaultValue={VehicleNumber[0]}
+                          defaultValue={selectedAssignment?.originalData?.vehicle_number || selectedAssignment?.vehicle ? VehicleNumber.find((v: any) => v.value === selectedAssignment.originalData?.vehicle_number || v.label === selectedAssignment.vehicle) || VehicleNumber[0] : VehicleNumber[0]}
+                          key={`assign-vehicle-${selectedAssignment?.id || 'new'}`}
                         />
                       </div>
                       <div className="assigned-driver">
@@ -274,13 +286,13 @@ const TransportModal = () => {
                         <div className="assigned-driver-info">
                           <span className="driver-img">
                             <ImageWithBasePath
-                              src="assets/img/parents/parent-01.jpg"
+                              src={selectedAssignment?.originalData?.driver_photo_url || selectedAssignment?.originalData?.photo_url || selectedAssignment?.img || "assets/img/parents/parent-01.jpg"}
                               alt="Img"
                             />
                           </span>
                           <div>
-                            <h5>Thomas</h5>
-                            <span>+1 64044 748904</span>
+                            <h5>{selectedAssignment?.originalData?.driver_name || selectedAssignment?.name || "N/A"}</h5>
+                            <span>{selectedAssignment?.originalData?.driver_phone || selectedAssignment?.phone || "N/A"}</span>
                           </div>
                         </div>
                       </div>
@@ -394,7 +406,8 @@ const TransportModal = () => {
                           type="text"
                           className="form-control"
                           placeholder="Enter Pickup Point"
-                          defaultValue="2603 Wood Duck Drive Marquette, MI"
+                          defaultValue={selectedPickupPoint?.originalData?.address || selectedPickupPoint?.pickupPoint || ""}
+                          key={`pickup-point-${selectedPickupPoint?.id || 'new'}`}
                         />
                       </div>
                     </div>
@@ -406,11 +419,12 @@ const TransportModal = () => {
                       <div className="status-toggle modal-status">
                         <input
                           type="checkbox"
-                          id="user2"
+                          id="pickup-status"
                           className="check"
-                          defaultChecked
+                          defaultChecked={selectedPickupPoint?.originalData?.is_active !== false && selectedPickupPoint?.status !== 'Inactive'}
+                          key={`pickup-status-${selectedPickupPoint?.id || 'new'}`}
                         />
-                        <label htmlFor="user2" className="checktoggle">
+                        <label htmlFor="pickup-status" className="checktoggle">
                           {" "}
                         </label>
                       </div>
@@ -542,7 +556,8 @@ const TransportModal = () => {
                           type="text"
                           className="form-control"
                           placeholder="Enter Name"
-                          defaultValue="Thomas"
+                          defaultValue={selectedDriver?.originalData?.name || selectedDriver?.originalData?.driver_name || selectedDriver?.name || ""}
+                          key={`driver-name-${selectedDriver?.id || 'new'}`}
                         />
                       </div>
                       <div className="mb-3">
@@ -551,7 +566,8 @@ const TransportModal = () => {
                           type="text"
                           className="form-control"
                           placeholder="Enter Phone Number"
-                          defaultValue="+1 64044 74890"
+                          defaultValue={selectedDriver?.originalData?.phone || selectedDriver?.phone || ""}
+                          key={`driver-phone-${selectedDriver?.id || 'new'}`}
                         />
                       </div>
                       <div className="mb-3">
@@ -562,7 +578,8 @@ const TransportModal = () => {
                           type="text"
                           className="form-control"
                           placeholder="Enter Driving License Number"
-                          defaultValue="LC7899456689"
+                          defaultValue={selectedDriver?.originalData?.license_number || selectedDriver?.driverLicenseNo || ""}
+                          key={`driver-license-${selectedDriver?.id || 'new'}`}
                         />
                       </div>
                       <div className="mb-3">
@@ -571,7 +588,8 @@ const TransportModal = () => {
                           type="text"
                           className="form-control"
                           placeholder="Enter Address"
-                          defaultValue="2233 Wood Street, Slidell, LA"
+                          defaultValue={selectedDriver?.originalData?.address || selectedDriver?.address || ""}
+                          key={`driver-address-${selectedDriver?.id || 'new'}`}
                         />
                       </div>
                     </div>
@@ -583,11 +601,12 @@ const TransportModal = () => {
                       <div className="status-toggle modal-status">
                         <input
                           type="checkbox"
-                          id="user2"
+                          id="driver-status"
                           className="check"
-                          defaultChecked
+                          defaultChecked={selectedDriver?.originalData?.is_active !== false && selectedDriver?.status !== 'Inactive'}
+                          key={`driver-status-${selectedDriver?.id || 'new'}`}
                         />
-                        <label htmlFor="user2" className="checktoggle">
+                        <label htmlFor="driver-status" className="checktoggle">
                           {" "}
                         </label>
                       </div>

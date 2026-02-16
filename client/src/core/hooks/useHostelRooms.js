@@ -13,22 +13,58 @@ export const useHostelRooms = () => {
       const response = await apiService.getHostelRooms();
       
       if (response.status === 'SUCCESS') {
+        // Log raw data for debugging
+        console.log('=== HOSTEL ROOMS RAW DATA ===');
+        console.log('Response data:', response.data);
+        if (response.data && response.data.length > 0) {
+          console.log('First room raw data:', response.data[0]);
+          console.log('First room keys:', Object.keys(response.data[0]));
+        }
+        
         // Transform the API data to match the expected format
         const transformedData = response.data.map((room, index) => {
-          const costValue = room.cost_per_bed || room.amount;
-          const formattedAmount = costValue 
-            ? (typeof costValue === 'number' ? `$${costValue}` : (costValue.toString().startsWith('$') ? costValue.toString() : `$${costValue}`))
+          // Room Type: from room_types table JOIN (already handled by COALESCE in backend)
+          const roomTypeValue = room.room_type || null;
+          
+          // No Of Bed: from current_occupancy column
+          const noOfBedValue = room.current_occupancy !== undefined && room.current_occupancy !== null ? room.current_occupancy : null;
+          
+          // Cost Per Bed: from monthly_fee column (singular in database)
+          const costValue = room.monthly_fee !== undefined && room.monthly_fee !== null ? room.monthly_fee :
+                           room.monthly_fees !== undefined && room.monthly_fees !== null ? room.monthly_fees : null;
+          
+          // Format amount with ₹ (Indian Rupees) sign
+          const formattedAmount = costValue !== null
+            ? (typeof costValue === 'number' 
+                ? `₹${costValue}` 
+                : (costValue.toString().startsWith('₹') || costValue.toString().startsWith('$')
+                    ? costValue.toString().replace('$', '₹')
+                    : `₹${costValue}`))
             : 'N/A';
           
-          return {
+          const transformed = {
             key: (index + 1).toString(),
             id: `HR${room.id}` || `HR${index + 1}`,
             roomNo: room.room_number || 'N/A',
             hostelName: room.hostel_name || 'N/A',
-            roomType: room.room_type || 'N/A',
-            noofBed: room.no_of_bed ? String(room.no_of_bed) : 'N/A',
+            roomType: roomTypeValue || 'N/A',
+            noofBed: noOfBedValue !== null ? String(noOfBedValue) : 'N/A',
             amount: formattedAmount,
+            originalData: room, // Store original data for edit modal
           };
+          
+          // Log transformation for first item
+          if (index === 0) {
+            console.log('=== TRANSFORMATION DEBUG ===');
+            console.log('Raw room:', room);
+            console.log('Room Type value:', roomTypeValue);
+            console.log('No Of Bed value:', noOfBedValue);
+            console.log('Cost value:', costValue);
+            console.log('Formatted amount:', formattedAmount);
+            console.log('Transformed:', transformed);
+          }
+          
+          return transformed;
         });
         
         setHostelRooms(transformedData);

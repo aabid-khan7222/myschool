@@ -275,8 +275,13 @@ const updateSection = async (req, res) => {
     const { id } = req.params;
     const { section_name, is_active } = req.body;
 
+    console.log('=== UPDATE SECTION REQUEST ===');
+    console.log('Params:', { id });
+    console.log('Body:', { section_name, is_active, is_active_type: typeof is_active });
+
     // Validate required fields
     if (!section_name) {
+      console.error('Validation failed: section_name is required');
       return res.status(400).json({
         status: 'ERROR',
         message: 'Section name is required'
@@ -294,24 +299,24 @@ const updateSection = async (req, res) => {
       isActiveBoolean = false;
     }
 
-    console.log(`Updating section ${id}:`, {
-      section_name,
-      is_active: is_active,
-      is_active_type: typeof is_active,
+    console.log('Converted values:', {
+      original_is_active: is_active,
       isActiveBoolean,
       isActiveBoolean_type: typeof isActiveBoolean
     });
 
+    // Update with modified_at column (as per database schema)
     const result = await query(`
       UPDATE sections SET
         section_name = $1,
         is_active = $2,
-        updated_at = NOW()
+        modified_at = NOW()
       WHERE id = $3
-      RETURNING *
+      RETURNING id, section_name, is_active, created_at, modified_at
     `, [section_name, isActiveBoolean, id]);
 
     if (result.rows.length === 0) {
+      console.error(`Section not found with id: ${id}`);
       return res.status(404).json({
         status: 'ERROR',
         message: 'Section not found'
@@ -331,10 +336,13 @@ const updateSection = async (req, res) => {
       data: result.rows[0]
     });
   } catch (error) {
-    console.error('Error updating section:', error);
+    console.error('=== ERROR UPDATING SECTION ===');
+    console.error('Error:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       status: 'ERROR',
-      message: 'Failed to update section',
+      message: `Failed to update section: ${error.message || 'Unknown error'}`,
     });
   }
 };
