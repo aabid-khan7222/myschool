@@ -20,6 +20,22 @@ export const useSections = (classId = null) => {
       }
       
       console.log('Sections response:', response);
+      console.log('Sections data (first 3):', response.data?.slice(0, 3));
+      
+      // Log is_active values for debugging
+      if (response.data && response.data.length > 0) {
+        console.log('is_active values check:');
+        response.data.slice(0, 3).forEach((section, idx) => {
+          console.log(`  Section ${idx + 1} (${section.section_name}):`, {
+            is_active: section.is_active,
+            type: typeof section.is_active,
+            stringified: JSON.stringify(section.is_active),
+            strict_true: section.is_active === true,
+            strict_false: section.is_active === false
+          });
+        });
+      }
+      
       setSections(response.data);
     } catch (err) {
       console.error('Error fetching sections:', err);

@@ -124,6 +124,13 @@ class ApiService {
     return this.makeRequest(`/sections/class/${classId}`);
   }
 
+  async updateSection(id, sectionData) {
+    return this.makeRequest(`/sections/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(sectionData)
+    });
+  }
+
   // Class schedules (timetable: class + subject + time_slot)
   async getClassSchedules() {
     return this.makeRequest('/class-schedules');
@@ -256,6 +263,10 @@ class ApiService {
 
   async getTeachersByClass(classId) {
     return this.makeRequest(`/teachers/class/${classId}`);
+  }
+
+  async getTeacherRoutine(teacherId) {
+    return this.makeRequest(`/teachers/${teacherId}/routine`);
   }
 
   // Staff
