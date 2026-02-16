@@ -20,6 +20,7 @@ import { useParents } from "../../../../core/hooks/useParents";
 const ParentList = () => {
   const [show, setShow] = useState(false);
   const [selectedParent, setSelectedParent] = useState<any>(null);
+  const [parentToEdit, setParentToEdit] = useState<any>(null);
   const routes = all_routes;
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   const { parents, loading, error, refetch } = useParents();
@@ -88,7 +89,11 @@ const ParentList = () => {
       dataIndex: "Child",
       render: (text: string, record: any) => (
         <div className="d-flex align-items-center">
-          <Link to={routes.studentDetail} className="avatar avatar-md">
+          <Link
+            to={routes.studentDetail}
+            state={record.student_id != null ? { studentId: record.student_id } : undefined}
+            className="avatar avatar-md"
+          >
             <ImageWithBasePath
               src={record.ChildImage}
               className="img-fluid rounded-circle"
@@ -97,7 +102,12 @@ const ParentList = () => {
           </Link>
           <div className="ms-2">
             <p className="text-dark mb-0">
-              <Link to="#">{text}</Link>
+              <Link
+                to={routes.studentDetail}
+                state={record.student_id != null ? { studentId: record.student_id } : undefined}
+              >
+                {text}
+              </Link>
             </p>
             <span className="fs-12">{record.class}</span>
           </div>
@@ -147,6 +157,7 @@ const ParentList = () => {
                     to="#"
                     data-bs-toggle="modal"
                     data-bs-target="#edit_parent"
+                    onClick={() => setParentToEdit(record)}
                   >
                     <i className="ti ti-edit-circle me-2" />
                     Edit
@@ -382,7 +393,7 @@ const ParentList = () => {
         </div>
       </div>
       {/* /Page Wrapper */}
-      <ParentModal />
+      <ParentModal parentToEdit={parentToEdit} />
       <Modal show={show} onHide={handleClose} centered size="lg">
         <div className="modal-header">
           <h4 className="modal-title">View Details</h4>
@@ -441,7 +452,11 @@ const ParentList = () => {
               </div>
               <div className="d-flex align-items-center justify-content-between flex-wrap">
                 <div className="d-flex align-items-center mb-3">
-                  <Link to={routes.studentDetail} className="avatar">
+                  <Link
+                    to={routes.studentDetail}
+                    state={selectedParent.student_id != null ? { studentId: selectedParent.student_id } : undefined}
+                    className="avatar"
+                  >
                     <ImageWithBasePath
                       src={selectedParent.ChildImage}
                       className="img-fluid rounded-circle"
@@ -450,7 +465,12 @@ const ParentList = () => {
                   </Link>
                   <div className="ms-2">
                     <p className="mb-0">
-                      <Link to={routes.studentDetail}>{selectedParent.Child}</Link>
+                      <Link
+                        to={routes.studentDetail}
+                        state={selectedParent.student_id != null ? { studentId: selectedParent.student_id } : undefined}
+                      >
+                        {selectedParent.Child}
+                      </Link>
                     </p>
                     <span>{selectedParent.class}</span>
                   </div>
@@ -475,6 +495,7 @@ const ParentList = () => {
                   </Link>
                   <Link
                     to={routes.studentDetail}
+                    state={selectedParent.student_id != null ? { studentId: selectedParent.student_id } : undefined}
                     className="btn btn-primary mb-3"
                   >
                     View Details

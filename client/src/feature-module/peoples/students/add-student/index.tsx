@@ -31,6 +31,41 @@ import { useMotherTongues } from "../../../../core/hooks/useMotherTongues";
 import { useHouses } from "../../../../core/hooks/useHouses";
 import { apiService } from "../../../../core/services/apiService";
 
+// Lookup item types (hooks are JS and return untyped arrays)
+interface AcademicYearItem {
+  id: number;
+  year_name?: string;
+  is_current?: boolean;
+}
+interface ClassItem {
+  id: number;
+  class_name?: string;
+}
+interface SectionItem {
+  id: number;
+  section_name?: string;
+}
+interface BloodGroupItem {
+  id: number;
+  blood_group?: string;
+}
+interface HouseItem {
+  id: number;
+  house_name?: string;
+}
+interface ReligionItem {
+  id: number;
+  religion_name?: string;
+}
+interface CastItem {
+  id: number;
+  cast_name?: string;
+}
+interface MotherTongueItem {
+  id: number;
+  language_name?: string;
+}
+
 const AddStudent = () => {
   const routes = all_routes;
   const navigate = useNavigate();
@@ -74,6 +109,42 @@ const AddStudent = () => {
     mother_phone: string;
     mother_occupation: string;
     mother_image_url: string;
+    // Guardian
+    guardian_first_name: string;
+    guardian_last_name: string;
+    guardian_relation: string;
+    guardian_phone: string;
+    guardian_email: string;
+    guardian_occupation: string;
+    guardian_address: string;
+    // Siblings (API uses sibiling_1, sibiling_2, sibiling_1_class, sibiling_2_class)
+    sibiling_1: string;
+    sibiling_2: string;
+    sibiling_1_class: string;
+    sibiling_2_class: string;
+    // Transport
+    is_transport_required: boolean;
+    route_id: string | null;
+    pickup_point_id: string | null;
+    route_name: string;
+    pickup_point_name: string;
+    vehicle_number: string;
+    // Hostel
+    is_hostel_required: boolean;
+    hostel_id: string | null;
+    hostel_room_id: string | null;
+    hostel_name: string;
+    hostel_room_number: string;
+    // Medical
+    medical_condition: string;
+    // Previous school
+    previous_school: string;
+    previous_school_address: string;
+    // Other / Bank
+    bank_name: string;
+    branch: string;
+    ifsc: string;
+    other_information: string;
   }>({
     academic_year_id: null,
     admission_number: '',
@@ -93,10 +164,8 @@ const AddStudent = () => {
     phone: '',
     email: '',
     mother_tongue_id: null,
-    // Address fields
     current_address: '',
     permanent_address: '',
-    // Parent fields
     father_name: '',
     father_email: '',
     father_phone: '',
@@ -106,7 +175,36 @@ const AddStudent = () => {
     mother_email: '',
     mother_phone: '',
     mother_occupation: '',
-    mother_image_url: ''
+    mother_image_url: '',
+    guardian_first_name: '',
+    guardian_last_name: '',
+    guardian_relation: '',
+    guardian_phone: '',
+    guardian_email: '',
+    guardian_occupation: '',
+    guardian_address: '',
+    sibiling_1: '',
+    sibiling_2: '',
+    sibiling_1_class: '',
+    sibiling_2_class: '',
+    is_transport_required: false,
+    route_id: null,
+    pickup_point_id: null,
+    route_name: '',
+    pickup_point_name: '',
+    vehicle_number: '',
+    is_hostel_required: false,
+    hostel_id: null,
+    hostel_room_id: null,
+    hostel_name: '',
+    hostel_room_number: '',
+    medical_condition: 'Good',
+    previous_school: '',
+    previous_school_address: '',
+    bank_name: '',
+    branch: '',
+    ifsc: '',
+    other_information: ''
   });
   
   // Fetch academic years from API
@@ -133,6 +231,25 @@ const AddStudent = () => {
   // Fetch houses from API
   const { houses, loading: housesLoading, error: housesError } = useHouses();
 
+  // Typed lists (hooks are JS and return untyped arrays - avoid 'never' inference)
+  const academicYearsList = (academicYears || []) as AcademicYearItem[];
+  const classesList = (classes || []) as ClassItem[];
+  const sectionsList = (sections || []) as SectionItem[];
+  const bloodGroupsList = (bloodGroups || []) as BloodGroupItem[];
+  const housesList = (houses || []) as HouseItem[];
+  const religionsList = (religions || []) as ReligionItem[];
+  const castsList = (casts || []) as CastItem[];
+  const motherTonguesList = (motherTongues || []) as MotherTongueItem[];
+
+  // Parse comma-separated or single string into array of non-empty trimmed strings
+  const parseTagList = (val: unknown): string[] => {
+    if (val == null || val === '') return [];
+    if (Array.isArray(val)) return val.map(String).map(s => s.trim()).filter(Boolean);
+    const s = String(val).trim();
+    if (!s) return [];
+    return s.split(',').map(part => part.trim()).filter(Boolean);
+  };
+
   // Function to fetch student data for editing
   const fetchStudentData = async (studentId: string) => {
     try {
@@ -141,7 +258,6 @@ const AddStudent = () => {
       console.log('Fetched student data:', response);
       setStudentData(response.data);
       
-      // Populate form data with fetched student data
       const student = response.data;
       setFormData({
         academic_year_id: student.academic_year_id ? student.academic_year_id.toString() : null,
@@ -162,10 +278,8 @@ const AddStudent = () => {
         phone: student.phone || '',
         email: student.email || '',
         mother_tongue_id: student.mother_tongue_id ? student.mother_tongue_id.toString() : null,
-        // Address fields
-        current_address: student.current_address || '',
+        current_address: student.current_address || student.address || '',
         permanent_address: student.permanent_address || '',
-        // Parent fields
         father_name: student.father_name || '',
         father_email: student.father_email || '',
         father_phone: student.father_phone || '',
@@ -175,8 +289,39 @@ const AddStudent = () => {
         mother_email: student.mother_email || '',
         mother_phone: student.mother_phone || '',
         mother_occupation: student.mother_occupation || '',
-        mother_image_url: student.mother_image_url || ''
+        mother_image_url: student.mother_image_url || '',
+        guardian_first_name: student.guardian_first_name || '',
+        guardian_last_name: student.guardian_last_name || '',
+        guardian_relation: student.guardian_relation || '',
+        guardian_phone: student.guardian_phone || '',
+        guardian_email: student.guardian_email || '',
+        guardian_occupation: student.guardian_occupation || '',
+        guardian_address: student.guardian_address || '',
+        sibiling_1: student.sibiling_1 || '',
+        sibiling_2: student.sibiling_2 || '',
+        sibiling_1_class: student.sibiling_1_class || '',
+        sibiling_2_class: student.sibiling_2_class || '',
+        is_transport_required: !!student.is_transport_required,
+        route_id: student.route_id != null ? student.route_id.toString() : null,
+        pickup_point_id: student.pickup_point_id != null ? student.pickup_point_id.toString() : null,
+        route_name: student.route_name || '',
+        pickup_point_name: student.pickup_point_name || '',
+        vehicle_number: student.vehicle_number || '',
+        is_hostel_required: !!student.is_hostel_required,
+        hostel_id: student.hostel_id != null ? student.hostel_id.toString() : null,
+        hostel_room_id: student.hostel_room_id != null ? student.hostel_room_id.toString() : null,
+        hostel_name: student.hostel_name || '',
+        hostel_room_number: student.hostel_room_number != null ? String(student.hostel_room_number) : '',
+        medical_condition: student.medical_condition || 'Good',
+        previous_school: student.previous_school || '',
+        previous_school_address: student.previous_school_address || '',
+        bank_name: student.bank_name || student.bankName || '',
+        branch: student.branch || student.branchName || '',
+        ifsc: student.ifsc || student.ifscCode || '',
+        other_information: student.other_information || ''
       });
+      setOwner1(parseTagList(student.known_allergies ?? student.knownAllergies));
+      setOwner2(parseTagList(student.medications ?? student.medicationsList));
     } catch (error: any) {
       console.error('Error fetching student data:', error);
       setSubmitError(error.message || 'Failed to fetch student data');
@@ -204,8 +349,7 @@ const AddStudent = () => {
         religion_id: student.religion_id ? student.religion_id.toString() : null,
         cast_id: student.cast_id ? student.cast_id.toString() : null,
         mother_tongue_id: student.mother_tongue_id ? student.mother_tongue_id.toString() : null,
-        // Address fields
-        current_address: student.current_address || '',
+        current_address: student.current_address || student.address || '',
         permanent_address: student.permanent_address || '',
       }));
     }
@@ -213,10 +357,10 @@ const AddStudent = () => {
 
   // Set current academic year as default when loaded
   useEffect(() => {
-    if (academicYears && academicYears.length > 0 && !formData.academic_year_id) {
-      console.log('Academic years data:', academicYears);
+    if (academicYearsList.length > 0 && !formData.academic_year_id) {
+      console.log('Academic years data:', academicYearsList);
       // Find the current academic year (where is_current = true)
-      const currentAcademicYear = academicYears.find(year => year.is_current === true);
+      const currentAcademicYear = academicYearsList.find(year => year.is_current === true);
 
       if (currentAcademicYear) {
         console.log('Current academic year found:', currentAcademicYear);
@@ -225,11 +369,11 @@ const AddStudent = () => {
           academic_year_id: currentAcademicYear.id.toString()
         }));
       } else {
-        console.log('No current academic year found, using first one:', academicYears[0]);
+        console.log('No current academic year found, using first one:', academicYearsList[0]);
         // Fallback to the first academic year if no current year is found
         setFormData(prev => ({
           ...prev,
-          academic_year_id: academicYears[0].id.toString()
+          academic_year_id: academicYearsList[0].id.toString()
         }));
       }
     }
@@ -356,8 +500,11 @@ const AddStudent = () => {
       const defaultValue = dayjs(formattedDate);
       setIsEdit(true);
       setOwner(["English"]);
-      setOwner1(["Medecine Name"]);
-      setOwner2(["Allergy", "Skin Allergy"]);
+      // owner1/owner2 (allergies, medications) are set from API in fetchStudentData when editing
+      if (!id) {
+        setOwner1(["Medecine Name"]);
+        setOwner2(["Allergy", "Skin Allergy"]);
+      }
       setDefaultDate(defaultValue);
       console.log('Edit mode detected, formattedDate:', formattedDate);
       
@@ -474,9 +621,9 @@ const AddStudent = () => {
                           ) : (
                             <CommonSelect
                               className="select"
-                              options={academicYears.map(year => ({
+                              options={academicYearsList.map(year => ({
                                 value: year.id.toString(),
-                                label: year.year_name
+                                label: year.year_name ?? ''
                               }))}
                               value={formData.academic_year_id}
                               onChange={(value) => handleInputChange('academic_year_id', value)}
@@ -578,9 +725,9 @@ const AddStudent = () => {
                           ) : (
                             <CommonSelect
                               className="select"
-                              options={classes.map(cls => ({
+                              options={classesList.map(cls => ({
                                 value: cls.id.toString(),
-                                label: cls.class_name
+                                label: cls.class_name ?? ''
                               }))}
                               value={formData.class_id}
                               onChange={(value) => handleInputChange('class_id', value)}
@@ -604,9 +751,9 @@ const AddStudent = () => {
                           ) : (
                             <CommonSelect
                               className="select"
-                              options={sections.map(section => ({
+                              options={sectionsList.map(section => ({
                                 value: section.id.toString(),
-                                label: section.section_name
+                                label: section.section_name ?? ''
                               }))}
                               value={formData.section_id}
                               onChange={(value) => handleInputChange('section_id', value)}
@@ -661,9 +808,9 @@ const AddStudent = () => {
                           ) : (
                             <CommonSelect
                               className="select"
-                              options={bloodGroups.map(bg => ({
+                              options={bloodGroupsList.map(bg => ({
                                 value: bg.id.toString(),
-                                label: bg.blood_group
+                                label: bg.blood_group ?? ''
                               }))}
                               value={formData.blood_group_id}
                               onChange={(value) => handleInputChange('blood_group_id', value)}
@@ -687,9 +834,9 @@ const AddStudent = () => {
                           ) : (
                             <CommonSelect
                               className="select"
-                              options={houses.map(h => ({
+                              options={housesList.map(h => ({
                                 value: h.id.toString(),
-                                label: h.house_name
+                                label: h.house_name ?? ''
                               }))}
                               value={formData.house_id}
                               onChange={(value) => handleInputChange('house_id', value)}
@@ -713,9 +860,9 @@ const AddStudent = () => {
                           ) : (
                             <CommonSelect
                               className="select"
-                              options={religions.map(religion => ({
+                              options={religionsList.map(religion => ({
                                 value: religion.id.toString(),
-                                label: religion.religion_name
+                                label: religion.religion_name ?? ''
                               }))}
                               value={formData.religion_id}
                               onChange={(value) => handleInputChange('religion_id', value)}
@@ -739,9 +886,9 @@ const AddStudent = () => {
                           ) : (
                             <CommonSelect
                               className="select"
-                              options={casts.map(cast => ({
+                              options={castsList.map(cast => ({
                                 value: cast.id.toString(),
-                                label: cast.cast_name
+                                label: cast.cast_name ?? ''
                               }))}
                               value={formData.cast_id}
                               onChange={(value) => handleInputChange('cast_id', value)}
@@ -789,9 +936,9 @@ const AddStudent = () => {
                           ) : (
                             <CommonSelect
                               className="select"
-                              options={motherTongues.map(mt => ({
+                              options={motherTonguesList.map(mt => ({
                                 value: mt.id.toString(),
-                                label: mt.language_name
+                                label: mt.language_name ?? ''
                               }))}
                               value={formData.mother_tongue_id}
                               onChange={(value) => handleInputChange('mother_tongue_id', value)}
@@ -1061,9 +1208,16 @@ const AddStudent = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={
-                                isEdit ? "Jerald Vicinius" : undefined
-                              }
+                              value={[formData.guardian_first_name, formData.guardian_last_name].filter(Boolean).join(' ')}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                const idx = v.trim().indexOf(' ');
+                                setFormData(prev => ({
+                                  ...prev,
+                                  guardian_first_name: idx >= 0 ? v.slice(0, idx).trim() : v.trim(),
+                                  guardian_last_name: idx >= 0 ? v.slice(idx + 1).trim() : ''
+                                }));
+                              }}
                             />
                           </div>
                         </div>
@@ -1075,7 +1229,8 @@ const AddStudent = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={isEdit ? "Uncle" : undefined}
+                              value={formData.guardian_relation || ''}
+                              onChange={(e) => handleInputChange('guardian_relation', e.target.value)}
                             />
                           </div>
                         </div>
@@ -1085,9 +1240,8 @@ const AddStudent = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={
-                                isEdit ? "+1 45545 46464" : undefined
-                              }
+                              value={formData.guardian_phone || ''}
+                              onChange={(e) => handleInputChange('guardian_phone', e.target.value)}
                             />
                           </div>
                         </div>
@@ -1097,9 +1251,8 @@ const AddStudent = () => {
                             <input
                               type="email"
                               className="form-control"
-                              defaultValue={
-                                isEdit ? "jera@example.com" : undefined
-                              }
+                              value={formData.guardian_email || ''}
+                              onChange={(e) => handleInputChange('guardian_email', e.target.value)}
                             />
                           </div>
                         </div>
@@ -1109,7 +1262,8 @@ const AddStudent = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={isEdit ? "Mechanic" : undefined}
+                              value={formData.guardian_occupation || ''}
+                              onChange={(e) => handleInputChange('guardian_occupation', e.target.value)}
                             />
                           </div>
                         </div>
@@ -1119,11 +1273,8 @@ const AddStudent = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={
-                                isEdit
-                                  ? "3495 Red Hawk Road, Buffalo Lake, MN 55314"
-                                  : undefined
-                              }
+                              value={formData.guardian_address || ''}
+                              onChange={(e) => handleInputChange('guardian_address', e.target.value)}
                             />
                           </div>
                         </div>
@@ -1184,17 +1335,28 @@ const AddStudent = () => {
                             </div>
                           </div>
                         </div>
-                        {newContents.map((_, index) => (
+                        {newContents.map((_, index) => {
+                          const useRealData = isEdit && (index === 0 || index === 1);
+                          return (
                           <div key={index} className="col-lg-12">
                             <div className="row">
                               <div className="col-lg-3 col-md-6">
                                 <div className="mb-3">
                                   <label className="form-label">Name</label>
-                                  <CommonSelect
-                                    className="select"
-                                    options={names}
-                                    defaultValue={isEdit ? names[0] : undefined}
-                                  />
+                                  {useRealData ? (
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      value={index === 0 ? (formData.sibiling_1 || '') : (formData.sibiling_2 || '')}
+                                      onChange={(e) => handleInputChange(index === 0 ? 'sibiling_1' : 'sibiling_2', e.target.value)}
+                                    />
+                                  ) : (
+                                    <CommonSelect
+                                      className="select"
+                                      options={names}
+                                      defaultValue={undefined}
+                                    />
+                                  )}
                                 </div>
                               </div>
                               <div className="col-lg-3 col-md-6">
@@ -1203,9 +1365,7 @@ const AddStudent = () => {
                                   <CommonSelect
                                     className="select"
                                     options={rollno}
-                                    defaultValue={
-                                      isEdit ? rollno[0] : undefined
-                                    }
+                                    defaultValue={undefined}
                                   />
                                 </div>
                               </div>
@@ -1217,9 +1377,7 @@ const AddStudent = () => {
                                   <CommonSelect
                                     className="select"
                                     options={AdmissionNo}
-                                    defaultValue={
-                                      isEdit ? AdmissionNo[0] : undefined
-                                    }
+                                    defaultValue={undefined}
                                   />
                                 </div>
                               </div>
@@ -1230,13 +1388,20 @@ const AddStudent = () => {
                                       <label className="form-label">
                                         Class
                                       </label>
-                                      <CommonSelect
-                                        className="select"
-                                        options={allClass}
-                                        defaultValue={
-                                          isEdit ? allClass[0] : undefined
-                                        }
-                                      />
+                                      {useRealData ? (
+                                        <input
+                                          type="text"
+                                          className="form-control"
+                                          value={index === 0 ? (formData.sibiling_1_class || '') : (formData.sibiling_2_class || '')}
+                                          onChange={(e) => handleInputChange(index === 0 ? 'sibiling_1_class' : 'sibiling_2_class', e.target.value)}
+                                        />
+                                      ) : (
+                                        <CommonSelect
+                                          className="select"
+                                          options={allClass}
+                                          defaultValue={undefined}
+                                        />
+                                      )}
                                     </div>
                                     {newContents.length > 1 && (
                                       <div>
@@ -1257,7 +1422,8 @@ const AddStudent = () => {
                               </div>
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                     <div className="border-top pt-3">
@@ -1329,6 +1495,8 @@ const AddStudent = () => {
                         className="form-check-input"
                         type="checkbox"
                         role="switch"
+                        checked={formData.is_transport_required}
+                        onChange={(e) => handleInputChange('is_transport_required', e.target.checked)}
                       />
                     </div>
                   </div>
@@ -1339,8 +1507,9 @@ const AddStudent = () => {
                           <label className="form-label">Route</label>
                           <CommonSelect
                             className="select"
-                            options={route}
-                            defaultValue={isEdit ? route[0] : undefined}
+                            options={formData.route_name && !route.find(o => o.value === formData.route_name) ? [{ value: formData.route_name, label: formData.route_name }, ...route] : route}
+                            value={formData.route_name || null}
+                            onChange={(v) => handleInputChange('route_name', v || '')}
                           />
                         </div>
                       </div>
@@ -1349,8 +1518,9 @@ const AddStudent = () => {
                           <label className="form-label">Vehicle Number</label>
                           <CommonSelect
                             className="select"
-                            options={VehicleNumber}
-                            defaultValue={isEdit ? VehicleNumber[0] : undefined}
+                            options={formData.vehicle_number && !VehicleNumber.find(o => o.value === formData.vehicle_number) ? [{ value: formData.vehicle_number, label: formData.vehicle_number }, ...VehicleNumber] : VehicleNumber}
+                            value={formData.vehicle_number || null}
+                            onChange={(v) => handleInputChange('vehicle_number', v || '')}
                           />
                         </div>
                       </div>
@@ -1359,8 +1529,9 @@ const AddStudent = () => {
                           <label className="form-label">Pickup Point</label>
                           <CommonSelect
                             className="select"
-                            options={PickupPoint}
-                            defaultValue={isEdit ? PickupPoint[0] : undefined}
+                            options={formData.pickup_point_name && !PickupPoint.find(o => o.value === formData.pickup_point_name) ? [{ value: formData.pickup_point_name, label: formData.pickup_point_name }, ...PickupPoint] : PickupPoint}
+                            value={formData.pickup_point_name || null}
+                            onChange={(v) => handleInputChange('pickup_point_name', v || '')}
                           />
                         </div>
                       </div>
@@ -1382,6 +1553,8 @@ const AddStudent = () => {
                         className="form-check-input"
                         type="checkbox"
                         role="switch"
+                        checked={formData.is_hostel_required}
+                        onChange={(e) => handleInputChange('is_hostel_required', e.target.checked)}
                       />
                     </div>
                   </div>
@@ -1392,8 +1565,9 @@ const AddStudent = () => {
                           <label className="form-label">Hostel</label>
                           <CommonSelect
                             className="select"
-                            options={Hostel}
-                            defaultValue={isEdit ? Hostel[0] : undefined}
+                            options={formData.hostel_name && !Hostel.find(o => o.value === formData.hostel_name) ? [{ value: formData.hostel_name, label: formData.hostel_name }, ...Hostel] : Hostel}
+                            value={formData.hostel_name || null}
+                            onChange={(v) => handleInputChange('hostel_name', v || '')}
                           />
                         </div>
                       </div>
@@ -1402,8 +1576,9 @@ const AddStudent = () => {
                           <label className="form-label">Room No</label>
                           <CommonSelect
                             className="select"
-                            options={roomNO}
-                            defaultValue={isEdit ? roomNO[0] : undefined}
+                            options={formData.hostel_room_number && !roomNO.find(o => o.value === formData.hostel_room_number) ? [{ value: formData.hostel_room_number, label: formData.hostel_room_number }, ...roomNO] : roomNO}
+                            value={formData.hostel_room_number || null}
+                            onChange={(v) => handleInputChange('hostel_room_number', v || '')}
                           />
                         </div>
                       </div>
@@ -1501,7 +1676,8 @@ const AddStudent = () => {
                                 type="radio"
                                 name="condition"
                                 id="good"
-                                defaultChecked
+                                checked={formData.medical_condition === 'Good'}
+                                onChange={() => handleInputChange('medical_condition', 'Good')}
                               />
                               <label
                                 className="form-check-label"
@@ -1516,6 +1692,8 @@ const AddStudent = () => {
                                 type="radio"
                                 name="condition"
                                 id="bad"
+                                checked={formData.medical_condition === 'Bad'}
+                                onChange={() => handleInputChange('medical_condition', 'Bad')}
                               />
                               <label className="form-check-label" htmlFor="bad">
                                 Bad
@@ -1527,6 +1705,8 @@ const AddStudent = () => {
                                 type="radio"
                                 name="condition"
                                 id="others"
+                                checked={formData.medical_condition === 'Others'}
+                                onChange={() => handleInputChange('medical_condition', 'Others')}
                               />
                               <label
                                 className="form-check-label"
@@ -1575,9 +1755,8 @@ const AddStudent = () => {
                           <input
                             type="text"
                             className="form-control"
-                            defaultValue={
-                              isEdit ? "Oxford Matriculation, USA" : undefined
-                            }
+                            value={formData.previous_school || ''}
+                            onChange={(e) => handleInputChange('previous_school', e.target.value)}
                           />
                         </div>
                       </div>
@@ -1587,11 +1766,8 @@ const AddStudent = () => {
                           <input
                             type="text"
                             className="form-control"
-                            defaultValue={
-                              isEdit
-                                ? "1852 Barnes Avenue, Cincinnati, OH 45202"
-                                : undefined
-                            }
+                            value={formData.previous_school_address || ''}
+                            onChange={(e) => handleInputChange('previous_school_address', e.target.value)}
                           />
                         </div>
                       </div>
@@ -1617,9 +1793,8 @@ const AddStudent = () => {
                           <input
                             type="text"
                             className="form-control"
-                            defaultValue={
-                              isEdit ? "Bank of America" : undefined
-                            }
+                            value={formData.bank_name || ''}
+                            onChange={(e) => handleInputChange('bank_name', e.target.value)}
                           />
                         </div>
                       </div>
@@ -1629,7 +1804,8 @@ const AddStudent = () => {
                           <input
                             type="text"
                             className="form-control"
-                            defaultValue={isEdit ? "Cincinnati" : undefined}
+                            value={formData.branch || ''}
+                            onChange={(e) => handleInputChange('branch', e.target.value)}
                           />
                         </div>
                       </div>
@@ -1639,7 +1815,8 @@ const AddStudent = () => {
                           <input
                             type="text"
                             className="form-control"
-                            defaultValue={isEdit ? "BOA83209832" : undefined}
+                            value={formData.ifsc || ''}
+                            onChange={(e) => handleInputChange('ifsc', e.target.value)}
                           />
                         </div>
                       </div>
@@ -1651,7 +1828,8 @@ const AddStudent = () => {
                           <textarea
                             className="form-control"
                             rows={3}
-                            defaultValue={""}
+                            value={formData.other_information || ''}
+                            onChange={(e) => handleInputChange('other_information', e.target.value)}
                           />
                         </div>
                       </div>

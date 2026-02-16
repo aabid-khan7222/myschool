@@ -16,6 +16,7 @@ import { useParents } from "../../../../core/hooks/useParents";
 const ParentGrid = () => {
   const [show, setShow] = useState(false);
   const [selectedParent, setSelectedParent] = useState<any>(null);
+  const [parentToEdit, setParentToEdit] = useState<any>(null);
   const routes = all_routes;
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   const { parents, loading, error, refetch } = useParents();
@@ -242,6 +243,7 @@ const ParentGrid = () => {
                               to="#"
                               data-bs-toggle="modal"
                               data-bs-target="#edit_parent"
+                              onClick={() => setParentToEdit(parent)}
                             >
                               <i className="ti ti-edit-circle me-2" />
                               Edit
@@ -300,6 +302,7 @@ const ParentGrid = () => {
                       <div className="d-flex align-items-center">
                         <Link
                           to={routes.studentDetail}
+                          state={parent.student_id != null ? { studentId: parent.student_id } : undefined}
                           className="avatar avatar-md flex-shrink-0 p-0 me-2"
                         >
                           <ImageWithBasePath
@@ -336,7 +339,7 @@ const ParentGrid = () => {
         </div>
       </div>
       {/* /Page Wrapper */}
-      <ParentModal />
+      <ParentModal parentToEdit={parentToEdit} />
 
       <Modal show={show} onHide={handleClose} centered size="lg">
         <div className="modal-header">
@@ -396,7 +399,11 @@ const ParentGrid = () => {
               </div>
               <div className="d-flex align-items-center justify-content-between flex-wrap">
                 <div className="d-flex align-items-center mb-3">
-                  <Link to={routes.studentDetail} className="avatar">
+                  <Link
+                    to={routes.studentDetail}
+                    state={selectedParent.student_id != null ? { studentId: selectedParent.student_id } : undefined}
+                    className="avatar"
+                  >
                     <ImageWithBasePath
                       src={selectedParent.ChildImage}
                       className="img-fluid rounded-circle"
@@ -405,7 +412,12 @@ const ParentGrid = () => {
                   </Link>
                   <div className="ms-2">
                     <p className="mb-0">
-                      <Link to={routes.studentDetail}>{selectedParent.Child}</Link>
+                      <Link
+                        to={routes.studentDetail}
+                        state={selectedParent.student_id != null ? { studentId: selectedParent.student_id } : undefined}
+                      >
+                        {selectedParent.Child}
+                      </Link>
                     </p>
                     <span>{selectedParent.class}</span>
                   </div>
@@ -430,6 +442,7 @@ const ParentGrid = () => {
                   </Link>
                   <Link
                     to={routes.studentDetail}
+                    state={selectedParent.student_id != null ? { studentId: selectedParent.student_id } : undefined}
                     className="btn btn-primary mb-3"
                   >
                     View Details

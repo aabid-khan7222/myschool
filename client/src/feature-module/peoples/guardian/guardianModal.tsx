@@ -1,11 +1,20 @@
-
 import { names } from "../../../core/common/selectoption/selectoption";
 import { Select } from "antd";
 import { Link } from "react-router-dom";
 
+export interface GuardianToEditShape {
+  id?: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+  Child?: string;
+}
 
+interface GuardianModalProps {
+  guardianToEdit?: GuardianToEditShape | null;
+}
 
-const GuardianModal = () => {
+const GuardianModal = ({ guardianToEdit = null }: GuardianModalProps) => {
 
   const getModalContainer = () => {
     const modalElement = document.getElementById("modal-tag");
@@ -107,7 +116,7 @@ const GuardianModal = () => {
         </div>
       </div>
       {/* /Add Parent */}
-      {/* Edit Parent */}
+      {/* Edit Guardian */}
       <div className="modal fade" id="edit_guardian">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
@@ -122,7 +131,7 @@ const GuardianModal = () => {
                 <i className="ti ti-x" />
               </button>
             </div>
-            <form>
+            <form key={guardianToEdit?.id ?? "edit-form"}>
               <div id="modal-tag" className="modal-body ">
                 <div className="row">
                   <div className="col-md-12">
@@ -156,7 +165,7 @@ const GuardianModal = () => {
                         type="text"
                         className="form-control"
                         placeholder="Enter Name"
-                        defaultValue="Thomas"
+                        defaultValue={guardianToEdit?.name ?? ""}
                       />
                     </div>
                     <div className="mb-3">
@@ -165,7 +174,7 @@ const GuardianModal = () => {
                         type="text"
                         className="form-control"
                         placeholder="Enter Phone Number"
-                        defaultValue="+1 65738 58937"
+                        defaultValue={guardianToEdit?.phone ?? ""}
                       />
                     </div>
                     <div className="mb-3">
@@ -174,12 +183,11 @@ const GuardianModal = () => {
                         type="text"
                         className="form-control"
                         placeholder="Enter Email Address"
-                        defaultValue="thomas@example.com"
+                        defaultValue={guardianToEdit?.email ?? ""}
                       />
                     </div>
                     <div className="mb-0">
                       <label className="form-label">Child</label>
-                      
                       <Select
                         mode="multiple"
                         allowClear
@@ -187,7 +195,7 @@ const GuardianModal = () => {
                         getPopupContainer={getModalContainer}
                         style={{ width: "100%" }}
                         placeholder="Please select"
-                        defaultValue={["Tim", "Jammy"]}
+                        defaultValue={guardianToEdit?.Child ? [guardianToEdit.Child] : []}
                         options={names}
                       />
                     </div>
@@ -210,7 +218,7 @@ const GuardianModal = () => {
           </div>
         </div>
       </div>
-      {/* /Edit Parent */}
+      {/* /Edit Guardian */}
       
       {/* Delete Modal */}
       <div className="modal fade" id="delete-modal">

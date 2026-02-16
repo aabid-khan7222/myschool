@@ -549,6 +549,25 @@ const getStudentById = async (req, res) => {
         studentData.hostel_room_number = null;
       }
     }
+    // Transport: resolve route and pickup point names for edit form
+    try {
+      if (studentData.route_id) {
+        const routeResult = await query('SELECT route_name, name FROM routes WHERE id = $1', [studentData.route_id]);
+        if (routeResult.rows.length > 0) {
+          const r = routeResult.rows[0];
+          studentData.route_name = r.route_name || r.name || null;
+        }
+      }
+      if (studentData.pickup_point_id) {
+        const ppResult = await query('SELECT address, pickup_point, name, location, point_name, point_address FROM pickup_points WHERE id = $1', [studentData.pickup_point_id]);
+        if (ppResult.rows.length > 0) {
+          const pp = ppResult.rows[0];
+          studentData.pickup_point_name = pp.pickup_point || pp.address || pp.name || pp.location || pp.point_name || pp.point_address || null;
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching transport names for student', id, ':', e.message);
+    }
     console.log('Sending response with user_id:', studentData.user_id);
     console.log('Sending response with current_address:', studentData.current_address);
     console.log('Sending response with permanent_address:', studentData.permanent_address);

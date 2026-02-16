@@ -235,6 +235,7 @@ const TeacherGrid = () => {
                         <Link
                           className="dropdown-item rounded-1"
                           to={routes.editTeacher}
+                          state={{ teacherId: teacher.id, teacher }}
                         >
                           <i className="ti ti-edit-circle me-2" />
                           Edit

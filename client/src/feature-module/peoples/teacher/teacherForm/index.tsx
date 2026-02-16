@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 // import { feeGroup, feesTypes, paymentType } from '../../../core/common/selectoption/selectoption'
 import { DatePicker } from "antd";
 import dayjs from "dayjs";
 import { all_routes } from "../../../router/all_routes";
+import { apiService } from "../../../../core/services/apiService";
 import {
  
   Contract,
@@ -22,39 +23,82 @@ import {
 } from "../../../../core/common/selectoption/selectoption";
 
 import CommonSelect from "../../../../core/common/commonSelect";
-import { useLocation } from "react-router-dom";
 import TagInput from "../../../../core/common/Taginput";
+
+interface TeacherLocationState {
+  teacherId?: number;
+  teacher?: any;
+}
 
 const TeacherForm = () => {
   const routes = all_routes;
+  const location = useLocation();
+  const state = location.state as TeacherLocationState | null;
+  const teacherId = state?.teacherId ?? state?.teacher?.id;
 
   const [isEdit, setIsEdit] = useState<boolean>(false);
+  const [teacherData, setTeacherData] = useState<any>(null);
+  const [loadingTeacher, setLoadingTeacher] = useState(false);
   const [owner, setOwner] = useState<string[]>([]);
-   const handleTagsChange = (newTags: string[]) => {
+  const handleTagsChange = (newTags: string[]) => {
     setOwner(newTags);
   };
 
-
   const [defaultDate, setDefaultDate] = useState<dayjs.Dayjs | null>(null);
-  const location = useLocation();
 
   useEffect(() => {
     if (location.pathname === routes.editTeacher) {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, "0"); // Month is zero-based, so we add 1
-      const day = String(today.getDate()).padStart(2, "0");
-      const formattedDate = `${month}-${day}-${year}`;
-      const defaultValue = dayjs(formattedDate);
       setIsEdit(true);
-      setOwner(["English"]);
-      setDefaultDate(defaultValue);
-      console.log(formattedDate, 11);
+      if (teacherId) {
+        setLoadingTeacher(true);
+        apiService
+          .getTeacherById(teacherId)
+          .then((res: any) => {
+            if (res?.data) setTeacherData(res.data);
+          })
+          .catch(() => {})
+          .finally(() => setLoadingTeacher(false));
+      } else {
+        setTeacherData(state?.teacher ?? null);
+      }
     } else {
       setIsEdit(false);
-      setDefaultDate(null);
+      setTeacherData(null);
     }
-  }, [location.pathname]);
+  }, [location.pathname, teacherId]);
+
+  useEffect(() => {
+    if (teacherData && isEdit) {
+      const jd = teacherData.joining_date ? dayjs(teacherData.joining_date) : null;
+      const dob = teacherData.date_of_birth ? dayjs(teacherData.date_of_birth) : null;
+      setDefaultDate(dob || jd);
+      if (teacherData.languages_known) {
+        const tags = typeof teacherData.languages_known === "string"
+          ? teacherData.languages_known.split(",").map((s: string) => s.trim()).filter(Boolean)
+          : [];
+        setOwner(tags.length ? tags : ["English"]);
+      } else {
+        setOwner(["English"]);
+      }
+    }
+  }, [teacherData, isEdit]);
+
+  if (isEdit && teacherId && loadingTeacher) {
+    return (
+      <div className="page-wrapper">
+        <div className="content content-two">
+          <div className="d-flex justify-content-center align-items-center p-5">
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <span className="ms-2">Loading teacher...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const t = teacherData || state?.teacher;
 
   return (
     <>
@@ -83,7 +127,7 @@ const TeacherForm = () => {
           {/* /Page Header */}
           <div className="row">
             <div className="col-md-12">
-              <form>
+              <form key={isEdit && t ? `edit-${t.id}` : "add"}>
                 <>
                   {/* Personal Information */}
                   <div className="card">
@@ -133,7 +177,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={isEdit ? "T849126" : undefined}
+                              defaultValue={isEdit && t ? (t.employee_code ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -143,14 +187,18 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={isEdit ? "Teresa" : undefined}
+                              defaultValue={isEdit && t ? (t.first_name ?? "") : undefined}
                             />
                           </div>
                         </div>
                         <div className="col-xxl col-xl-3 col-md-6">
                           <div className="mb-3">
                             <label className="form-label">Last Name</label>
-                            <input type="text" className="form-control" />
+                            <input
+                              type="text"
+                              className="form-control"
+                              defaultValue={isEdit && t ? (t.last_name ?? "") : undefined}
+                            />
                           </div>
                         </div>
                         <div className="col-xxl col-xl-3 col-md-6">
@@ -191,9 +239,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={
-                                isEdit ? "+1 46548 84498" : undefined
-                              }
+                              defaultValue={isEdit && t ? (t.phone ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -203,9 +249,7 @@ const TeacherForm = () => {
                             <input
                               type="email"
                               className="form-control"
-                              defaultValue={
-                                isEdit ? "jan@example.com" : undefined
-                              }
+                              defaultValue={isEdit && t ? (t.email ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -253,7 +297,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={isEdit ? "Stella Bruce" : undefined}
+                              defaultValue={isEdit && t ? (t.mother_name ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -311,7 +355,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={isEdit ? "MBA" : undefined}
+                              defaultValue={isEdit && t ? (t.qualification ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -323,7 +367,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={isEdit ? "2  Years" : undefined}
+                              defaultValue={isEdit && t ? (t.experience_years != null ? String(t.experience_years) : "") : undefined}
                             />
                           </div>
                         </div>
@@ -335,9 +379,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={
-                                isEdit ? "Oxford Matriculation, USA" : undefined
-                              }
+                              defaultValue={isEdit && t ? (t.previous_school_name ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -349,11 +391,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={
-                                isEdit
-                                  ? "1852 Barnes Avenue, Cincinnati, OH 45202"
-                                  : undefined
-                              }
+                              defaultValue={isEdit && t ? (t.previous_school_address ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -365,9 +403,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={
-                                isEdit ? "+1 35676 45556" : undefined
-                              }
+                              defaultValue={isEdit && t ? (t.previous_school_phone ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -377,11 +413,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={
-                                isEdit
-                                  ? "3495 Red Hawk Road, Buffalo Lake, MN 55314"
-                                  : undefined
-                              }
+                              defaultValue={isEdit && t ? (t.current_address ?? t.address ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -393,11 +425,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={
-                                isEdit
-                                  ? "3495 Red Hawk Road, Buffalo Lake, MN 55314"
-                                  : undefined
-                              }
+                              defaultValue={isEdit && t ? (t.permanent_address ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -409,7 +437,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={isEdit ? "343445954908" : undefined}
+                              defaultValue={isEdit && t ? (t.pan_number ?? t.id_number ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -463,7 +491,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={isEdit ? "34234345" : undefined}
+                              defaultValue={isEdit && t ? (t.epf_no ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -473,7 +501,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={isEdit ? "150000" : undefined}
+                              defaultValue={isEdit && t ? (t.salary != null ? String(t.salary) : "") : undefined}
                             />
                           </div>
                         </div>
@@ -503,7 +531,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={isEdit ? "2nd Floor" : undefined}
+                              defaultValue={isEdit && t ? (t.work_location ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -616,7 +644,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={isEdit ? "Teresa" : undefined}
+                              defaultValue={isEdit && t ? (t.emergency_contact_name ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -626,7 +654,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={isEdit ? "0126784900" : undefined}
+                              defaultValue={isEdit && t ? (t.emergency_contact_phone ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -636,9 +664,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={
-                                isEdit ? "Bank of America" : undefined
-                              }
+                              defaultValue={isEdit && t ? (t.bank_name ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -648,7 +674,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={isEdit ? "BOA83209832" : undefined}
+                              defaultValue={isEdit && t ? (t.ifsc ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -658,7 +684,7 @@ const TeacherForm = () => {
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={isEdit ? "Cincinnati" : undefined}
+                              defaultValue={isEdit && t ? (t.branch ?? "") : undefined}
                             />
                           </div>
                         </div>

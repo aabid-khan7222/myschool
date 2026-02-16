@@ -20,6 +20,7 @@ import { useGuardians } from "../../../../core/hooks/useGuardians";
 const GuardianList = () => {
   const [show, setShow] = useState(false);
   const [selectedGuardian, setSelectedGuardian] = useState<any>(null);
+  const [guardianToEdit, setGuardianToEdit] = useState<any>(null);
   const routes = all_routes;
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   const { guardians, loading, error, refetch } = useGuardians();
@@ -88,7 +89,11 @@ const GuardianList = () => {
       dataIndex: "Child",
       render: (text: string, record: any) => (
         <div className="d-flex align-items-center">
-          <Link to={routes.studentDetail} className="avatar avatar-md">
+          <Link
+            to={routes.studentDetail}
+            state={record.student_id != null ? { studentId: record.student_id } : undefined}
+            className="avatar avatar-md"
+          >
             <ImageWithBasePath
               src={record.ChildImage}
               className="img-fluid rounded-circle"
@@ -97,7 +102,12 @@ const GuardianList = () => {
           </Link>
           <div className="ms-2">
             <p className="text-dark mb-0">
-              <Link to="#">{text}</Link>
+              <Link
+                to={routes.studentDetail}
+                state={record.student_id != null ? { studentId: record.student_id } : undefined}
+              >
+                {text}
+              </Link>
             </p>
             <span className="fs-12">{record.class}</span>
           </div>
@@ -147,6 +157,7 @@ const GuardianList = () => {
                     to="#"
                     data-bs-toggle="modal"
                     data-bs-target="#edit_guardian"
+                    onClick={() => setGuardianToEdit(record)}
                   >
                     <i className="ti ti-edit-circle me-2" />
                     Edit
@@ -379,7 +390,7 @@ const GuardianList = () => {
         </div>
       </div>
       {/* /Page Wrapper */}
-      <GuardianModal />
+      <GuardianModal guardianToEdit={guardianToEdit} />
 
       <Modal show={show} onHide={handleClose} centered size="lg">
         <div className="modal-header">
@@ -439,7 +450,11 @@ const GuardianList = () => {
               </div>
               <div className="d-flex align-items-center justify-content-between flex-wrap">
                 <div className="d-flex align-items-center mb-3">
-                  <Link to={routes.studentDetail} className="avatar">
+                  <Link
+                    to={routes.studentDetail}
+                    state={selectedGuardian.student_id != null ? { studentId: selectedGuardian.student_id } : undefined}
+                    className="avatar"
+                  >
                     <ImageWithBasePath
                       src={selectedGuardian.ChildImage}
                       className="img-fluid rounded-circle"
@@ -448,7 +463,12 @@ const GuardianList = () => {
                   </Link>
                   <div className="ms-2">
                     <p className="mb-0">
-                      <Link to={routes.studentDetail}>{selectedGuardian.Child}</Link>
+                      <Link
+                        to={routes.studentDetail}
+                        state={selectedGuardian.student_id != null ? { studentId: selectedGuardian.student_id } : undefined}
+                      >
+                        {selectedGuardian.Child}
+                      </Link>
                     </p>
                     <span>{selectedGuardian.class}</span>
                   </div>
@@ -473,6 +493,7 @@ const GuardianList = () => {
                   </Link>
                   <Link
                     to={routes.studentDetail}
+                    state={selectedGuardian.student_id != null ? { studentId: selectedGuardian.student_id } : undefined}
                     className="btn btn-primary mb-3"
                   >
                     View Details

@@ -168,6 +168,7 @@ const TeacherList = () => {
                   <Link
                     className="dropdown-item rounded-1"
                     to={routes.editTeacher}
+                    state={{ teacherId: record.teacherId, teacher: record.teacher }}
                   >
                     <i className="ti ti-edit-circle me-2" />
                     Edit

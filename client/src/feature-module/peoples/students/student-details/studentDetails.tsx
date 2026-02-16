@@ -99,7 +99,7 @@ const StudentDetails = () => {
     <div className="content">
       <div className="row">
         {/* Page Header */}
-        <StudentBreadcrumb />
+        <StudentBreadcrumb studentId={student.id} />
         {/* /Page Header */}
       </div>
       <div className="row">

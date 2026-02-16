@@ -1,9 +1,20 @@
-
 import { names } from "../../../core/common/selectoption/selectoption";
 import { Select } from "antd";
 import { Link } from "react-router-dom";
 
-const ParentModal = () => {
+export interface ParentToEditShape {
+  id?: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+  Child?: string;
+}
+
+interface ParentModalProps {
+  parentToEdit?: ParentToEditShape | null;
+}
+
+const ParentModal = ({ parentToEdit = null }: ParentModalProps) => {
   const getModalContainer = () => {
     const modalElement = document.getElementById("modal-tag");
     return modalElement ? modalElement : document.body; // Fallback to document.body if modalElement is null
@@ -119,7 +130,7 @@ const ParentModal = () => {
                 <i className="ti ti-x" />
               </button>
             </div>
-            <form>
+            <form key={parentToEdit?.id ?? "edit-form"}>
               <div id="modal-tag" className="modal-body ">
                 <div className="row">
                   <div className="col-md-12">
@@ -153,7 +164,7 @@ const ParentModal = () => {
                         type="text"
                         className="form-control"
                         placeholder="Enter Name"
-                        defaultValue="Thomas"
+                        defaultValue={parentToEdit?.name ?? ""}
                       />
                     </div>
                     <div className="mb-3">
@@ -162,7 +173,7 @@ const ParentModal = () => {
                         type="text"
                         className="form-control"
                         placeholder="Enter Phone Number"
-                        defaultValue="+1 65738 58937"
+                        defaultValue={parentToEdit?.phone ?? ""}
                       />
                     </div>
                     <div className="mb-3">
@@ -171,12 +182,11 @@ const ParentModal = () => {
                         type="text"
                         className="form-control"
                         placeholder="Enter Email Address"
-                        defaultValue="thomas@example.com"
+                        defaultValue={parentToEdit?.email ?? ""}
                       />
                     </div>
                     <div className="mb-0">
                       <label className="form-label">Child</label>
-                      
                       <Select
                         mode="multiple"
                         allowClear
@@ -184,7 +194,7 @@ const ParentModal = () => {
                         getPopupContainer={getModalContainer}
                         style={{ width: "100%" }}
                         placeholder="Please select"
-                        defaultValue={["Tim", "Jammy"]}
+                        defaultValue={parentToEdit?.Child ? [parentToEdit.Child] : []}
                         options={names}
                       />
                     </div>

@@ -16,6 +16,7 @@ import { useGuardians } from "../../../../core/hooks/useGuardians";
 const GuardianGrid = () => {
   const [show, setShow] = useState(false);
   const [selectedGuardian, setSelectedGuardian] = useState<any>(null);
+  const [guardianToEdit, setGuardianToEdit] = useState<any>(null);
   const routes = all_routes;
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   const { guardians, loading, error, refetch } = useGuardians();
@@ -252,6 +253,7 @@ const GuardianGrid = () => {
                               to="#"
                               data-bs-toggle="modal"
                               data-bs-target="#edit_guardian"
+                              onClick={() => setGuardianToEdit(guardian)}
                             >
                               <i className="ti ti-edit-circle me-2" />
                               Edit
@@ -310,6 +312,7 @@ const GuardianGrid = () => {
                       <div className="d-flex align-items-center">
                         <Link
                           to={routes.studentDetail}
+                          state={guardian.student_id != null ? { studentId: guardian.student_id } : undefined}
                           className="avatar avatar-md flex-shrink-0 p-0 me-2"
                         >
                           <ImageWithBasePath
@@ -345,7 +348,7 @@ const GuardianGrid = () => {
         </div>
       </div>
       {/* /Page Wrapper */}
-      <GuardianModal />
+      <GuardianModal guardianToEdit={guardianToEdit} />
 
       <Modal show={show} onHide={handleClose} centered size="lg">
         <div className="modal-header">
@@ -405,7 +408,11 @@ const GuardianGrid = () => {
               </div>
               <div className="d-flex align-items-center justify-content-between flex-wrap">
                 <div className="d-flex align-items-center mb-3">
-                  <Link to={routes.studentDetail} className="avatar">
+                  <Link
+                    to={routes.studentDetail}
+                    state={selectedGuardian.student_id != null ? { studentId: selectedGuardian.student_id } : undefined}
+                    className="avatar"
+                  >
                     <ImageWithBasePath
                       src={selectedGuardian.ChildImage}
                       className="img-fluid rounded-circle"
@@ -414,7 +421,12 @@ const GuardianGrid = () => {
                   </Link>
                   <div className="ms-2">
                     <p className="mb-0">
-                      <Link to={routes.studentDetail}>{selectedGuardian.Child}</Link>
+                      <Link
+                        to={routes.studentDetail}
+                        state={selectedGuardian.student_id != null ? { studentId: selectedGuardian.student_id } : undefined}
+                      >
+                        {selectedGuardian.Child}
+                      </Link>
                     </p>
                     <span>{selectedGuardian.class}</span>
                   </div>
@@ -439,6 +451,7 @@ const GuardianGrid = () => {
                   </Link>
                   <Link
                     to={routes.studentDetail}
+                    state={selectedGuardian.student_id != null ? { studentId: selectedGuardian.student_id } : undefined}
                     className="btn btn-primary mb-3"
                   >
                     View Details
