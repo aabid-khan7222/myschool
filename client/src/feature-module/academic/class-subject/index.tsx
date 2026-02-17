@@ -14,6 +14,7 @@ import { Link } from "react-router-dom";
 import TooltipOption from "../../../core/common/tooltipOption";
 import { all_routes } from "../../router/all_routes";
 import { useSubjects } from "../../../core/hooks/useSubjects";
+import { apiService } from "../../../core/services/apiService";
 
 const ClassSubject = () => {
   const routes = all_routes;
@@ -21,6 +22,9 @@ const ClassSubject = () => {
   
   // State for edit modal
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
+  const [editSubjectName, setEditSubjectName] = useState('');
+  const [editSubjectStatus, setEditSubjectStatus] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Transform API data to match table structure
   const data = (subjects ?? []).map((subject: any, index: number) => ({
@@ -96,7 +100,7 @@ const ClassSubject = () => {
     {
       title: "Action",
       dataIndex: "action",
-      render: () => (
+      render: (text: any, record: any) => (
         <>
           <div className="d-flex align-items-center">
             <div className="dropdown">
@@ -115,19 +119,32 @@ const ClassSubject = () => {
                     to="#"
                     onClick={(e) => {
                       e.preventDefault();
+                      // Populate edit form state from selected record
+                      const subject = record.originalData || record;
+                      const name = subject.subject_name || record.name || '';
+                      let status = true;
+                      if (subject && Object.prototype.hasOwnProperty.call(subject, 'is_active')) {
+                        status =
+                          subject.is_active === true ||
+                          subject.is_active === 1 ||
+                          subject.is_active === 'true';
+                      } else if (record.status) {
+                        status = record.status === 'Active';
+                      }
+
+                      setEditSubjectName(name);
+                      setEditSubjectStatus(status);
                       setSelectedSubject(record);
-                      const modalElement = document.getElementById('edit_subject');
-                      if (modalElement) {
-                        const bootstrap = (window as any).bootstrap;
-                        if (bootstrap && bootstrap.Modal) {
-                          const modal = bootstrap.Modal.getInstance(modalElement);
-                          if (modal) {
+                      setTimeout(() => {
+                        const modalElement = document.getElementById('edit_subject');
+                        if (modalElement) {
+                          const bootstrap = (window as any).bootstrap;
+                          if (bootstrap && bootstrap.Modal) {
+                            const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
                             modal.show();
-                          } else {
-                            new bootstrap.Modal(modalElement).show();
                           }
                         }
-                      }
+                      }, 100);
                     }}
                   >
                     <i className="ti ti-edit-circle me-2" />
@@ -420,7 +437,7 @@ const ClassSubject = () => {
         {/* /Add Subject */}
         {/* Edit Subject */}
         <div className="modal fade" id="edit_subject">
-          <div className="modal-dialog modal-dialog-centere">
+          <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
                 <h4 className="modal-title">Edit Subject</h4>
@@ -443,8 +460,8 @@ const ClassSubject = () => {
                           type="text"
                           className="form-control"
                           placeholder="Enter Name"
-                          defaultValue={selectedSubject?.originalData?.subject_name || selectedSubject?.name || ''}
-                          key={`name-${selectedSubject?.id || 'new'}`}
+                          value={editSubjectName}
+                          onChange={(e) => setEditSubjectName(e.target.value)}
                         />
                       </div>
                       <div className="mb-3">
@@ -476,8 +493,8 @@ const ClassSubject = () => {
                             type="checkbox"
                             role="switch"
                             id="switch-sm2"
-                            defaultChecked={selectedSubject?.originalData?.is_active !== false}
-                            key={`status-${selectedSubject?.id || 'new'}`}
+                            checked={editSubjectStatus}
+                            onChange={(e) => setEditSubjectStatus(e.target.checked)}
                           />
                         </div>
                       </div>
@@ -492,8 +509,50 @@ const ClassSubject = () => {
                   >
                     Cancel
                   </Link>
-                  <Link to="#" className="btn btn-primary" data-bs-dismiss="modal">
-                    Save Changes
+                  <Link
+                    to="#"
+                    className="btn btn-primary"
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      const id = selectedSubject?.originalData?.id || selectedSubject?.id;
+                      if (!id || isUpdating) return;
+
+                      const name = editSubjectName.trim();
+                      if (!name) {
+                        alert('Subject name is required');
+                        return;
+                      }
+
+                      setIsUpdating(true);
+                      try {
+                        const payload = {
+                          subject_name: name,
+                          is_active: editSubjectStatus,
+                        };
+                        const response = await apiService.updateSubject(id, payload);
+                        if (response && response.status === 'SUCCESS') {
+                          const modalElement = document.getElementById('edit_subject');
+                          if (modalElement) {
+                            const bootstrap = (window as any).bootstrap;
+                            if (bootstrap && bootstrap.Modal) {
+                              const modal = bootstrap.Modal.getInstance(modalElement);
+                              if (modal) modal.hide();
+                            }
+                          }
+                          await refetch();
+                          setSelectedSubject(null);
+                        } else {
+                          alert(response?.message || 'Failed to update subject');
+                        }
+                      } catch (err: any) {
+                        console.error('Error updating subject:', err);
+                        alert(err?.message || 'Failed to update subject. Please try again.');
+                      } finally {
+                        setIsUpdating(false);
+                      }
+                    }}
+                  >
+                    {isUpdating ? 'Updating...' : 'Save Changes'}
                   </Link>
                 </div>
               </form>

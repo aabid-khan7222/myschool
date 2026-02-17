@@ -50,4 +50,60 @@ const getPickupPointById = async (req, res) => {
   }
 };
 
-module.exports = { getAllPickupPoints, getPickupPointById };
+// Update pickup point
+const updatePickupPoint = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { address, is_active } = req.body;
+
+    console.log('=== UPDATE PICKUP POINT REQUEST ===');
+    console.log('Params:', { id });
+    console.log('Body:', { address, is_active, is_active_type: typeof is_active });
+
+    // Convert is_active to boolean
+    let isActiveBoolean = false;
+    if (is_active === true || is_active === 'true' || is_active === 1 || is_active === 't' || is_active === 'T') {
+      isActiveBoolean = true;
+    } else if (is_active === false || is_active === 'false' || is_active === 0 || is_active === 'f' || is_active === 'F') {
+      isActiveBoolean = false;
+    }
+
+    // Validate required fields
+    if (!address) {
+      return res.status(400).json({
+        status: 'ERROR',
+        message: 'Pickup point address is required'
+      });
+    }
+
+    const result = await query(`
+      UPDATE pickup_points
+      SET address = $1,
+          is_active = $2,
+          modified_at = NOW()
+      WHERE id = $3
+      RETURNING *
+    `, [address, isActiveBoolean, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        status: 'ERROR',
+        message: 'Pickup point not found'
+      });
+    }
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      message: 'Pickup point updated successfully',
+      data: mapPickupRow(result.rows[0])
+    });
+  } catch (error) {
+    console.error('Error updating pickup point:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: `Failed to update pickup point: ${error.message || 'Unknown error'}`,
+    });
+  }
+};
+
+module.exports = { getAllPickupPoints, getPickupPointById, updatePickupPoint };

@@ -25,11 +25,14 @@ export const useDepartments = () => {
             dept.name ||
             'N/A';
 
-          const status = dept.is_active
-            ? 'Active'
-            : dept.status === 'Active' || dept.status === 'Inactive'
-            ? dept.status
-            : 'Active';
+          const status =
+            dept.is_active === true
+              ? 'Active'
+              : dept.is_active === false
+              ? 'Inactive'
+              : (dept.status === 'Active' || dept.status === 'Inactive')
+              ? dept.status
+              : 'Active';
 
           return {
             key: dept.id != null ? String(dept.id) : String(index + 1),

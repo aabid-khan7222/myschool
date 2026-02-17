@@ -331,6 +331,13 @@ class ApiService {
     return this.makeRequest(`/departments/${id}`);
   }
 
+  async updateDepartment(id, departmentData) {
+    return this.makeRequest(`/departments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(departmentData),
+    });
+  }
+
   // Designations
   async getDesignations() {
     return this.makeRequest('/designations');
@@ -338,6 +345,13 @@ class ApiService {
 
   async getDesignationById(id) {
     return this.makeRequest(`/designations/${id}`);
+  }
+
+  async updateDesignation(id, designationData) {
+    return this.makeRequest(`/designations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(designationData),
+    });
   }
 
   // Users
@@ -379,6 +393,34 @@ class ApiService {
     return this.makeRequest(`/transport/routes/${id}`);
   }
 
+  async updateTransportRoute(id, routeData) {
+    return this.makeRequest(`/transport/routes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(routeData)
+    });
+  }
+
+  async updateTransportPickupPoint(id, pickupData) {
+    return this.makeRequest(`/transport/pickup-points/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(pickupData)
+    });
+  }
+
+  async updateTransportVehicle(id, vehicleData) {
+    return this.makeRequest(`/transport/vehicles/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(vehicleData)
+    });
+  }
+
+  async updateTransportDriver(id, driverData) {
+    return this.makeRequest(`/transport/drivers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(driverData)
+    });
+  }
+
   async getTransportPickupPoints() {
     return this.makeRequest('/transport/pickup-points');
   }
@@ -416,6 +458,13 @@ class ApiService {
     return this.makeRequest(`/subjects/class/${classId}`);
   }
 
+  async updateSubject(id, subjectData) {
+    return this.makeRequest(`/subjects/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(subjectData),
+    });
+  }
+
   // Hostels
   async getHostels() {
     return this.makeRequest('/hostels');
@@ -432,6 +481,13 @@ class ApiService {
 
   async getHostelRoomById(id) {
     return this.makeRequest(`/hostel-rooms/${id}`);
+  }
+
+   async updateHostelRoom(id, roomData) {
+    return this.makeRequest(`/hostel-rooms/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(roomData),
+    });
   }
 
   // Room Types

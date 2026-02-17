@@ -12,13 +12,17 @@ import Table from "../../../core/common/dataTable/index";
 import TooltipOption from "../../../core/common/tooltipOption";
 import TransportModal from "./transportModal";
 import { useTransportRoutes } from "../../../core/hooks/useTransportRoutes";
+import { apiService } from "../../../core/services/apiService";
 
 const TransportRoutes = () => {
   const routes = all_routes;
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
-  const { data: apiData, loading, error, fallbackData } = useTransportRoutes();
+  const { data: apiData, loading, error, fallbackData, refetch } = useTransportRoutes();
   const data = apiData?.length ? apiData : fallbackData;
   const [selectedRoute, setSelectedRoute] = useState<any>(null);
+  const [editRouteName, setEditRouteName] = useState('');
+  const [editRouteStatus, setEditRouteStatus] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
   const handleApplyClick = () => {
     if (dropdownMenuRef.current) {
       dropdownMenuRef.current.classList.remove("show");
@@ -95,7 +99,23 @@ const TransportRoutes = () => {
                     to="#"
                     onClick={(e) => {
                       e.preventDefault();
+                      // Set form data from record
+                      const route = record.originalData || record;
+                      // Use route_name from originalData, or fallback to mapped routes property
+                      const routeName = route.route_name || record.routes || '';
+                      // Check is_active from originalData (true/1 = active, false/0 = inactive)
+                      // Fallback to status string if is_active is not available
+                      let routeStatus = true; // default to active
+                      if (route.hasOwnProperty('is_active')) {
+                        routeStatus = route.is_active === true || route.is_active === 1 || route.is_active === 'true';
+                      } else if (record.status) {
+                        routeStatus = record.status === 'Active';
+                      }
+                      
+                      setEditRouteName(routeName);
+                      setEditRouteStatus(routeStatus);
                       setSelectedRoute(record);
+                      
                       setTimeout(() => {
                         const modalElement = document.getElementById('edit_routes');
                         if (modalElement) {
@@ -290,7 +310,54 @@ const TransportRoutes = () => {
         </div>
       </div>
       {/* /Page Wrapper */}
-      <TransportModal selectedRoute={selectedRoute} />
+      <TransportModal 
+        selectedRoute={selectedRoute}
+        editRouteName={editRouteName}
+        setEditRouteName={setEditRouteName}
+        editRouteStatus={editRouteStatus}
+        setEditRouteStatus={setEditRouteStatus}
+        isUpdating={isUpdating}
+        setIsUpdating={setIsUpdating}
+        onRouteUpdate={async () => {
+          const routeId = selectedRoute?.originalData?.id || selectedRoute?.id;
+          if (!routeId || isUpdating) return;
+          
+          setIsUpdating(true);
+          try {
+            const updateData = {
+              route_name: editRouteName.trim(),
+              is_active: editRouteStatus
+            };
+            
+            const response = await apiService.updateTransportRoute(routeId, updateData);
+            
+            if (response && response.status === 'SUCCESS') {
+              // Close modal
+              const modalElement = document.getElementById('edit_routes');
+              if (modalElement) {
+                const bootstrap = (window as any).bootstrap;
+                if (bootstrap && bootstrap.Modal) {
+                  const modal = bootstrap.Modal.getInstance(modalElement);
+                  if (modal) modal.hide();
+                }
+              }
+              // Refetch list
+              await refetch();
+              // Reset form
+              setSelectedRoute(null);
+              setEditRouteName('');
+              setEditRouteStatus(true);
+            } else {
+              alert(response?.message || 'Failed to update route');
+            }
+          } catch (error: any) {
+            console.error('Error updating route:', error);
+            alert(error?.message || 'Failed to update route. Please try again.');
+          } finally {
+            setIsUpdating(false);
+          }
+        }}
+      />
     </>
   );
 };

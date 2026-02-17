@@ -170,4 +170,51 @@ const getVehicleById = async (req, res) => {
   }
 };
 
-module.exports = { getAllVehicles, getVehicleById };
+// Update vehicle (currently only updates status flag)
+const updateVehicle = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_active } = req.body;
+
+    console.log('=== UPDATE VEHICLE REQUEST ===');
+    console.log('Params:', { id });
+    console.log('Body:', { is_active, is_active_type: typeof is_active });
+
+    // Convert is_active to boolean
+    let isActiveBoolean = false;
+    if (is_active === true || is_active === 'true' || is_active === 1 || is_active === 't' || is_active === 'T') {
+      isActiveBoolean = true;
+    } else if (is_active === false || is_active === 'false' || is_active === 0 || is_active === 'f' || is_active === 'F') {
+      isActiveBoolean = false;
+    }
+
+    const result = await query(`
+      UPDATE vehicles
+      SET is_active = $1,
+          modified_at = NOW()
+      WHERE id = $2
+      RETURNING *
+    `, [isActiveBoolean, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        status: 'ERROR',
+        message: 'Vehicle not found'
+      });
+    }
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      message: 'Vehicle updated successfully',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error updating vehicle:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: `Failed to update vehicle: ${error.message || 'Unknown error'}`,
+    });
+  }
+};
+
+module.exports = { getAllVehicles, getVehicleById, updateVehicle };

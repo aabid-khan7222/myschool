@@ -8,12 +8,16 @@ import CommonSelect from '../../../core/common/commonSelect';
 import { all_routes } from '../../router/all_routes';
 import TooltipOption from '../../../core/common/tooltipOption';
 import { useDepartments } from '../../../core/hooks/useDepartments';
+import { apiService } from '../../../core/services/apiService';
 
 const Departments = () => {
   const routes = all_routes;
   const { departments, loading, error, refetch } = useDepartments();
   const data = departments;
   const [selectedDepartment, setSelectedDepartment] = useState<any>(null);
+  const [editDepartmentName, setEditDepartmentName] = useState<string>('');
+  const [editDepartmentStatus, setEditDepartmentStatus] = useState<boolean>(true);
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   const handleApplyClick = () => {
     if (dropdownMenuRef.current) {
@@ -387,7 +391,8 @@ const Departments = () => {
                     type="text"
                     className="form-control"
                     placeholder="Enter Department Name"
-                    defaultValue={selectedDepartment?.originalData?.department_name || selectedDepartment?.originalData?.department || selectedDepartment?.department || ""}
+                    value={editDepartmentName}
+                    onChange={(e) => setEditDepartmentName(e.target.value)}
                     key={`dept-name-${selectedDepartment?.id || 'new'}`}
                   />
                 </div>
@@ -415,8 +420,59 @@ const Departments = () => {
             <Link to="#" className="btn btn-light me-2" data-bs-dismiss="modal">
               Cancel
             </Link>
-            <Link to="#"  className="btn btn-primary" data-bs-dismiss="modal">
-              Save Changes
+            <Link
+              to="#"
+              className="btn btn-primary"
+              onClick={async (e) => {
+                e.preventDefault();
+                if (isUpdating) return;
+                if (!selectedDepartment) return;
+
+                const id =
+                  selectedDepartment?.originalData?.id ?? selectedDepartment?.id;
+
+                if (!id) {
+                  console.error('No department id found for update');
+                  return;
+                }
+
+                try {
+                  setIsUpdating(true);
+
+                  const payload = {
+                    department_name: editDepartmentName,
+                    is_active: editDepartmentStatus,
+                  };
+
+                  await apiService.updateDepartment(id, payload);
+
+                  // Close modal programmatically after successful update
+                  const modalElement = document.getElementById('edit_department');
+                  if (modalElement) {
+                    const bootstrap = (window as any).bootstrap;
+                    if (bootstrap && bootstrap.Modal) {
+                      const modal =
+                        bootstrap.Modal.getInstance(modalElement) ||
+                        new bootstrap.Modal(modalElement);
+                      modal.hide();
+                    }
+                  }
+
+                  // Refresh data
+                  await refetch();
+
+                  // Reset local state
+                  setSelectedDepartment(null);
+                  setEditDepartmentName('');
+                  setEditDepartmentStatus(true);
+                } catch (err) {
+                  console.error('Failed to update department', err);
+                } finally {
+                  setIsUpdating(false);
+                }
+              }}
+            >
+              {isUpdating ? 'Saving...' : 'Save Changes'}
             </Link>
           </div>
         </form>

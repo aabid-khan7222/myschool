@@ -1,4 +1,5 @@
 
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { driverName, PickupPoint2, routesList, VehicleNumber } from "../../../core/common/selectoption/selectoption";
 import CommonSelect from "../../../core/common/commonSelect";
@@ -12,9 +13,173 @@ interface TransportModalProps {
   selectedDriver?: any;
   selectedAssignment?: any;
   selectedVehicle?: any;
+  editRouteName?: string;
+  setEditRouteName?: (value: string) => void;
+  editRouteStatus?: boolean;
+  setEditRouteStatus?: (value: boolean) => void;
+  editPickupAddress?: string;
+  setEditPickupAddress?: (value: string) => void;
+  editPickupStatus?: boolean;
+  setEditPickupStatus?: (value: boolean) => void;
+  editDriverName?: string;
+  setEditDriverName?: (value: string) => void;
+  editDriverPhone?: string;
+  setEditDriverPhone?: (value: string) => void;
+  editDriverLicense?: string;
+  setEditDriverLicense?: (value: string) => void;
+  editDriverAddress?: string;
+  setEditDriverAddress?: (value: string) => void;
+  editDriverStatus?: boolean;
+  setEditDriverStatus?: (value: boolean) => void;
+  editAssignStatus?: boolean;
+  setEditAssignStatus?: (value: boolean) => void;
+  editVehicleStatus?: boolean;
+  setEditVehicleStatus?: (value: boolean) => void;
+  isUpdating?: boolean;
+  setIsUpdating?: (value: boolean) => void;
+  onRouteUpdate?: () => Promise<void>;
+  onPickupUpdate?: () => Promise<void>;
+  onDriverUpdate?: () => Promise<void>;
+  onAssignUpdate?: () => Promise<void>;
+  onVehicleUpdate?: () => Promise<void>;
 }
 
-const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, selectedAssignment, selectedVehicle }: TransportModalProps) => {
+const TransportModal = ({ 
+  selectedRoute, 
+  selectedPickupPoint, 
+  selectedDriver, 
+  selectedAssignment, 
+  selectedVehicle,
+  editRouteName = '',
+  setEditRouteName,
+  editRouteStatus = true,
+  setEditRouteStatus,
+  editPickupAddress = '',
+  setEditPickupAddress,
+  editPickupStatus = true,
+  setEditPickupStatus,
+  editDriverName = '',
+  setEditDriverName,
+  editDriverPhone = '',
+  setEditDriverPhone,
+  editDriverLicense = '',
+  setEditDriverLicense,
+  editDriverAddress = '',
+  setEditDriverAddress,
+  editDriverStatus = true,
+  setEditDriverStatus,
+  editAssignStatus = true,
+  setEditAssignStatus,
+  editVehicleStatus = true,
+  setEditVehicleStatus,
+  isUpdating = false,
+  setIsUpdating,
+  onRouteUpdate,
+  onPickupUpdate,
+  onDriverUpdate,
+  onAssignUpdate,
+  onVehicleUpdate
+}: TransportModalProps) => {
+    // Update form fields when selectedRoute changes
+    useEffect(() => {
+      if (selectedRoute && setEditRouteName && setEditRouteStatus) {
+        const route = selectedRoute.originalData || selectedRoute;
+        // Use route_name from originalData, or fallback to mapped routes property
+        const routeName = route.route_name || selectedRoute.routes || '';
+        // Check is_active from originalData (true/1 = active, false/0 = inactive)
+        // Fallback to status string if is_active is not available
+        let routeStatus = true; // default to active
+        if (route.hasOwnProperty('is_active')) {
+          routeStatus = route.is_active === true || route.is_active === 1 || route.is_active === 'true';
+        } else if (selectedRoute.status) {
+          routeStatus = selectedRoute.status === 'Active';
+        }
+        
+        setEditRouteName(routeName);
+        setEditRouteStatus(routeStatus);
+      }
+    }, [selectedRoute, setEditRouteName, setEditRouteStatus]);
+
+    // Update form fields when selectedPickupPoint changes
+    useEffect(() => {
+      if (selectedPickupPoint && setEditPickupAddress && setEditPickupStatus) {
+        const pickup = selectedPickupPoint.originalData || selectedPickupPoint;
+        // Use address from originalData, or fallback to mapped pickupPoint property
+        const pickupAddress = pickup.address || selectedPickupPoint.pickupPoint || '';
+        // Check is_active from originalData (true/1 = active, false/0 = inactive)
+        // Fallback to status string if is_active is not available
+        let pickupStatus = true; // default to active
+        if (pickup.hasOwnProperty('is_active')) {
+          pickupStatus = pickup.is_active === true || pickup.is_active === 1 || pickup.is_active === 'true';
+        } else if (selectedPickupPoint.status) {
+          pickupStatus = selectedPickupPoint.status === 'Active';
+        }
+        
+        setEditPickupAddress(pickupAddress);
+        setEditPickupStatus(pickupStatus);
+      }
+    }, [selectedPickupPoint, setEditPickupAddress, setEditPickupStatus]);
+
+    // Update status when selectedAssignment changes (assign vehicle page)
+    useEffect(() => {
+      if (selectedAssignment && setEditAssignStatus) {
+        const assignment = selectedAssignment.originalData || selectedAssignment;
+        let status = true;
+        if (assignment && Object.prototype.hasOwnProperty.call(assignment, "is_active")) {
+          status =
+            assignment.is_active === true ||
+            assignment.is_active === 1 ||
+            assignment.is_active === "true";
+        } else if (selectedAssignment.status) {
+          status = selectedAssignment.status === "Active";
+        }
+        setEditAssignStatus(status);
+      }
+    }, [selectedAssignment, setEditAssignStatus]);
+
+    // Update status when selectedVehicle changes
+    useEffect(() => {
+      if (selectedVehicle && setEditVehicleStatus) {
+        const vehicle = selectedVehicle.originalData || selectedVehicle;
+        let status = true;
+        if (vehicle && Object.prototype.hasOwnProperty.call(vehicle, "is_active")) {
+          status =
+            vehicle.is_active === true ||
+            vehicle.is_active === 1 ||
+            vehicle.is_active === "true";
+        } else if (selectedVehicle.status) {
+          status = selectedVehicle.status === "Active";
+        }
+        setEditVehicleStatus(status);
+      }
+    }, [selectedVehicle, setEditVehicleStatus]);
+
+    // Update form fields when selectedDriver changes
+    useEffect(() => {
+      if (selectedDriver && setEditDriverName && setEditDriverPhone && setEditDriverLicense && setEditDriverAddress && setEditDriverStatus) {
+        const driver = selectedDriver.originalData || selectedDriver;
+        // Get driver name (could be from name, driver_name, or first_name + last_name)
+        const driverName = driver.name || driver.driver_name || selectedDriver.name || '';
+        const driverPhone = driver.phone || selectedDriver.phone || '';
+        const driverLicense = driver.license_number || selectedDriver.driverLicenseNo || '';
+        const driverAddress = driver.address || selectedDriver.address || '';
+        // Check is_active from originalData (true/1 = active, false/0 = inactive)
+        // Fallback to status string if is_active is not available
+        let driverStatus = true; // default to active
+        if (driver.hasOwnProperty('is_active')) {
+          driverStatus = driver.is_active === true || driver.is_active === 1 || driver.is_active === 'true';
+        } else if (selectedDriver.status) {
+          driverStatus = selectedDriver.status === 'Active';
+        }
+        
+        setEditDriverName(driverName);
+        setEditDriverPhone(driverPhone);
+        setEditDriverLicense(driverLicense);
+        setEditDriverAddress(driverAddress);
+        setEditDriverStatus(driverStatus);
+      }
+    }, [selectedDriver, setEditDriverName, setEditDriverPhone, setEditDriverLicense, setEditDriverAddress, setEditDriverStatus]);
+
     const today = new Date()
     const year = today.getFullYear()
     const month = String(today.getMonth() + 1).padStart(2, '0') // Month is zero-based, so we add 1
@@ -116,8 +281,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                           type="text"
                           className="form-control"
                           placeholder="Enter Route Name"
-                          defaultValue={selectedRoute?.originalData?.route_name || selectedRoute?.routes || ""}
-                          key={`route-name-${selectedRoute?.id || 'new'}`}
+                          value={editRouteName || ''}
+                          onChange={(e) => setEditRouteName && setEditRouteName(e.target.value)}
                         />
                       </div>
                     </div>
@@ -131,8 +296,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                           type="checkbox"
                           id="user2"
                           className="check"
-                          defaultChecked={selectedRoute?.originalData?.is_active !== false && selectedRoute?.status !== 'Inactive'}
-                          key={`route-status-${selectedRoute?.id || 'new'}`}
+                          checked={editRouteStatus}
+                          onChange={(e) => setEditRouteStatus && setEditRouteStatus(e.target.checked)}
                         />
                         <label htmlFor="user2" className="checktoggle">
                           {" "}
@@ -151,10 +316,25 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                   </Link>
                   <Link
                     to="#"
-                    data-bs-dismiss="modal"
                     className="btn btn-primary"
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      if (onRouteUpdate) {
+                        await onRouteUpdate();
+                      } else {
+                        // Fallback: just close modal
+                        const modalElement = document.getElementById('edit_routes');
+                        if (modalElement) {
+                          const bootstrap = (window as any).bootstrap;
+                          if (bootstrap && bootstrap.Modal) {
+                            const modal = bootstrap.Modal.getInstance(modalElement);
+                            if (modal) modal.hide();
+                          }
+                        }
+                      }
+                    }}
                   >
-                    Save Changes
+                    {isUpdating ? 'Updating...' : 'Save Changes'}
                   </Link>
                 </div>
               </form>
@@ -297,6 +477,24 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                           </div>
                         </div>
                       </div>
+                      <div className="modal-satus-toggle d-flex align-items-center justify-content-between mt-2">
+                        <div className="status-title">
+                          <h5>Status</h5>
+                          <p>Change the Status by toggle </p>
+                        </div>
+                        <div className="status-toggle modal-status">
+                          <input
+                            type="checkbox"
+                            id="assign-status"
+                            className="check"
+                            checked={editAssignStatus}
+                            onChange={(e) => setEditAssignStatus && setEditAssignStatus(e.target.checked)}
+                          />
+                          <label htmlFor="assign-status" className="checktoggle">
+                            {" "}
+                          </label>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -310,10 +508,24 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                   </Link>
                   <Link
                     to="#"
-                    data-bs-dismiss="modal"
                     className="btn btn-primary"
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      if (onAssignUpdate) {
+                        await onAssignUpdate();
+                      } else {
+                        const modalElement = document.getElementById('edit_assign_vehicle');
+                        if (modalElement) {
+                          const bootstrap = (window as any).bootstrap;
+                          if (bootstrap && bootstrap.Modal) {
+                            const modal = bootstrap.Modal.getInstance(modalElement);
+                            if (modal) modal.hide();
+                          }
+                        }
+                      }
+                    }}
                   >
-                    Assign Now
+                    {isUpdating ? 'Updating...' : 'Assign Now'}
                   </Link>
                 </div>
               </form>
@@ -407,8 +619,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                           type="text"
                           className="form-control"
                           placeholder="Enter Pickup Point"
-                          defaultValue={selectedPickupPoint?.originalData?.address || selectedPickupPoint?.pickupPoint || ""}
-                          key={`pickup-point-${selectedPickupPoint?.id || 'new'}`}
+                          value={editPickupAddress || ''}
+                          onChange={(e) => setEditPickupAddress && setEditPickupAddress(e.target.value)}
                         />
                       </div>
                     </div>
@@ -422,8 +634,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                           type="checkbox"
                           id="pickup-status"
                           className="check"
-                          defaultChecked={selectedPickupPoint?.originalData?.is_active !== false && selectedPickupPoint?.status !== 'Inactive'}
-                          key={`pickup-status-${selectedPickupPoint?.id || 'new'}`}
+                          checked={editPickupStatus}
+                          onChange={(e) => setEditPickupStatus && setEditPickupStatus(e.target.checked)}
                         />
                         <label htmlFor="pickup-status" className="checktoggle">
                           {" "}
@@ -442,10 +654,25 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                   </Link>
                   <Link
                     to="#"
-                    data-bs-dismiss="modal"
                     className="btn btn-primary"
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      if (onPickupUpdate) {
+                        await onPickupUpdate();
+                      } else {
+                        // Fallback: just close modal
+                        const modalElement = document.getElementById('edit_pickup');
+                        if (modalElement) {
+                          const bootstrap = (window as any).bootstrap;
+                          if (bootstrap && bootstrap.Modal) {
+                            const modal = bootstrap.Modal.getInstance(modalElement);
+                            if (modal) modal.hide();
+                          }
+                        }
+                      }
+                    }}
                   >
-                    Save Changes
+                    {isUpdating ? 'Updating...' : 'Save Changes'}
                   </Link>
                 </div>
               </form>
@@ -557,8 +784,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                           type="text"
                           className="form-control"
                           placeholder="Enter Name"
-                          defaultValue={selectedDriver?.originalData?.name || selectedDriver?.originalData?.driver_name || selectedDriver?.name || ""}
-                          key={`driver-name-${selectedDriver?.id || 'new'}`}
+                          value={editDriverName || ''}
+                          onChange={(e) => setEditDriverName && setEditDriverName(e.target.value)}
                         />
                       </div>
                       <div className="mb-3">
@@ -567,8 +794,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                           type="text"
                           className="form-control"
                           placeholder="Enter Phone Number"
-                          defaultValue={selectedDriver?.originalData?.phone || selectedDriver?.phone || ""}
-                          key={`driver-phone-${selectedDriver?.id || 'new'}`}
+                          value={editDriverPhone || ''}
+                          onChange={(e) => setEditDriverPhone && setEditDriverPhone(e.target.value)}
                         />
                       </div>
                       <div className="mb-3">
@@ -579,8 +806,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                           type="text"
                           className="form-control"
                           placeholder="Enter Driving License Number"
-                          defaultValue={selectedDriver?.originalData?.license_number || selectedDriver?.driverLicenseNo || ""}
-                          key={`driver-license-${selectedDriver?.id || 'new'}`}
+                          value={editDriverLicense || ''}
+                          onChange={(e) => setEditDriverLicense && setEditDriverLicense(e.target.value)}
                         />
                       </div>
                       <div className="mb-3">
@@ -589,8 +816,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                           type="text"
                           className="form-control"
                           placeholder="Enter Address"
-                          defaultValue={selectedDriver?.originalData?.address || selectedDriver?.address || ""}
-                          key={`driver-address-${selectedDriver?.id || 'new'}`}
+                          value={editDriverAddress || ''}
+                          onChange={(e) => setEditDriverAddress && setEditDriverAddress(e.target.value)}
                         />
                       </div>
                     </div>
@@ -604,8 +831,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                           type="checkbox"
                           id="driver-status"
                           className="check"
-                          defaultChecked={selectedDriver?.originalData?.is_active !== false && selectedDriver?.status !== 'Inactive'}
-                          key={`driver-status-${selectedDriver?.id || 'new'}`}
+                          checked={editDriverStatus}
+                          onChange={(e) => setEditDriverStatus && setEditDriverStatus(e.target.checked)}
                         />
                         <label htmlFor="driver-status" className="checktoggle">
                           {" "}
@@ -624,10 +851,25 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                   </Link>
                   <Link
                     to="#"
-                    data-bs-dismiss="modal"
                     className="btn btn-primary"
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      if (onDriverUpdate) {
+                        await onDriverUpdate();
+                      } else {
+                        // Fallback: just close modal
+                        const modalElement = document.getElementById('edit_driver');
+                        if (modalElement) {
+                          const bootstrap = (window as any).bootstrap;
+                          if (bootstrap && bootstrap.Modal) {
+                            const modal = bootstrap.Modal.getInstance(modalElement);
+                            if (modal) modal.hide();
+                          }
+                        }
+                      }
+                    }}
                   >
-                    Save Changes
+                    {isUpdating ? 'Updating...' : 'Save Changes'}
                   </Link>
                 </div>
               </form>
@@ -945,6 +1187,24 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                       />
                     </div>
                   </div>
+                  <div className="modal-satus-toggle d-flex align-items-center justify-content-between mt-3">
+                    <div className="status-title">
+                      <h5>Status</h5>
+                      <p>Change the Status by toggle </p>
+                    </div>
+                    <div className="status-toggle modal-status">
+                      <input
+                        type="checkbox"
+                        id="vehicle-status"
+                        className="check"
+                        checked={editVehicleStatus}
+                        onChange={(e) => setEditVehicleStatus && setEditVehicleStatus(e.target.checked)}
+                      />
+                      <label htmlFor="vehicle-status" className="checktoggle">
+                        {" "}
+                      </label>
+                    </div>
+                  </div>
                 </div>
                 <div className="modal-footer">
                   <Link
@@ -956,10 +1216,24 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                   </Link>
                   <Link
                     to="#"
-                    data-bs-dismiss="modal"
                     className="btn btn-primary"
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      if (onVehicleUpdate) {
+                        await onVehicleUpdate();
+                      } else {
+                        const modalElement = document.getElementById('edit_vehicle');
+                        if (modalElement) {
+                          const bootstrap = (window as any).bootstrap;
+                          if (bootstrap && bootstrap.Modal) {
+                            const modal = bootstrap.Modal.getInstance(modalElement);
+                            if (modal) modal.hide();
+                          }
+                        }
+                      }
+                    }}
                   >
-                    Save Vehicle
+                    {isUpdating ? 'Updating...' : 'Save Vehicle'}
                   </Link>
                 </div>
               </form>

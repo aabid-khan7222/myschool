@@ -62,4 +62,63 @@ const getDriverById = async (req, res) => {
   }
 };
 
-module.exports = { getAllDrivers, getDriverById };
+// Update driver
+const updateDriver = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, phone, license_number, address, is_active } = req.body;
+
+    console.log('=== UPDATE DRIVER REQUEST ===');
+    console.log('Params:', { id });
+    console.log('Body:', { name, phone, license_number, address, is_active, is_active_type: typeof is_active });
+
+    // Convert is_active to boolean
+    let isActiveBoolean = false;
+    if (is_active === true || is_active === 'true' || is_active === 1 || is_active === 't' || is_active === 'T') {
+      isActiveBoolean = true;
+    } else if (is_active === false || is_active === 'false' || is_active === 0 || is_active === 'f' || is_active === 'F') {
+      isActiveBoolean = false;
+    }
+
+    // Validate required fields
+    if (!name) {
+      return res.status(400).json({
+        status: 'ERROR',
+        message: 'Driver name is required'
+      });
+    }
+
+    const result = await query(`
+      UPDATE drivers
+      SET driver_name = $1,
+          phone = $2,
+          license_number = $3,
+          address = $4,
+          is_active = $5,
+          modified_at = NOW()
+      WHERE id = $6
+      RETURNING *
+    `, [name, phone || null, license_number || null, address || null, isActiveBoolean, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        status: 'ERROR',
+        message: 'Driver not found'
+      });
+    }
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      message: 'Driver updated successfully',
+      data: mapDriverRow(result.rows[0])
+    });
+  } catch (error) {
+    console.error('Error updating driver:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: `Failed to update driver: ${error.message || 'Unknown error'}`,
+    });
+  }
+};
+
+module.exports = { getAllDrivers, getDriverById, updateDriver };

@@ -1,5 +1,9 @@
 const express = require('express');
-const { getAllDepartments, getDepartmentById } = require('../controllers/departmentController');
+const {
+  getAllDepartments,
+  getDepartmentById,
+  updateDepartment,
+} = require('../controllers/departmentController');
 
 const router = express.Router();
 
@@ -8,5 +12,8 @@ router.get('/', getAllDepartments);
 
 // GET /api/departments/:id
 router.get('/:id', getDepartmentById);
+
+// PUT /api/departments/:id
+router.put('/:id', updateDepartment);
 
 module.exports = router;

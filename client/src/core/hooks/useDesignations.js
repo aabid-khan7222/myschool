@@ -25,11 +25,14 @@ export const useDesignations = () => {
             desig.name ||
             'N/A';
 
-          const status = desig.is_active
-            ? 'Active'
-            : desig.status === 'Active' || desig.status === 'Inactive'
-            ? desig.status
-            : 'Active';
+          const status =
+            desig.is_active === true
+              ? 'Active'
+              : desig.is_active === false
+              ? 'Inactive'
+              : (desig.status === 'Active' || desig.status === 'Inactive')
+              ? desig.status
+              : 'Active';
 
           return {
             key: desig.id != null ? String(desig.id) : String(index + 1),

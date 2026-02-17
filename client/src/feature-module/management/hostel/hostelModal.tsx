@@ -11,9 +11,27 @@ interface HostelModalProps {
   selectedHostel?: any;
   selectedRoom?: any;
   selectedRoomType?: any;
+  editRoomBeds?: string;
+  setEditRoomBeds?: (value: string) => void;
+  editRoomCost?: string;
+  setEditRoomCost?: (value: string) => void;
+  isUpdating?: boolean;
+  setIsUpdating?: (value: boolean) => void;
+  onRoomUpdate?: () => Promise<void>;
 }
 
-const HostelModal = ({ selectedHostel, selectedRoom, selectedRoomType }: HostelModalProps) => {
+const HostelModal = ({
+  selectedHostel,
+  selectedRoom,
+  selectedRoomType,
+  editRoomBeds = "",
+  setEditRoomBeds,
+  editRoomCost = "",
+  setEditRoomCost,
+  isUpdating = false,
+  setIsUpdating,
+  onRoomUpdate,
+}: HostelModalProps) => {
   return (
     <>
       <>
@@ -141,8 +159,8 @@ const HostelModal = ({ selectedHostel, selectedRoom, selectedRoomType }: HostelM
                         <CommonSelect
                           className="select"
                           options={bedcount}
-                          defaultValue={selectedRoom?.originalData?.no_of_bed || selectedRoom?.noofBed ? bedcount.find((b: any) => b.value === String(selectedRoom.originalData?.no_of_bed) || b.label === String(selectedRoom.noofBed)) || bedcount[0] : bedcount[0]}
-                          key={`room-bed-${selectedRoom?.id || 'new'}`}
+                          value={editRoomBeds || undefined}
+                          onChange={(val) => setEditRoomBeds && setEditRoomBeds(val || "")}
                         />
                       </div>
                       <div className="mb-0">
@@ -151,8 +169,8 @@ const HostelModal = ({ selectedHostel, selectedRoom, selectedRoomType }: HostelM
                           type="text"
                           className="form-control"
                           placeholder="Enter Cost per Bed"
-                          defaultValue={selectedRoom?.originalData?.cost_per_bed || selectedRoom?.originalData?.amount || selectedRoom?.amount || ""}
-                          key={`room-cost-${selectedRoom?.id || 'new'}`}
+                          value={editRoomCost}
+                          onChange={(e) => setEditRoomCost && setEditRoomCost(e.target.value)}
                         />
                       </div>
                     </div>
@@ -168,10 +186,24 @@ const HostelModal = ({ selectedHostel, selectedRoom, selectedRoomType }: HostelM
                   </Link>
                   <Link
                     to="#"
-                    data-bs-dismiss="modal"
                     className="btn btn-primary"
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      if (onRoomUpdate) {
+                        await onRoomUpdate();
+                      } else {
+                        const modalElement = document.getElementById("edit_hostel_rooms");
+                        if (modalElement) {
+                          const bootstrap = (window as any).bootstrap;
+                          if (bootstrap && bootstrap.Modal) {
+                            const modal = bootstrap.Modal.getInstance(modalElement);
+                            if (modal) modal.hide();
+                          }
+                        }
+                      }
+                    }}
                   >
-                    Save Changes
+                    {isUpdating ? "Updating..." : "Save Changes"}
                   </Link>
                 </div>
               </form>

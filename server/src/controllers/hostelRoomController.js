@@ -115,7 +115,112 @@ const getHostelRoomById = async (req, res) => {
   }
 };
 
+// Update hostel room (beds + cost)
+const updateHostelRoom = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      current_occupancy,
+      no_of_bed,
+      monthly_fee,
+      monthly_fees,
+      cost_per_bed,
+    } = req.body;
+
+    console.log('=== UPDATE HOSTEL ROOM REQUEST ===');
+    console.log('Params:', { id });
+    console.log('Body:', {
+      current_occupancy,
+      no_of_bed,
+      monthly_fee,
+      monthly_fees,
+      cost_per_bed,
+    });
+
+    // Resolve bed count: prefer explicit current_occupancy, then no_of_bed
+    let bedsRaw =
+      current_occupancy ??
+      no_of_bed;
+
+    let beds = null;
+    if (bedsRaw !== undefined && bedsRaw !== null && bedsRaw !== '') {
+      const numBeds = Number(bedsRaw);
+      beds = !Number.isNaN(numBeds) ? numBeds : null;
+    }
+
+    // Resolve monthly fee from possible fields
+    let feeRaw =
+      cost_per_bed ??
+      monthly_fee ??
+      monthly_fees;
+
+    let fee = null;
+    if (feeRaw !== undefined && feeRaw !== null && feeRaw !== '') {
+      const numeric = typeof feeRaw === 'number'
+        ? feeRaw
+        : Number(String(feeRaw).replace(/[^\d.]/g, ''));
+      fee = !Number.isNaN(numeric) ? numeric : null;
+    }
+
+    if (beds === null && fee === null) {
+      return res.status(400).json({
+        status: 'ERROR',
+        message: 'Nothing to update for hostel room',
+      });
+    }
+
+    const updates = [];
+    const params = [];
+    let idx = 1;
+
+    if (beds !== null) {
+      updates.push(`current_occupancy = $${idx++}`);
+      params.push(beds);
+    }
+
+    if (fee !== null) {
+      updates.push(`monthly_fee = $${idx++}`);
+      params.push(fee);
+    }
+
+    updates.push(`modified_at = NOW()`);
+
+    params.push(id);
+
+    const result = await query(
+      `
+      UPDATE hostel_rooms
+      SET ${updates.join(', ')}
+      WHERE id = $${idx}
+      RETURNING *
+    `,
+      params
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        status: 'ERROR',
+        message: 'Hostel room not found',
+      });
+    }
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      message: 'Hostel room updated successfully',
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error('=== ERROR UPDATING HOSTEL ROOM ===');
+    console.error('Error:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: `Failed to update hostel room: ${error.message || 'Unknown error'}`,
+    });
+  }
+};
+
 module.exports = {
   getAllHostelRooms,
-  getHostelRoomById
+  getHostelRoomById,
+  updateHostelRoom,
 };

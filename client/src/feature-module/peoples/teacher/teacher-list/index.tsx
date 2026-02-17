@@ -1,5 +1,5 @@
-import  { useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
+import  { useRef } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { all_routes } from "../../../router/all_routes";
 import CommonSelect from "../../../../core/common/commonSelect";
 import {
@@ -21,21 +21,6 @@ const TeacherList = () => {
   const { teachers, loading, error, refetch } = useTeachers();
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   
-  // Refetch when component mounts or when returning from edit page
-  useEffect(() => {
-    if (location.pathname === routes.teacherList) {
-      // Check if we're returning from edit (has refresh flag in state)
-      if ((location.state as any)?.refresh) {
-        refetch();
-        // Clear the refresh flag
-        window.history.replaceState({}, document.title);
-      } else {
-        // Normal mount - refetch to ensure fresh data
-        refetch();
-      }
-    }
-  }, [location.pathname, location.state, routes.teacherList, refetch]);
-
   // Transform API data to match existing table structure
   const transformedData = teachers.map((teacher: any, index: number) => ({
     key: (index + 1).toString(),

@@ -1,4 +1,4 @@
-import  { useRef, useEffect } from 'react'
+import  { useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { all_routes } from '../../../router/all_routes'
 import ImageWithBasePath from '../../../../core/common/imageWithBasePath'
@@ -13,22 +13,7 @@ const TeacherGrid = () => {
     const routes = all_routes
     const location = useLocation();
     const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
-    const { teachers, loading, error, refetch } = useTeachers();
-    
-    // Refetch when component mounts or when returning from edit page
-    useEffect(() => {
-      if (location.pathname === routes.teacherGrid) {
-        // Check if we're returning from edit (has refresh flag in state)
-        if ((location.state as any)?.refresh) {
-          refetch();
-          // Clear the refresh flag
-          window.history.replaceState({}, document.title);
-        } else {
-          // Normal mount - refetch to ensure fresh data
-          refetch();
-        }
-      }
-    }, [location.pathname, location.state, routes.teacherGrid, refetch]);
+    const { teachers, loading, error } = useTeachers();
 
     const handleApplyClick = () => {
       if (dropdownMenuRef.current) {
