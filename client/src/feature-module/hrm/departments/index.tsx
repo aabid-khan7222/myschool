@@ -84,6 +84,9 @@ const Departments = () => {
                     onClick={(e) => {
                       e.preventDefault();
                       setSelectedDepartment(record);
+                      const dept = record.originalData || record;
+                      setEditDepartmentName(dept.department_name || dept.department || '');
+                      setEditDepartmentStatus(dept.is_active !== false && dept.status !== 'Inactive');
                       setTimeout(() => {
                         const modalElement = document.getElementById('edit_department');
                         if (modalElement) {
@@ -400,7 +403,8 @@ const Departments = () => {
                     type="checkbox"
                     role="switch"
                     id="switch-sm2"
-                    defaultChecked={selectedDepartment?.originalData?.is_active !== false && selectedDepartment?.status !== 'Inactive'}
+                    checked={editDepartmentStatus}
+                    onChange={(e) => setEditDepartmentStatus(e.target.checked)}
                     key={`dept-status-${selectedDepartment?.id || 'new'}`}
                   />
                 </div>

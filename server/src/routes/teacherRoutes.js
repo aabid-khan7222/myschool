@@ -1,5 +1,5 @@
 const express = require('express');
-const { getAllTeachers, getTeacherById, getTeachersByClass, getTeacherRoutine } = require('../controllers/teacherController');
+const { getAllTeachers, getTeacherById, getTeachersByClass, getTeacherRoutine, updateTeacher } = require('../controllers/teacherController');
 
 const router = express.Router();
 
@@ -11,6 +11,9 @@ router.get('/class/:classId', getTeachersByClass);
 
 // Get teacher routine (must be before /:id route)
 router.get('/:id/routine', getTeacherRoutine);
+
+// Update teacher (must be before /:id route)
+router.put('/:id', updateTeacher);
 
 // Get teacher by ID
 router.get('/:id', getTeacherById);

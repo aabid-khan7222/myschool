@@ -58,7 +58,6 @@ const getAllTeachers = async (req, res) => {
       INNER JOIN staff s ON t.staff_id = s.id
       LEFT JOIN classes c ON t.class_id = c.id
       LEFT JOIN subjects sub ON t.subject_id = sub.id
-      WHERE t.status = 'Active' AND s.is_active = true
       ORDER BY s.first_name ASC, s.last_name ASC
     `);
     
@@ -137,7 +136,7 @@ const getTeacherById = async (req, res) => {
       INNER JOIN staff s ON t.staff_id = s.id
       LEFT JOIN classes c ON t.class_id = c.id
       LEFT JOIN subjects sub ON t.subject_id = sub.id
-      WHERE t.id = $1 AND t.status = 'Active' AND s.is_active = true
+      WHERE t.id = $1
     `, [id]);
     
     if (result.rows.length === 0) {
@@ -221,7 +220,7 @@ const getTeachersByClass = async (req, res) => {
       INNER JOIN staff s ON t.staff_id = s.id
       LEFT JOIN classes c ON t.class_id = c.id
       LEFT JOIN subjects sub ON t.subject_id = sub.id
-      WHERE t.class_id = $1 AND t.status = 'Active' AND s.is_active = true
+      WHERE t.class_id = $1
       ORDER BY s.first_name ASC, s.last_name ASC
     `, [classId]);
     
@@ -527,9 +526,102 @@ const getTeacherRoutine = async (req, res) => {
   }
 };
 
+// Update teacher
+const updateTeacher = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, is_active } = req.body;
+
+    console.log('=== UPDATE TEACHER REQUEST ===');
+    console.log('Params:', { id });
+    console.log('Body:', { status, is_active, status_type: typeof status, is_active_type: typeof is_active });
+
+    // Determine the active status from either status field or is_active field
+    let isActiveBoolean = false;
+    
+    // Check status field first (from teachers table)
+    if (status === 'Active' || status === 'active') {
+      isActiveBoolean = true;
+    } else if (status === 'Inactive' || status === 'inactive') {
+      isActiveBoolean = false;
+    }
+    // Check is_active field (from staff table)
+    else if (is_active === true || is_active === 'true' || is_active === 1 || is_active === 't' || is_active === 'T') {
+      isActiveBoolean = true;
+    } else if (is_active === false || is_active === 'false' || is_active === 0 || is_active === 'f' || is_active === 'F') {
+      isActiveBoolean = false;
+    }
+
+    console.log('Converted values:', {
+      original_status: status,
+      original_is_active: is_active,
+      isActiveBoolean,
+      isActiveBoolean_type: typeof isActiveBoolean
+    });
+
+    // First get the staff_id for this teacher
+    const teacherCheck = await query(`
+      SELECT staff_id FROM teachers WHERE id = $1
+    `, [id]);
+
+    if (teacherCheck.rows.length === 0) {
+      console.error(`Teacher not found with id: ${id}`);
+      return res.status(404).json({
+        status: 'ERROR',
+        message: 'Teacher not found'
+      });
+    }
+
+    const staffId = teacherCheck.rows[0].staff_id;
+    const statusValue = isActiveBoolean ? 'Active' : 'Inactive';
+
+    // Update teachers.status
+    const result = await query(`
+      UPDATE teachers
+      SET status = $1,
+          updated_at = NOW()
+      WHERE id = $2
+      RETURNING id, status, updated_at
+    `, [statusValue, id]);
+
+    // Also update staff.is_active
+    await query(`
+      UPDATE staff
+      SET is_active = $1
+      WHERE id = $2
+    `, [isActiveBoolean, staffId]);
+
+    console.log('Teacher updated successfully:', {
+      id: result.rows[0].id,
+      status: result.rows[0].status,
+      is_active: isActiveBoolean
+    });
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      message: 'Teacher updated successfully',
+      data: {
+        id: result.rows[0].id,
+        status: result.rows[0].status,
+        is_active: isActiveBoolean
+      }
+    });
+  } catch (error) {
+    console.error('=== ERROR UPDATING TEACHER ===');
+    console.error('Error:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({
+      status: 'ERROR',
+      message: `Failed to update teacher: ${error.message || 'Unknown error'}`,
+    });
+  }
+};
+
 module.exports = {
   getAllTeachers,
   getTeacherById,
   getTeachersByClass,
-  getTeacherRoutine
+  getTeacherRoutine,
+  updateTeacher
 };

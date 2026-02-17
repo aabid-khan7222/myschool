@@ -104,7 +104,7 @@ const TransportAssignVehicle = () => {
     {
       title: "Action",
       dataIndex: "action",
-      render: () => (
+      render: (text: any, record: any) => (
         <>
           <div className="d-flex align-items-center">
             <div className="dropdown">
@@ -121,8 +121,20 @@ const TransportAssignVehicle = () => {
                   <Link
                     className="dropdown-item rounded-1"
                     to="#"
-                    data-bs-toggle="modal"
-                    data-bs-target="#edit_assign_vehicle"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setSelectedAssignment(record);
+                      setTimeout(() => {
+                        const modalElement = document.getElementById('edit_assign_vehicle');
+                        if (modalElement) {
+                          const bootstrap = (window as any).bootstrap;
+                          if (bootstrap && bootstrap.Modal) {
+                            const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+                            modal.show();
+                          }
+                        }
+                      }, 100);
+                    }}
                   >
                     <i className="ti ti-edit-circle me-2" />
                     Edit

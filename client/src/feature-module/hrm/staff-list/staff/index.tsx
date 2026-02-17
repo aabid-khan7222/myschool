@@ -91,7 +91,7 @@ const Staff = () => {
     {
       title: "Action",
       dataIndex: "action",
-      render: () => (
+      render: (_: any, record: any) => (
         <>
           <div className="d-flex align-items-center">
             <div className="dropdown">
@@ -117,6 +117,7 @@ const Staff = () => {
                   <Link
                     className="dropdown-item rounded-1"
                     to={routes.editStaff}
+                    state={{ staff: record }}
                   >
                     <i className="ti ti-edit-circle me-2" />
                     Edit

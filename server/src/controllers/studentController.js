@@ -257,7 +257,7 @@ const getAllStudents = async (req, res) => {
     const { page, limit, offset } = parsePagination(req.query);
 
     const countResult = await query(
-      'SELECT COUNT(*)::int as total FROM students WHERE is_active = true'
+      'SELECT COUNT(*)::int as total FROM students'
     );
     const total = countResult.rows[0].total;
 
@@ -320,7 +320,6 @@ const getAllStudents = async (req, res) => {
       LEFT JOIN parents p ON s.parent_id = p.id
       LEFT JOIN guardians g ON s.guardian_id = g.id
       LEFT JOIN addresses addr ON s.user_id = addr.user_id
-      WHERE s.is_active = true
       ORDER BY s.first_name ASC, s.last_name ASC
       LIMIT $1 OFFSET $2
     `, [limit, offset]);
@@ -374,7 +373,7 @@ const getStudentById = async (req, res) => {
       LEFT JOIN parents p ON s.parent_id = p.id
       LEFT JOIN guardians g ON s.guardian_id = g.id
       LEFT JOIN addresses addr ON s.user_id = addr.user_id`;
-    const whereClause = ` WHERE s.id = $1 AND s.is_active = true`;
+    const whereClause = ` WHERE s.id = $1`;
 
     let result;
     try {

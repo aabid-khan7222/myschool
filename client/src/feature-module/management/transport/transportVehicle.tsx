@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { all_routes } from "../../router/all_routes";
 import PredefinedDateRanges from "../../../core/common/datePicker";
 import CommonSelect from "../../../core/common/commonSelect";
@@ -23,6 +23,7 @@ const TransportVehicle = () => {
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   const { data: apiData, loading, error, fallbackData } = useTransportVehicles();
   const data = apiData?.length ? apiData : fallbackData;
+  const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
   const handleApplyClick = () => {
     if (dropdownMenuRef.current) {
       dropdownMenuRef.current.classList.remove("show");
@@ -138,7 +139,7 @@ const TransportVehicle = () => {
     {
       title: "Action",
       dataIndex: "action",
-      render: () => (
+      render: (text: any, record: any) => (
         <>
           <div className="d-flex align-items-center">
             <div className="dropdown">
@@ -155,8 +156,20 @@ const TransportVehicle = () => {
                   <Link
                     className="dropdown-item rounded-1"
                     to="#"
-                    data-bs-toggle="modal"
-                    data-bs-target="#edit_vehicle"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setSelectedVehicle(record);
+                      setTimeout(() => {
+                        const modalElement = document.getElementById('edit_vehicle');
+                        if (modalElement) {
+                          const bootstrap = (window as any).bootstrap;
+                          if (bootstrap && bootstrap.Modal) {
+                            const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+                            modal.show();
+                          }
+                        }
+                      }, 100);
+                    }}
                   >
                     <i className="ti ti-edit-circle me-2" />
                     Edit
@@ -391,7 +404,7 @@ const TransportVehicle = () => {
         </div>
       </div>
       {/* /Page Wrapper */}
-      <TransportModal />
+      <TransportModal selectedVehicle={selectedVehicle} />
     </>
   );
 };

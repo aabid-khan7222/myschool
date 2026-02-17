@@ -28,11 +28,41 @@ async function getApiBaseUrl() {
 
 const getToken = () => localStorage.getItem(TOKEN_KEY);
 
+// Request deduplication: track ongoing requests to prevent duplicate simultaneous calls
+const pendingRequests = new Map();
+
 class ApiService {
   async makeRequest(endpoint, options = {}) {
     const base = await getApiBaseUrl();
     const url = `${base}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+    
+    // Create a unique key for this request (endpoint + method + body hash)
+    const method = options.method || 'GET';
+    const bodyKey = options.body ? JSON.stringify(options.body).substring(0, 50) : '';
+    const requestKey = `${method}:${endpoint}:${bodyKey}`;
+    
+    // If the same request is already pending, return the existing promise
+    if (pendingRequests.has(requestKey)) {
+      if (isDev) console.log('Deduplicating request:', url, '- reusing pending request');
+      return pendingRequests.get(requestKey);
+    }
+    
     if (isDev) console.log('Making API request to:', url);
+    
+    // Create the request promise
+    const requestPromise = this._executeRequest(url, options)
+      .finally(() => {
+        // Remove from pending requests when done (success or error)
+        pendingRequests.delete(requestKey);
+      });
+    
+    // Store the pending request
+    pendingRequests.set(requestKey, requestPromise);
+    
+    return requestPromise;
+  }
+  
+  async _executeRequest(url, options = {}) {
 
     const headers = {
       'Content-Type': 'application/json',
@@ -64,6 +94,13 @@ class ApiService {
           localStorage.removeItem('preskool_user');
           window.dispatchEvent(new CustomEvent('auth:sessionExpired'));
         }
+        // Handle rate limiting (429) specifically
+        if (response.status === 429) {
+          const errorText = await response.text();
+          if (isDev) console.error('Rate limit exceeded:', errorText);
+          // Don't throw immediately - wait a bit and let deduplication handle retries
+          throw new Error(`Rate limit exceeded. Please wait a moment before trying again.`);
+        }
         const errorText = await response.text();
         if (isDev) console.error('Response error text:', errorText);
         throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
@@ -88,7 +125,7 @@ class ApiService {
       throw error;
     }
   }
-
+  
   // Academic Years
   async getAcademicYears() {
     return this.makeRequest('/academic-years');
@@ -267,6 +304,13 @@ class ApiService {
 
   async getTeacherRoutine(teacherId) {
     return this.makeRequest(`/teachers/${teacherId}/routine`);
+  }
+
+  async updateTeacher(id, teacherData) {
+    return this.makeRequest(`/teachers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(teacherData)
+    });
   }
 
   // Staff

@@ -1,4 +1,4 @@
-import  { useRef } from "react";
+import  { useRef, useState } from "react";
 import Table from "../../../core/common/dataTable/index";
 import { classSyllabus } from "../../../core/data/json/class-syllabus";
 import {
@@ -15,6 +15,7 @@ import TooltipOption from "../../../core/common/tooltipOption";
 
 const ClassSyllabus = () => {
   const routes = all_routes;
+  const [selectedSyllabus, setSelectedSyllabus] = useState<any>(null);
 
   const data = classSyllabus;
   const columns = [
@@ -52,7 +53,7 @@ const ClassSyllabus = () => {
     {
       title: "Action",
       dataIndex: "action",
-      render: () => (
+      render: (_: any, record: any) => (
         <>
           <div className="d-flex align-items-center">
             <div className="dropdown">
@@ -69,8 +70,20 @@ const ClassSyllabus = () => {
                   <Link
                     className="dropdown-item rounded-1"
                     to="#"
-                    data-bs-toggle="modal"
-                    data-bs-target="#edit_syllabus"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setSelectedSyllabus(record);
+                      setTimeout(() => {
+                        const modalElement = document.getElementById('edit_syllabus');
+                        if (modalElement) {
+                          const bootstrap = (window as any).bootstrap;
+                          if (bootstrap && bootstrap.Modal) {
+                            const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+                            modal.show();
+                          }
+                        }
+                      }, 100);
+                    }}
                   >
                     <i className="ti ti-edit-circle me-2" />
                     Edit
@@ -357,7 +370,8 @@ const ClassSyllabus = () => {
                         <CommonSelect
                                   className="select"
                                   options={classSylabus}
-                                  defaultValue={classSylabus[1]}
+                                  defaultValue={selectedSyllabus?.class ? (classSylabus.find((c: any) => c.label === selectedSyllabus.class || c.value === selectedSyllabus.class) || classSylabus[0]) : classSylabus[0]}
+                                  key={`edit-syllabus-class-${selectedSyllabus?.class ?? 'new'}`}
                                 />
                       </div>
                       <div className="mb-3">
@@ -365,16 +379,18 @@ const ClassSyllabus = () => {
                         <CommonSelect
                                   className="select"
                                   options={classSection}
-                                  defaultValue={classSection[1]}
+                                  defaultValue={selectedSyllabus?.section ? (classSection.find((s: any) => s.label === selectedSyllabus.section || s.value === selectedSyllabus.section) || classSection[0]) : classSection[0]}
+                                  key={`edit-syllabus-section-${selectedSyllabus?.section ?? 'new'}`}
                                 />
                       </div>
                       <div className="mb-0">
-                        <label className="form-label">Save Changes</label>
+                        <label className="form-label">Subject Group</label>
                         <input
                           type="text"
                           className="form-control"
                           placeholder="Enter Subject Group"
-                          defaultValue="I, C English"
+                          defaultValue={selectedSyllabus?.subjectGroup ?? ''}
+                          key={`edit-syllabus-subject-${selectedSyllabus?.subjectGroup ?? 'new'}`}
                         />
                       </div>
                     </div>

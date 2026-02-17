@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 // import { feeGroup, feesTypes, paymentType } from '../../../core/common/selectoption/selectoption'
 import { DatePicker } from "antd";
@@ -76,6 +76,7 @@ const AddStudent = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [studentData, setStudentData] = useState<any>(null);
   const [loadingStudent, setLoadingStudent] = useState<boolean>(false);
+  const fetchedStudentIdRef = useRef<string | null>(null); // Track which student ID we've fetched
   
   // Form state for Personal Information section
   const [formData, setFormData] = useState<{
@@ -252,8 +253,18 @@ const AddStudent = () => {
 
   // Function to fetch student data for editing
   const fetchStudentData = async (studentId: string) => {
+    // Prevent multiple simultaneous calls or re-fetching the same student
+    if (loadingStudent) {
+      console.log('Already loading student data, skipping duplicate call');
+      return;
+    }
+    if (fetchedStudentIdRef.current === studentId && studentData) {
+      console.log('Student data already fetched for ID:', studentId);
+      return;
+    }
     try {
       setLoadingStudent(true);
+      fetchedStudentIdRef.current = studentId; // Mark as fetching
       const response = await apiService.getStudentById(studentId);
       console.log('Fetched student data:', response);
       setStudentData(response.data);
@@ -325,39 +336,47 @@ const AddStudent = () => {
     } catch (error: any) {
       console.error('Error fetching student data:', error);
       setSubmitError(error.message || 'Failed to fetch student data');
+      fetchedStudentIdRef.current = null; // Reset on error so we can retry
     } finally {
       setLoadingStudent(false);
     }
   };
 
   // Effect to handle form data population when dropdown options are loaded
+  // Use ref to track if we've already populated form data to prevent unnecessary updates
+  const formDataPopulatedRef = useRef(false);
   useEffect(() => {
-    if (studentData && isEdit) {
-      console.log('Student data available, checking dropdown options...');
-      console.log('Blood groups loaded:', bloodGroups.length > 0);
-      console.log('Religions loaded:', religions.length > 0);
-      console.log('Casts loaded:', casts.length > 0);
-      console.log('Mother tongues loaded:', motherTongues.length > 0);
-      console.log('Houses loaded:', houses.length > 0);
+    if (studentData && isEdit && !formDataPopulatedRef.current) {
+      // Only populate if dropdowns are loaded (non-empty arrays)
+      const dropdownsReady = bloodGroups.length > 0 && religions.length > 0 && 
+                            casts.length > 0 && motherTongues.length > 0 && houses.length > 0;
       
-      // Force re-render of form data to ensure dropdowns are populated
-      const student = studentData;
-      setFormData(prev => ({
-        ...prev,
-        blood_group_id: student.blood_group_id ? student.blood_group_id.toString() : null,
-        house_id: student.house_id ? student.house_id.toString() : null,
-        religion_id: student.religion_id ? student.religion_id.toString() : null,
-        cast_id: student.cast_id ? student.cast_id.toString() : null,
-        mother_tongue_id: student.mother_tongue_id ? student.mother_tongue_id.toString() : null,
-        current_address: student.current_address || student.address || '',
-        permanent_address: student.permanent_address || '',
-      }));
+      if (dropdownsReady) {
+        console.log('Student data available, populating form data...');
+        const student = studentData;
+        setFormData(prev => ({
+          ...prev,
+          blood_group_id: student.blood_group_id ? student.blood_group_id.toString() : null,
+          house_id: student.house_id ? student.house_id.toString() : null,
+          religion_id: student.religion_id ? student.religion_id.toString() : null,
+          cast_id: student.cast_id ? student.cast_id.toString() : null,
+          mother_tongue_id: student.mother_tongue_id ? student.mother_tongue_id.toString() : null,
+          current_address: student.current_address || student.address || '',
+          permanent_address: student.permanent_address || '',
+        }));
+        formDataPopulatedRef.current = true;
+      }
     }
-  }, [studentData, bloodGroups, religions, casts, motherTongues, houses, isEdit]);
+    // Reset ref when studentData changes (new student being edited)
+    if (!studentData) {
+      formDataPopulatedRef.current = false;
+    }
+  }, [studentData, bloodGroups.length, religions.length, casts.length, motherTongues.length, houses.length, isEdit]);
 
-  // Set current academic year as default when loaded
+  // Set current academic year as default when loaded (only once, not on every formData change)
+  const academicYearSetRef = useRef(false);
   useEffect(() => {
-    if (academicYearsList.length > 0 && !formData.academic_year_id) {
+    if (academicYearsList.length > 0 && !formData.academic_year_id && !academicYearSetRef.current) {
       console.log('Academic years data:', academicYearsList);
       // Find the current academic year (where is_current = true)
       const currentAcademicYear = academicYearsList.find(year => year.is_current === true);
@@ -376,8 +395,13 @@ const AddStudent = () => {
           academic_year_id: academicYearsList[0].id.toString()
         }));
       }
+      academicYearSetRef.current = true;
     }
-  }, [academicYears, formData.academic_year_id]);
+    // Reset ref when academic years change (new data loaded)
+    if (academicYearsList.length === 0) {
+      academicYearSetRef.current = false;
+    }
+  }, [academicYearsList.length, formData.academic_year_id]);
 
   const [owner, setOwner] = useState<string[]>(["English", "Spanish"]);
   const handleTagsChange2 = (newTags: string[]) => {
@@ -488,8 +512,8 @@ const AddStudent = () => {
   };
 
   useEffect(() => {
-    // Check if we're in edit mode by looking for the ID parameter or edit path
-    const isEditMode = id || location.pathname.includes('/edit-student');
+    // Check if we're in edit mode by looking for the ID parameter
+    const isEditMode = !!id;
     
     if (isEditMode) {
       const today = new Date();
@@ -501,26 +525,25 @@ const AddStudent = () => {
       setIsEdit(true);
       setOwner(["English"]);
       // owner1/owner2 (allergies, medications) are set from API in fetchStudentData when editing
-      if (!id) {
-        setOwner1(["Medecine Name"]);
-        setOwner2(["Allergy", "Skin Allergy"]);
-      }
       setDefaultDate(defaultValue);
       console.log('Edit mode detected, formattedDate:', formattedDate);
       
-      // Fetch student data if ID is available
-      if (id) {
+      // Fetch student data if ID is available and not already loaded for this ID
+      if (id && fetchedStudentIdRef.current !== id && !loadingStudent) {
         console.log('Fetching student data for ID:', id);
         fetchStudentData(id);
-      } else {
+      } else if (id && fetchedStudentIdRef.current === id) {
+        console.log('Student data already fetched for ID:', id);
+      } else if (!id) {
         console.log('No student ID provided for edit mode');
         setSubmitError('No student ID provided for editing');
       }
     } else {
       setIsEdit(false);
       setDefaultDate(null);
+      fetchedStudentIdRef.current = null; // Reset when not in edit mode
     }
-  }, [location.pathname, id]);
+  }, [id]); // Only depend on id to avoid unnecessary re-runs
 
   return (
     <>

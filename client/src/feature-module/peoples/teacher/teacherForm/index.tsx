@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 // import { feeGroup, feesTypes, paymentType } from '../../../core/common/selectoption/selectoption'
 import { DatePicker } from "antd";
 import dayjs from "dayjs";
@@ -33,18 +33,22 @@ interface TeacherLocationState {
 const TeacherForm = () => {
   const routes = all_routes;
   const location = useLocation();
+  const navigate = useNavigate();
   const state = location.state as TeacherLocationState | null;
   const teacherId = state?.teacherId ?? state?.teacher?.id;
+  const formRef = useRef<HTMLFormElement>(null);
 
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [teacherData, setTeacherData] = useState<any>(null);
   const [loadingTeacher, setLoadingTeacher] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [owner, setOwner] = useState<string[]>([]);
   const handleTagsChange = (newTags: string[]) => {
     setOwner(newTags);
   };
 
   const [defaultDate, setDefaultDate] = useState<dayjs.Dayjs | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string>('Active');
 
   useEffect(() => {
     if (location.pathname === routes.editTeacher) {
@@ -80,6 +84,11 @@ const TeacherForm = () => {
       } else {
         setOwner(["English"]);
       }
+      // Set status based on teacher data
+      const currentStatus = teacherData.status === 'Active' || teacherData.is_active === true || teacherData.is_active === 1 
+        ? 'Active' 
+        : 'Inactive';
+      setSelectedStatus(currentStatus);
     }
   }, [teacherData, isEdit]);
 
@@ -127,7 +136,7 @@ const TeacherForm = () => {
           {/* /Page Header */}
           <div className="row">
             <div className="col-md-12">
-              <form key={isEdit && t ? `edit-${t.id}` : "add"}>
+              <form ref={formRef} key={isEdit && t ? `edit-${t.id}` : "add"}>
                 <>
                   {/* Personal Information */}
                   <div className="card">
@@ -447,7 +456,19 @@ const TeacherForm = () => {
                             <CommonSelect
                               className="select"
                               options={status}
-                              defaultValue={isEdit ? status[0] : undefined}
+                              defaultValue={isEdit && t 
+                                ? status.find((s: any) => {
+                                    const currentStatus = t.status === 'Active' || t.is_active === true || t.is_active === 1 ? 'Active' : 'Inactive';
+                                    return s.value === currentStatus;
+                                  }) || status[0]
+                                : undefined}
+                              value={isEdit ? selectedStatus : null}
+                              key={isEdit && t ? `status-${t.id}-${selectedStatus}` : 'status-new'}
+                              onChange={(value: string | null) => {
+                                if (isEdit) {
+                                  setSelectedStatus(value || 'Active');
+                                }
+                              }}
                             />
                           </div>
                         </div>
@@ -964,12 +985,54 @@ const TeacherForm = () => {
                 </>
 
                 <div className="text-end">
-                  <button type="button" className="btn btn-light me-3">
+                  <button 
+                    type="button" 
+                    className="btn btn-light me-3"
+                    onClick={() => navigate(routes.teacherList)}
+                  >
                     Cancel
                   </button>
-                  <Link to={routes.teacherList} className="btn btn-primary">
-                    Add Teacher
-                  </Link>
+                  {isEdit ? (
+                    <button 
+                      type="button" 
+                      className="btn btn-primary"
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        if (!teacherId) return;
+                        
+                        setIsUpdating(true);
+                        try {
+                          const updateData = {
+                            status: selectedStatus,
+                            is_active: selectedStatus === 'Active'
+                          };
+                          
+                          console.log('Updating teacher:', teacherId, updateData);
+                          const response = await apiService.updateTeacher(teacherId, updateData);
+                          
+                          if (response && response.status === 'SUCCESS') {
+                            console.log('Teacher updated successfully');
+                            // Navigate back to teacher list with a flag to trigger refetch
+                            navigate(routes.teacherList, { state: { refresh: true } });
+                          } else {
+                            alert(response?.message || 'Failed to update teacher');
+                          }
+                        } catch (error: any) {
+                          console.error('Error updating teacher:', error);
+                          alert(error?.message || 'Failed to update teacher. Please try again.');
+                        } finally {
+                          setIsUpdating(false);
+                        }
+                      }}
+                      disabled={isUpdating}
+                    >
+                      {isUpdating ? 'Updating...' : 'Save Changes'}
+                    </button>
+                  ) : (
+                    <Link to={routes.teacherList} className="btn btn-primary">
+                      Add Teacher
+                    </Link>
+                  )}
                 </div>
               </form>
             </div>

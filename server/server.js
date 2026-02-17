@@ -68,13 +68,16 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Rate limiting - 100 requests per 15 minutes per IP
+// Rate limiting - increased limit to prevent "too many requests" errors
+// Default: 500 requests per 15 minutes per IP (can be overridden via RATE_LIMIT_MAX env var)
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: parseInt(process.env.RATE_LIMIT_MAX || '500', 10), // Increased from 100 to 500
   message: { status: 'ERROR', message: 'Too many requests, please try again later' },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  // Skip rate limiting for health checks
+  skip: (req) => req.path === '/api/health' || req.path === '/api/health/database'
 });
 app.use('/api', limiter);
 

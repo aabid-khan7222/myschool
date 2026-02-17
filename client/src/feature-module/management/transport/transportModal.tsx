@@ -11,9 +11,10 @@ interface TransportModalProps {
   selectedPickupPoint?: any;
   selectedDriver?: any;
   selectedAssignment?: any;
+  selectedVehicle?: any;
 }
 
-const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, selectedAssignment }: TransportModalProps) => {
+const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, selectedAssignment, selectedVehicle }: TransportModalProps) => {
     const today = new Date()
     const year = today.getFullYear()
     const month = String(today.getMonth() + 1).padStart(2, '0') // Month is zero-based, so we add 1
@@ -780,8 +781,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
               <div className="modal-header align-items-center">
                 <div className="d-flex align-items-center">
                   <h4 className="modal-title">Edit Vehicle</h4>
-                  <span className="badge badge-soft-primary ms-2">
-                    ID : BB0482
+                  <span className="badge badge-soft-primary ms-2" key={`edit-vehicle-id-${selectedVehicle?.id || 'new'}`}>
+                    ID : {selectedVehicle?.originalData?.vehicle_code ?? selectedVehicle?.id ?? '—'}
                   </span>
                 </div>
                 <button
@@ -805,7 +806,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                               type="text"
                               className="form-control"
                               placeholder="Enter Vehicle No"
-                              defaultValue={8930}
+                              defaultValue={selectedVehicle?.originalData?.vehicle_number ?? selectedVehicle?.vehicleNo ?? ''}
+                              key={`edit-vehicle-no-${selectedVehicle?.id || 'new'}`}
                             />
                           </div>
                         </div>
@@ -816,7 +818,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                               type="text"
                               className="form-control"
                               placeholder="Enter Vehicle Model"
-                              defaultValue="Scania"
+                              defaultValue={selectedVehicle?.originalData?.vehicle_model ?? selectedVehicle?.vehicleModel ?? ''}
+                              key={`edit-vehicle-model-${selectedVehicle?.id || 'new'}`}
                             />
                           </div>
                         </div>
@@ -831,8 +834,9 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                         type: "mask",
                       }}
                       getPopupContainer={getModalContainer2}
-                      defaultValue={defaultValue}
+                      defaultValue={selectedVehicle?.originalData?.year || selectedVehicle?.madeofYear ? dayjs(`${selectedVehicle?.originalData?.year ?? selectedVehicle?.madeofYear}-01-01`) : defaultValue}
                       placeholder="16 May 2024"
+                      key={`edit-vehicle-year-${selectedVehicle?.id || 'new'}`}
                     />
                               <span className="cal-icon">
                                 <i className="ti ti-calendar" />
@@ -849,7 +853,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                               type="text"
                               className="form-control"
                               placeholder="Enter Registration No"
-                              defaultValue="US1A3545"
+                              defaultValue={selectedVehicle?.originalData?.registration_number ?? selectedVehicle?.registrationNo ?? ''}
+                              key={`edit-vehicle-reg-${selectedVehicle?.id || 'new'}`}
                             />
                           </div>
                         </div>
@@ -859,7 +864,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                             <input
                               type="text"
                               className="form-control"
-                              defaultValue={32546665456}
+                              defaultValue={selectedVehicle?.originalData?.chassis_number ?? selectedVehicle?.chassisNo ?? ''}
+                              key={`edit-vehicle-chassis-${selectedVehicle?.id || 'new'}`}
                             />
                           </div>
                         </div>
@@ -870,6 +876,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                               type="text"
                               className="form-control"
                               placeholder="Enter Seat Capacity"
+                              defaultValue={selectedVehicle?.originalData?.seat_capacity ?? ''}
+                              key={`edit-vehicle-seat-${selectedVehicle?.id || 'new'}`}
                             />
                           </div>
                         </div>
@@ -880,7 +888,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                           type="text"
                           className="form-control"
                           placeholder="Enter GPS Tracking ID"
-                          defaultValue="GPS7899456689"
+                          defaultValue={selectedVehicle?.originalData?.gps_device_id ?? selectedVehicle?.gps ?? ''}
+                          key={`edit-vehicle-gps-${selectedVehicle?.id || 'new'}`}
                         />
                       </div>
                       <hr />
@@ -892,7 +901,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                         <CommonSelect
                           className="select"
                           options={driverName}
-                          defaultValue={driverName[1]}
+                          defaultValue={selectedVehicle?.originalData?.driver_name || selectedVehicle?.name ? driverName.find((d: any) => d.label === (selectedVehicle?.originalData?.driver_name ?? selectedVehicle?.name) || d.value === (selectedVehicle?.originalData?.driver_name ?? selectedVehicle?.name)) || driverName[0] : driverName[0]}
+                          key={`edit-vehicle-driver-${selectedVehicle?.id || 'new'}`}
                         />
                       </div>
                       <div className="row">
@@ -903,7 +913,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                               type="text"
                               className="form-control"
                               placeholder="Enter Driver License"
-                              defaultValue="LC7899456689"
+                              defaultValue={selectedVehicle?.originalData?.driver_license ?? ''}
+                              key={`edit-vehicle-license-${selectedVehicle?.id || 'new'}`}
                             />
                           </div>
                         </div>
@@ -916,7 +927,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                               type="text"
                               className="form-control"
                               placeholder="Enter Driver Contact No"
-                              defaultValue="+1 64044 74890"
+                              defaultValue={selectedVehicle?.originalData?.driver_phone ?? selectedVehicle?.phone ?? ''}
+                              key={`edit-vehicle-phone-${selectedVehicle?.id || 'new'}`}
                             />
                           </div>
                         </div>
@@ -928,7 +940,8 @@ const TransportModal = ({ selectedRoute, selectedPickupPoint, selectedDriver, se
                         type="text"
                         className="form-control"
                         placeholder="Enter Driver Address"
-                        defaultValue="2233 Wood Street, Slidell, LA"
+                        defaultValue={selectedVehicle?.originalData?.driver_address ?? ''}
+                        key={`edit-vehicle-address-${selectedVehicle?.id || 'new'}`}
                       />
                     </div>
                   </div>

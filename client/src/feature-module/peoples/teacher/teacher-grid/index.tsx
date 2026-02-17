@@ -1,5 +1,5 @@
-import  { useRef } from 'react'
-import { Link } from 'react-router-dom'
+import  { useRef, useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { all_routes } from '../../../router/all_routes'
 import ImageWithBasePath from '../../../../core/common/imageWithBasePath'
 import PredefinedDateRanges from '../../../../core/common/datePicker'
@@ -11,8 +11,24 @@ import { useTeachers } from '../../../../core/hooks/useTeachers.js'
 
 const TeacherGrid = () => {
     const routes = all_routes
+    const location = useLocation();
     const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
-    const { teachers, loading, error } = useTeachers();
+    const { teachers, loading, error, refetch } = useTeachers();
+    
+    // Refetch when component mounts or when returning from edit page
+    useEffect(() => {
+      if (location.pathname === routes.teacherGrid) {
+        // Check if we're returning from edit (has refresh flag in state)
+        if ((location.state as any)?.refresh) {
+          refetch();
+          // Clear the refresh flag
+          window.history.replaceState({}, document.title);
+        } else {
+          // Normal mount - refetch to ensure fresh data
+          refetch();
+        }
+      }
+    }, [location.pathname, location.state, routes.teacherGrid, refetch]);
 
     const handleApplyClick = () => {
       if (dropdownMenuRef.current) {
@@ -217,9 +233,9 @@ const TeacherGrid = () => {
                   {teacher.employee_code || `T${teacher.id}`}
                 </Link>
                 <div className="d-flex align-items-center">
-                  <span className={`badge ${(teacher.status === 'Active' || teacher.is_active) ? 'badge-soft-success' : 'badge-soft-danger'} d-inline-flex align-items-center me-1`}>
+                  <span className={`badge ${(teacher.status === 'Active' || teacher.is_active === true || teacher.is_active === 1) ? 'badge-soft-success' : 'badge-soft-danger'} d-inline-flex align-items-center me-1`}>
                     <i className="ti ti-circle-filled fs-5 me-1" />
-                    {teacher.status || (teacher.is_active ? 'Active' : 'Inactive')}
+                    {(teacher.status === 'Active' || teacher.is_active === true || teacher.is_active === 1) ? 'Active' : 'Inactive'}
                   </span>
                   <div className="dropdown">
                     <Link

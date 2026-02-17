@@ -1,4 +1,4 @@
-import  { useRef } from "react";
+import  { useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { all_routes } from "../../../router/all_routes";
 import CommonSelect from "../../../../core/common/commonSelect";
@@ -17,8 +17,24 @@ import { useTeachers } from "../../../../core/hooks/useTeachers.js";
 
 const TeacherList = () => {
   const routes = all_routes;
-  const { teachers, loading, error } = useTeachers();
+  const location = useLocation();
+  const { teachers, loading, error, refetch } = useTeachers();
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
+  
+  // Refetch when component mounts or when returning from edit page
+  useEffect(() => {
+    if (location.pathname === routes.teacherList) {
+      // Check if we're returning from edit (has refresh flag in state)
+      if ((location.state as any)?.refresh) {
+        refetch();
+        // Clear the refresh flag
+        window.history.replaceState({}, document.title);
+      } else {
+        // Normal mount - refetch to ensure fresh data
+        refetch();
+      }
+    }
+  }, [location.pathname, location.state, routes.teacherList, refetch]);
 
   // Transform API data to match existing table structure
   const transformedData = teachers.map((teacher: any, index: number) => ({
@@ -37,8 +53,10 @@ const TeacherList = () => {
       month: 'short',
       year: 'numeric'
     }) : 'N/A',
-    status: teacher.status || (teacher.is_active ? 'Active' : 'Inactive'),
-    statusclass: (teacher.status === 'Active' || teacher.is_active) 
+    status: teacher.status === 'Active' || teacher.is_active === true || teacher.is_active === 1 
+      ? 'Active' 
+      : 'Inactive',
+    statusclass: (teacher.status === 'Active' || teacher.is_active === true || teacher.is_active === 1) 
       ? "badge badge-soft-success" 
       : "badge badge-soft-danger",
     action: ''
