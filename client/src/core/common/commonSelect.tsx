@@ -52,9 +52,12 @@ const CommonSelect: React.FC<SelectProps> = ({ options, defaultValue, value, onC
     }
   }, [value, options]);
 
+  // Only sync defaultValue when in uncontrolled mode (value not passed)
   useEffect(() => {
-    setSelectedOption(defaultValue || undefined);
-  }, [defaultValue])
+    if (value === undefined) {
+      setSelectedOption(defaultValue || undefined);
+    }
+  }, [defaultValue, value]);
   
   return (
     <Select

@@ -1,5 +1,6 @@
-import  { useRef } from 'react'
+import { useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import { all_routes } from '../../../router/all_routes'
 import ImageWithBasePath from '../../../../core/common/imageWithBasePath'
 import { allClass, allSection, gender, names, status } from '../../../../core/common/selectoption/selectoption'
@@ -8,16 +9,26 @@ import CommonSelect from '../../../../core/common/commonSelect'
 import TooltipOption from '../../../../core/common/tooltipOption'
 import PredefinedDateRanges from '../../../../core/common/datePicker'
 import { useStudents } from '../../../../core/hooks/useStudents'
+import { useCurrentStudent } from '../../../../core/hooks/useCurrentStudent'
+import { selectUser } from '../../../../core/data/redux/authSlice'
+import { getDashboardForRole } from '../../../../core/utils/roleUtils'
 
 const StudentGrid = () => {
-    const routes = all_routes
-    const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
+  const routes = all_routes
+  const dropdownMenuRef = useRef<HTMLDivElement | null>(null)
+  const user = useSelector(selectUser)
+  const role = (user?.role || '').toLowerCase()
+  const isStudentRole = role === 'student'
 
-    // Fetch students from API
-    const { students, loading, error } = useStudents();
+  const { students, loading, error } = useStudents()
+  const { student: currentStudent, loading: currentStudentLoading, error: currentStudentError } = useCurrentStudent()
 
-    // Transform data to match the expected structure; keep full student for detail page state
-    const transformedData = students.map((student: any) => ({
+  const studentsToShow = isStudentRole ? (currentStudent ? [currentStudent] : []) : students
+  const gridLoading = isStudentRole ? currentStudentLoading : loading
+  const gridError = isStudentRole ? currentStudentError : error
+  const backTo = isStudentRole ? getDashboardForRole(role) : routes.studentList
+
+  const transformStudent = (student: any) => ({
         id: student.id,
         admission_number: student.admission_number,
         first_name: student.first_name,
@@ -31,11 +42,13 @@ const StudentGrid = () => {
         class_name: student.class_name,
         section_name: student.section_name,
         class_section: `${student.class_name || 'N/A'}, ${student.section_name || 'N/A'}`,
-        status: student.is_active ? 'Active' : 'Inactive',
-        student, // full student for navigation state to detail page
-    }));
+    status: student.is_active ? 'Active' : 'Inactive',
+    student
+  })
 
-    const handleApplyClick = () => {
+  const transformedData = studentsToShow.map((student: any) => transformStudent(student))
+
+  const handleApplyClick = () => {
       if (dropdownMenuRef.current) {
         dropdownMenuRef.current.classList.remove('show');
       }
@@ -48,6 +61,13 @@ const StudentGrid = () => {
       {/* Page Header */}
       <div className="d-md-flex d-block align-items-center justify-content-between mb-3">
         <div className="my-auto mb-2">
+          <Link
+            to={backTo}
+            className="btn btn-outline-secondary mb-2 d-inline-flex align-items-center"
+          >
+            <i className="ti ti-arrow-left me-1" />
+            Back
+          </Link>
           <h3 className="page-title mb-1">Students</h3>
           <nav>
             <ol className="breadcrumb mb-0">
@@ -225,18 +245,18 @@ const StudentGrid = () => {
       </div>
       {/* /Filter */}
       <div className="row">
-        {loading ? (
+        {gridLoading ? (
           <div className="col-12 text-center">
             <div className="d-flex align-items-center justify-content-center">
               <i className="ti ti-loader ti-spin fs-24 me-2"></i>
               <span>Loading students...</span>
             </div>
           </div>
-        ) : error ? (
+        ) : gridError ? (
           <div className="col-12 text-center">
             <div className="alert alert-danger">
               <i className="ti ti-alert-circle me-2"></i>
-              Error: {error}
+              Error: {gridError}
             </div>
           </div>
         ) : transformedData.length === 0 ? (

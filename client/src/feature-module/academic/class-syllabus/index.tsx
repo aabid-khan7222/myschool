@@ -516,6 +516,7 @@ const ClassSyllabus = () => {
                           className="select"
                           options={editClassOptions}
                           value={editClass || selectedSyllabus?.class}
+                          defaultValue={editClassOptions.find((o: any) => o.value === (editClass || selectedSyllabus?.class) || o.label === (editClass || selectedSyllabus?.class)) ?? editClassOptions[0]}
                           onChange={(v) => setEditClass(v || "")}
                           key={`edit-class-${selectedSyllabus?.id ?? "new"}`}
                         />
@@ -526,6 +527,7 @@ const ClassSyllabus = () => {
                           className="select"
                           options={editSectionOptions}
                           value={editSection || selectedSyllabus?.section}
+                          defaultValue={editSectionOptions.find((o: any) => o.value === (editSection || selectedSyllabus?.section) || o.label === (editSection || selectedSyllabus?.section)) ?? editSectionOptions[0]}
                           onChange={(v) => setEditSection(v || "")}
                           key={`edit-section-${selectedSyllabus?.id ?? "new"}`}
                         />
@@ -548,6 +550,7 @@ const ClassSyllabus = () => {
                           className="select"
                           options={editStatusOptions}
                           value={editStatus || selectedSyllabus?.status}
+                          defaultValue={editStatusOptions.find((o: any) => o.value === (editStatus || selectedSyllabus?.status) || o.label === (editStatus || selectedSyllabus?.status)) ?? editStatusOptions.find((o: any) => o.value === "Active") ?? editStatusOptions[0]}
                           onChange={(v) => setEditStatus(v || "")}
                           key={`edit-status-${selectedSyllabus?.id ?? "new"}`}
                         />

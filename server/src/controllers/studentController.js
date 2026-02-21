@@ -585,6 +585,111 @@ const getStudentById = async (req, res) => {
   }
 };
 
+// Get current logged-in student (by user_id from JWT)
+const getCurrentStudent = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        status: 'ERROR',
+        message: 'Not authenticated'
+      });
+    }
+
+    const baseSelect = `
+      s.id, s.admission_number, s.roll_number, s.first_name, s.last_name,
+      s.gender, s.date_of_birth, s.place_of_birth, s.blood_group_id, s.cast_id, s.mother_tongue_id,
+      s.nationality, s.phone, s.email, s.address, s.user_id, s.academic_year_id,
+      s.class_id, s.section_id, s.house_id, s.admission_date, s.previous_school,
+      s.photo_url, s.is_transport_required, s.route_id, s.pickup_point_id,
+      s.is_hostel_required, s.hostel_id, s.hostel_room_id, s.parent_id, s.guardian_id, s.is_active, s.created_at,
+      s.sibiling_1, s.sibiling_2, s.sibiling_1_class, s.sibiling_2_class,
+      c.class_name, sec.section_name,
+      bg.blood_group as blood_group_name,
+      cast_t.cast_name,
+      mt.language_name as mother_tongue_name,
+      p.father_name, p.father_email, p.father_phone, p.father_occupation,
+      p.mother_name, p.mother_email, p.mother_phone, p.mother_occupation,
+      g.first_name as guardian_first_name, g.last_name as guardian_last_name,
+      g.phone as guardian_phone, g.email as guardian_email, g.occupation as guardian_occupation, g.relation as guardian_relation,
+      addr.current_address, addr.permanent_address`;
+    const fromAndJoins = `
+      FROM students s
+      LEFT JOIN classes c ON s.class_id = c.id
+      LEFT JOIN sections sec ON s.section_id = sec.id
+      LEFT JOIN blood_groups bg ON s.blood_group_id = bg.id
+      LEFT JOIN casts cast_t ON s.cast_id = cast_t.id
+      LEFT JOIN mother_tongues mt ON s.mother_tongue_id = mt.id
+      LEFT JOIN parents p ON s.parent_id = p.id
+      LEFT JOIN guardians g ON s.guardian_id = g.id
+      LEFT JOIN addresses addr ON s.user_id = addr.user_id`;
+    const whereClause = ` WHERE s.user_id = $1 AND s.is_active = true LIMIT 1`;
+
+    let result;
+    try {
+      result = await query(`
+        SELECT ${baseSelect},
+          s.religion_id,
+          r.religion_name as religion_name
+        ${fromAndJoins}
+        LEFT JOIN religions r ON s.religion_id = r.id
+        ${whereClause}
+      `, [userId]);
+    } catch (e) {
+      if (e.message && (e.message.includes('religion_id') || e.message.includes('religions') || e.message.includes('reigion'))) {
+        result = await query(`
+          SELECT ${baseSelect},
+            s.reigion_id as religion_id,
+            re.reigion_name as religion_name
+          ${fromAndJoins}
+          LEFT JOIN reigions re ON s.reigion_id = re.id
+          ${whereClause}
+        `, [userId]);
+      } else {
+        throw e;
+      }
+    }
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        status: 'ERROR',
+        message: 'Student not found for this user'
+      });
+    }
+
+    const studentData = result.rows[0];
+    const studentId = studentData.id;
+
+    try {
+      const extra = await query(
+        'SELECT bank_name, branch, ifsc, known_allergies, medications FROM students WHERE id = $1',
+        [studentId]
+      );
+      if (extra.rows.length > 0) {
+        Object.assign(studentData, extra.rows[0]);
+      }
+    } catch (e) {
+      studentData.bank_name = studentData.bank_name ?? null;
+      studentData.branch = studentData.branch ?? null;
+      studentData.ifsc = studentData.ifsc ?? null;
+      studentData.known_allergies = studentData.known_allergies ?? null;
+      studentData.medications = studentData.medications ?? null;
+    }
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      message: 'Current student fetched successfully',
+      data: studentData
+    });
+  } catch (error) {
+    console.error('Error fetching current student:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Failed to fetch current student'
+    });
+  }
+};
+
 // Get students by class
 const getStudentsByClass = async (req, res) => {
   try {
@@ -673,5 +778,6 @@ module.exports = {
   updateStudent,
   getAllStudents,
   getStudentById,
+  getCurrentStudent,
   getStudentsByClass
 };

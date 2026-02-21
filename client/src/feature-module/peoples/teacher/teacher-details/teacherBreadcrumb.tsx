@@ -1,5 +1,8 @@
 import { Link } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import { all_routes } from '../../../router/all_routes'
+import { selectUser } from '../../../../core/data/redux/authSlice'
+import { getDashboardForRole } from '../../../../core/utils/roleUtils'
 
 interface TeacherBreadcrumbProps {
   teacherId?: number
@@ -8,6 +11,10 @@ interface TeacherBreadcrumbProps {
 
 const TeacherBreadcrumb = ({ teacherId, teacher }: TeacherBreadcrumbProps) => {
   const routes = all_routes
+  const user = useSelector(selectUser)
+  const role = (user?.role || '').toLowerCase()
+  const isTeacherRole = role === 'teacher'
+  const backTo = isTeacherRole ? getDashboardForRole(role) : routes.teacherList
   const editState = (teacherId != null || teacher?.id != null)
     ? { teacherId: teacherId ?? teacher?.id, teacher }
     : undefined
@@ -16,6 +23,13 @@ const TeacherBreadcrumb = ({ teacherId, teacher }: TeacherBreadcrumbProps) => {
     <div className="col-md-12">
       <div className="d-md-flex d-block align-items-center justify-content-between mb-3">
         <div className="my-auto mb-2">
+          <Link
+            to={backTo}
+            className="btn btn-outline-secondary mb-2 d-inline-flex align-items-center"
+          >
+            <i className="ti ti-arrow-left me-1" />
+            Back
+          </Link>
           <h3 className="page-title mb-1">Teacher Details</h3>
           <nav>
             <ol className="breadcrumb mb-0">

@@ -1,4 +1,5 @@
 import  { useRef, useState } from "react";
+import { useSelector } from "react-redux";
 import ImageWithBasePath from "../../../../core/common/imageWithBasePath";
 import PredefinedDateRanges from "../../../../core/common/datePicker";
 import { Link } from "react-router-dom";
@@ -16,6 +17,7 @@ import type { TableData } from "../../../../core/data/interface";
 import Table from "../../../../core/common/dataTable/index";
 import TooltipOption from "../../../../core/common/tooltipOption";
 import { useGuardians } from "../../../../core/hooks/useGuardians";
+import { selectUser } from "../../../../core/data/redux/authSlice";
 
 const GuardianList = () => {
   const [show, setShow] = useState(false);
@@ -24,6 +26,8 @@ const GuardianList = () => {
   const routes = all_routes;
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   const { guardians, loading, error, refetch } = useGuardians();
+  const user = useSelector(selectUser);
+  const isGuardian = (user?.role || "").toLowerCase() === "guardian";
 
   // useGuardians already returns guardian records transformed into the
   // exact shape expected by this table and the View Details modal.
@@ -54,7 +58,7 @@ const GuardianList = () => {
           {text}
         </Link>
       ),
-      sorter: (a: TableData, b: TableData) => a.id.length - b.id.length,
+      sorter: (a: TableData, b: TableData) => (Number(a.id) || 0) - (Number(b.id) || 0),
     },
     {
       title: "Guardian Name",
@@ -189,11 +193,18 @@ const GuardianList = () => {
           {/* Page Header */}
           <div className="d-md-flex d-block align-items-center justify-content-between mb-3">
             <div className="my-auto mb-2">
+              <Link
+                to={isGuardian ? routes.guardianDashboard : routes.guardiansGrid}
+                className="btn btn-outline-secondary mb-2 d-inline-flex align-items-center"
+              >
+                <i className="ti ti-arrow-left me-1" />
+                Back
+              </Link>
               <h3 className="page-title mb-1">Guardian</h3>
               <nav>
                 <ol className="breadcrumb mb-0">
                   <li className="breadcrumb-item">
-                    <Link to={routes.adminDashboard}>Dashboard</Link>
+                    <Link to={isGuardian ? routes.guardianDashboard : routes.adminDashboard}>Dashboard</Link>
                   </li>
                   <li className="breadcrumb-item">Peoples</li>
                   <li className="breadcrumb-item active" aria-current="page">
@@ -205,17 +216,19 @@ const GuardianList = () => {
             <div className="d-flex my-xl-auto right-content align-items-center flex-wrap">
             <TooltipOption />
 
-              <div className="mb-2">
-                <Link
-                  to="#"
-                  className="btn btn-primary d-flex align-items-center"
-                  data-bs-toggle="modal"
-                  data-bs-target="#add_guardian"
-                >
-                  <i className="ti ti-square-rounded-plus me-2" />
-                  Add Guardian
-                </Link>
-              </div>
+              {!isGuardian && (
+                <div className="mb-2">
+                  <Link
+                    to="#"
+                    className="btn btn-primary d-flex align-items-center"
+                    data-bs-toggle="modal"
+                    data-bs-target="#add_guardian"
+                  >
+                    <i className="ti ti-square-rounded-plus me-2" />
+                    Add Guardian
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
           {/* /Page Header */}

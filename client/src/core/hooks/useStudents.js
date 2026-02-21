@@ -10,10 +10,8 @@ export const useStudents = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching students...');
       const response = await apiService.getStudents();
-      console.log('Students response:', response);
-      setStudents(response.data);
+      setStudents(response.data || []);
     } catch (err) {
       console.error('Error fetching students:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch students');

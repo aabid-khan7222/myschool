@@ -553,6 +553,14 @@ const AddStudent = () => {
           {/* Page Header */}
           <div className="d-md-flex d-block align-items-center justify-content-between mb-3">
             <div className="my-auto mb-2">
+              <Link
+                to={id ? `${routes.studentDetail}` : routes.studentList}
+                state={id ? { studentId: id } : undefined}
+                className="btn btn-outline-secondary mb-2 d-inline-flex align-items-center"
+              >
+                <i className="ti ti-arrow-left me-1" />
+                Back
+              </Link>
               <h3 className="mb-1">{isEdit ? "Edit" : "Add"} Student</h3>
               <nav>
                 <ol className="breadcrumb mb-0">

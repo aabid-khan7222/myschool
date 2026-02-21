@@ -1,5 +1,6 @@
 import  { useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import { all_routes } from '../../../router/all_routes'
 import ImageWithBasePath from '../../../../core/common/imageWithBasePath'
 import PredefinedDateRanges from '../../../../core/common/datePicker'
@@ -8,12 +9,29 @@ import TeacherModal from '../teacherModal'
 import CommonSelect from '../../../../core/common/commonSelect'
 import TooltipOption from '../../../../core/common/tooltipOption'
 import { useTeachers } from '../../../../core/hooks/useTeachers.js'
+import { useCurrentTeacher } from '../../../../core/hooks/useCurrentTeacher.js'
+import { selectUser } from '../../../../core/data/redux/authSlice'
+import { getDashboardForRole } from '../../../../core/utils/roleUtils'
 
 const TeacherGrid = () => {
     const routes = all_routes
     const location = useLocation();
     const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
+    const user = useSelector(selectUser);
+    const role = (user?.role || '').toLowerCase();
+    const isTeacherRole = role === 'teacher';
+
     const { teachers, loading, error } = useTeachers();
+    const { teacher: currentTeacher, loading: currentTeacherLoading, error: currentTeacherError } = useCurrentTeacher();
+
+    // For Teacher role: show only logged-in teacher's data; otherwise show all teachers
+    const teachersToShow = isTeacherRole
+      ? (currentTeacher ? [currentTeacher] : [])
+      : teachers;
+
+    const listLoading = isTeacherRole ? currentTeacherLoading : loading;
+    const listError = isTeacherRole ? currentTeacherError : error;
+    const backTo = isTeacherRole ? getDashboardForRole(role) : routes.teacherList;
 
     const handleApplyClick = () => {
       if (dropdownMenuRef.current) {
@@ -22,7 +40,7 @@ const TeacherGrid = () => {
     };
 
     // Show loading state
-    if (loading) {
+    if (listLoading) {
       return (
         <div className="page-wrapper">
           <div className="content content-two">
@@ -37,13 +55,13 @@ const TeacherGrid = () => {
     }
 
     // Show error state
-    if (error) {
+    if (listError) {
       return (
         <div className="page-wrapper">
           <div className="content content-two">
             <div className="alert alert-danger m-3" role="alert">
               <h4 className="alert-heading">Error Loading Teachers</h4>
-              <p>{error}</p>
+              <p>{listError}</p>
               <hr />
               <p className="mb-0">Please try refreshing the page or contact support if the problem persists.</p>
             </div>
@@ -60,6 +78,13 @@ const TeacherGrid = () => {
       {/* Page Header */}
       <div className="d-md-flex d-block align-items-center justify-content-between mb-3">
         <div className="my-auto mb-2">
+          <Link
+            to={backTo}
+            className="btn btn-outline-secondary mb-2 d-inline-flex align-items-center"
+          >
+            <i className="ti ti-arrow-left me-1" />
+            Back
+          </Link>
           <h3 className="page-title mb-1">Teachers </h3>
           <nav>
             <ol className="breadcrumb mb-0">
@@ -76,15 +101,17 @@ const TeacherGrid = () => {
         <div className="d-flex my-xl-auto right-content align-items-center flex-wrap">
         <TooltipOption />
 
-          <div className="mb-2">
-            <Link
-              to={routes.addTeacher}
-              className="btn btn-primary d-flex align-items-center"
-            >
-              <i className="ti ti-square-rounded-plus me-2" />
-              Add Teacher
-            </Link>
-          </div>
+          {!isTeacherRole && (
+            <div className="mb-2">
+              <Link
+                to={routes.addTeacher}
+                className="btn btn-primary d-flex align-items-center"
+              >
+                <i className="ti ti-square-rounded-plus me-2" />
+                Add Teacher
+              </Link>
+            </div>
+          )}
         </div>
       </div>
       {/* /Page Header */}
@@ -206,7 +233,7 @@ const TeacherGrid = () => {
       </div>
       <div className="row">
         {/* Teacher Grid */}
-        {teachers.map((teacher: any, index: number) => (
+        {teachersToShow.map((teacher: any, index: number) => (
           <div key={teacher.id} className="col-xxl-3 col-xl-4 col-md-6 d-flex">
             <div className="card flex-fill">
               <div className="card-header d-flex align-items-center justify-content-between">

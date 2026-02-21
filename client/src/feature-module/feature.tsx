@@ -2,6 +2,7 @@ import { useSelector } from "react-redux";
 import { Outlet, useLocation } from "react-router";
 import Header from "../core/common/header";
 import Sidebar from "../core/common/sidebar";
+import DashboardGuard from "../core/components/DashboardGuard";
 import ThemeSettings from "../core/common/theme-settings";
 import { useEffect, useState } from "react";
 import { all_routes } from "./router/all_routes";
@@ -105,7 +106,8 @@ const Feature = () => {
       location.pathname === routes.adminDashboard ||
       location.pathname === routes.teacherDashboard ||
       location.pathname === routes.studentDashboard ||
-      location.pathname === routes.parentDashboard
+      location.pathname === routes.parentDashboard ||
+      location.pathname === routes.guardianDashboard
     ) {
       // Show the loader when navigating to a new route
       setShowLoader(true);
@@ -202,7 +204,9 @@ const Feature = () => {
           >
             <Header />
             <Sidebar />
-            <Outlet />
+            <DashboardGuard>
+              <Outlet />
+            </DashboardGuard>
             {!location.pathname.includes("layout") && <ThemeSettings />}
           </div>
         </>
@@ -214,7 +218,9 @@ const Feature = () => {
           >
             <Header />
             <Sidebar />
-            <Outlet />
+            <DashboardGuard>
+              <Outlet />
+            </DashboardGuard>
             {!location.pathname.includes("layout") && <ThemeSettings />}
           </div>
         </>

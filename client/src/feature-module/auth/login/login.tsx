@@ -5,6 +5,7 @@ import { all_routes } from "../../router/all_routes";
 import { useDispatch, useSelector } from "react-redux";
 import { setAuth } from "../../../core/data/redux/authSlice";
 import { apiService } from "../../../core/services/apiService";
+import { getDashboardForRole } from "../../../core/utils/roleUtils";
 
 const Login = () => {
   const routes = all_routes;
@@ -27,7 +28,15 @@ const Login = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(routes.adminDashboard);
+      try {
+        const u = localStorage.getItem("preskool_user");
+        const user = u ? JSON.parse(u) : null;
+        const role = user?.role || "Admin";
+        const dashboard = getDashboardForRole(role);
+        navigate(dashboard);
+      } catch {
+        navigate(routes.adminDashboard);
+      }
     }
   }, [isAuthenticated, navigate, routes.adminDashboard]);
 
@@ -48,7 +57,9 @@ const Login = () => {
             user: res.data.user,
           })
         );
-        navigate(routes.adminDashboard);
+        const role = res.data.user?.role || "Admin";
+        const dashboard = getDashboardForRole(role);
+        navigate(dashboard);
       } else {
         setError(res.message || "Login failed");
       }

@@ -11,13 +11,21 @@ export const useCurrentUser = () => {
       setLoading(true);
       setError(null);
 
-      // Get user ID from localStorage (common pattern for auth)
-      // Try different possible keys
-      const userId = 
-        localStorage.getItem('user_id') ||
-        localStorage.getItem('userId') ||
-        localStorage.getItem('current_user_id') ||
-        localStorage.getItem('loggedInUserId');
+      // Get user ID from preskool_user (set by authSlice on login)
+      let userId = null;
+      try {
+        const u = localStorage.getItem('preskool_user');
+        if (u) {
+          const user = JSON.parse(u);
+          userId = user?.id?.toString() || user?.user_id?.toString();
+        }
+      } catch (_) {}
+      if (!userId) {
+        userId = localStorage.getItem('user_id') ||
+          localStorage.getItem('userId') ||
+          localStorage.getItem('current_user_id') ||
+          localStorage.getItem('loggedInUserId');
+      }
 
       if (!userId) {
         console.warn('No user ID found in localStorage');

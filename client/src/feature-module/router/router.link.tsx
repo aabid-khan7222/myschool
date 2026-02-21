@@ -24,6 +24,7 @@ import EmailVerification2 from "../auth/emailVerification/emailVerification-2";
 import EmailVerification3 from "../auth/emailVerification/emailVerification-3";
 import AdminDashboard from "../mainMenu/adminDashboard";
 import ParentDashboard from "../mainMenu/parentDashboard";
+import GuardianDashboard from "../mainMenu/guardianDashboard";
 import TeacherDashboard from "../mainMenu/teacherDashboard";
 import StudentDasboard from "../mainMenu/studentDashboard";
 import AudioCall from "../application/call/audioCall";
@@ -270,6 +271,11 @@ export const publicRoutes = [
   {
     path: routes.parentDashboard,
     element: <ParentDashboard />,
+    route: Route,
+  },
+  {
+    path: routes.guardianDashboard,
+    element: <GuardianDashboard />,
     route: Route,
   },
   {

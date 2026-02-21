@@ -1,7 +1,8 @@
 const express = require('express');
 const { 
   getAllStudents, 
-  getStudentById, 
+  getStudentById,
+  getCurrentStudent,
   getStudentsByClass, 
   createStudent,
   updateStudent
@@ -21,6 +22,9 @@ if (process.env.NODE_ENV === 'development') {
 
 // Get all students
 router.get('/', getAllStudents);
+
+// Get current logged-in student (must be before /:id)
+router.get('/me', getCurrentStudent);
 
 // Get students by class (specific route before parameterized route)
 router.get('/class/:classId', getStudentsByClass);

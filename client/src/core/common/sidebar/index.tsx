@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
-
-import { SidebarData } from "../../data/json/sidebarData";
+import { useSelector } from "react-redux";
+import { selectUser } from "../../data/redux/authSlice";
+import { getSidebarDataForRole } from "../../data/json/sidebarDataUtils";
 import ImageWithBasePath from "../imageWithBasePath";
 import "../../../style/icon/tabler-icons/webfont/tabler-icons.css";
 import { setExpandMenu } from "../../data/redux/sidebarSlice";
@@ -18,6 +19,9 @@ import "../../../../node_modules/react-perfect-scrollbar/dist/css/styles.css";
 
 const Sidebar = () => {
   const Location = useLocation();
+  const user = useSelector(selectUser);
+  const role = user?.role || "Admin";
+  const SidebarData = useMemo(() => getSidebarDataForRole(role), [role]);
 
   const [subOpen, setSubopen] = useState<any>("");
   const [subsidebar, setSubsidebar] = useState("");

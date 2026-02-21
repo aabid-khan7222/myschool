@@ -252,6 +252,10 @@ class ApiService {
     return this.makeRequest(`/students/${id}`);
   }
 
+  async getCurrentStudent() {
+    return this.makeRequest('/students/me');
+  }
+
   async getStudentsByClass(classId) {
     return this.makeRequest(`/students/class/${classId}`);
   }
@@ -306,6 +310,10 @@ class ApiService {
     return this.makeRequest('/parents');
   }
 
+  async getMyParents() {
+    return this.makeRequest('/parents/me');
+  }
+
   async getParentById(id) {
     return this.makeRequest(`/parents/${id}`);
   }
@@ -333,6 +341,10 @@ class ApiService {
     return this.makeRequest('/guardians');
   }
 
+  async getCurrentGuardian() {
+    return this.makeRequest('/guardians/me');
+  }
+
   async getGuardianById(id) {
     return this.makeRequest(`/guardians/${id}`);
   }
@@ -344,6 +356,10 @@ class ApiService {
   // Teachers
   async getTeachers() {
     return this.makeRequest('/teachers');
+  }
+
+  async getCurrentTeacher() {
+    return this.makeRequest('/teachers/me');
   }
 
   async getTeacherById(id) {
@@ -411,6 +427,10 @@ class ApiService {
     return this.makeRequest('/users');
   }
 
+  async getUsersByRole(roleId) {
+    return this.makeRequest(`/users?role_id=${roleId}`);
+  }
+
   async getUserById(id) {
     return this.makeRequest(`/users/${id}`);
   }
@@ -434,6 +454,27 @@ class ApiService {
     if (params.limit != null) searchParams.set('limit', params.limit);
     const qs = searchParams.toString();
     return this.makeRequest(`/leave-applications${qs ? `?${qs}` : ''}`);
+  }
+
+  async getMyLeaveApplications(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.limit != null) searchParams.set('limit', params.limit);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/leave-applications/me${qs ? `?${qs}` : ''}`);
+  }
+
+  async getParentChildrenLeaves(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.limit != null) searchParams.set('limit', params.limit);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/leave-applications/parent-children${qs ? `?${qs}` : ''}`);
+  }
+
+  async getGuardianWardLeaves(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.limit != null) searchParams.set('limit', params.limit);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/leave-applications/guardian-wards${qs ? `?${qs}` : ''}`);
   }
 
   // Transport

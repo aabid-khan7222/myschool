@@ -1,4 +1,5 @@
 import  { useRef, useState } from "react";
+import { useSelector } from "react-redux";
 import ImageWithBasePath from "../../../../core/common/imageWithBasePath";
 import PredefinedDateRanges from "../../../../core/common/datePicker";
 import { Link } from "react-router-dom";
@@ -12,6 +13,7 @@ import { Modal } from "react-bootstrap";
 import GuardianModal from "../guardianModal";
 import TooltipOption from "../../../../core/common/tooltipOption";
 import { useGuardians } from "../../../../core/hooks/useGuardians";
+import { selectUser } from "../../../../core/data/redux/authSlice";
 
 const GuardianGrid = () => {
   const [show, setShow] = useState(false);
@@ -20,6 +22,8 @@ const GuardianGrid = () => {
   const routes = all_routes;
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   const { guardians, loading, error, refetch } = useGuardians();
+  const user = useSelector(selectUser);
+  const isGuardian = (user?.role || "").toLowerCase() === "guardian";
 
   // useGuardians already returns transformed guardian objects in the exact
   // shape expected by this grid and the View Details modal.
@@ -49,11 +53,18 @@ const GuardianGrid = () => {
           {/* Page Header */}
           <div className="d-md-flex d-block align-items-center justify-content-between mb-3">
             <div className="my-auto mb-2">
+              <Link
+                to={isGuardian ? routes.guardianDashboard : routes.guardiansList}
+                className="btn btn-outline-secondary mb-2 d-inline-flex align-items-center"
+              >
+                <i className="ti ti-arrow-left me-1" />
+                Back
+              </Link>
               <h3 className="page-title mb-1">Guardian</h3>
               <nav>
                 <ol className="breadcrumb mb-0">
                   <li className="breadcrumb-item">
-                    <Link to={routes.adminDashboard}>Dashboard</Link>
+                    <Link to={isGuardian ? routes.guardianDashboard : routes.adminDashboard}>Dashboard</Link>
                   </li>
                   <li className="breadcrumb-item">Peoples</li>
                   <li className="breadcrumb-item active" aria-current="page">
@@ -65,17 +76,19 @@ const GuardianGrid = () => {
             <div className="d-flex my-xl-auto right-content align-items-center flex-wrap">
               <TooltipOption />
 
-              <div className="mb-2">
-                <Link
-                  to="#"
-                  className="btn btn-primary d-flex align-items-center"
-                  data-bs-toggle="modal"
-                  data-bs-target="#add_guardian"
-                >
-                  <i className="ti ti-square-rounded-plus me-2" />
-                  Add Guardian
-                </Link>
-              </div>
+              {!isGuardian && (
+                <div className="mb-2">
+                  <Link
+                    to="#"
+                    className="btn btn-primary d-flex align-items-center"
+                    data-bs-toggle="modal"
+                    data-bs-target="#add_guardian"
+                  >
+                    <i className="ti ti-square-rounded-plus me-2" />
+                    Add Guardian
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
           {/* /Page Header */}

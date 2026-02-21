@@ -1,7 +1,10 @@
 import  { useRef, useState } from "react";
+import { useSelector } from "react-redux";
 import ParentModal from "../parentModal";
 import { all_routes } from "../../../router/all_routes";
 import { Link } from "react-router-dom";
+import { selectUser } from "../../../../core/data/redux/authSlice";
+import { getDashboardForRole } from "../../../../core/utils/roleUtils";
 import { Modal } from "react-bootstrap";
 import ImageWithBasePath from "../../../../core/common/imageWithBasePath";
 import PredefinedDateRanges from "../../../../core/common/datePicker";
@@ -23,7 +26,11 @@ const ParentList = () => {
   const [parentToEdit, setParentToEdit] = useState<any>(null);
   const routes = all_routes;
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
-  const { parents, loading, error, refetch } = useParents();
+  const user = useSelector(selectUser);
+  const role = user?.role || "Admin";
+  const isParentRole = (role || "").toLowerCase() === "parent";
+  const { parents, loading, error, refetch } = useParents({ forCurrentUser: isParentRole });
+  const dashboardRoute = getDashboardForRole(role);
 
   // useParents already returns parent records transformed into the
   // exact shape expected by this table and the View Details modal.
@@ -151,29 +158,33 @@ const ParentList = () => {
                     View Parent
                   </Link>
                 </li>
-                <li>
-                  <Link
-                    className="dropdown-item rounded-1"
-                    to="#"
-                    data-bs-toggle="modal"
-                    data-bs-target="#edit_parent"
-                    onClick={() => setParentToEdit(record)}
-                  >
-                    <i className="ti ti-edit-circle me-2" />
-                    Edit
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    className="dropdown-item rounded-1"
-                    to="#"
-                    data-bs-toggle="modal"
-                    data-bs-target="#delete-modal"
-                  >
-                    <i className="ti ti-trash-x me-2" />
-                    Delete
-                  </Link>
-                </li>
+                {!isParentRole && (
+                  <>
+                    <li>
+                      <Link
+                        className="dropdown-item rounded-1"
+                        to="#"
+                        data-bs-toggle="modal"
+                        data-bs-target="#edit_parent"
+                        onClick={() => setParentToEdit(record)}
+                      >
+                        <i className="ti ti-edit-circle me-2" />
+                        Edit
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        className="dropdown-item rounded-1"
+                        to="#"
+                        data-bs-toggle="modal"
+                        data-bs-target="#delete-modal"
+                      >
+                        <i className="ti ti-trash-x me-2" />
+                        Delete
+                      </Link>
+                    </li>
+                  </>
+                )}
               </ul>
             </div>
           </div>
@@ -189,11 +200,18 @@ const ParentList = () => {
           {/* Page Header */}
           <div className="d-md-flex d-block align-items-center justify-content-between mb-3">
             <div className="my-auto mb-2">
+              <Link
+                to={dashboardRoute}
+                className="btn btn-outline-secondary mb-2 d-inline-flex align-items-center"
+              >
+                <i className="ti ti-arrow-left me-1" />
+                Back
+              </Link>
               <h3 className="page-title mb-1">Parents</h3>
               <nav>
                 <ol className="breadcrumb mb-0">
                   <li className="breadcrumb-item">
-                    <Link to={routes.adminDashboard}>Dashboard</Link>
+                    <Link to={dashboardRoute}>Dashboard</Link>
                   </li>
                   <li className="breadcrumb-item">
                     <Link to="#">People</Link>
@@ -207,17 +225,19 @@ const ParentList = () => {
             <div className="d-flex my-xl-auto right-content align-items-center flex-wrap">
             <TooltipOption />
 
-              <div className="mb-2">
-                <Link
-                  to="#"
-                  data-bs-toggle="modal"
-                  data-bs-target="#add_parent"
-                  className="btn btn-primary"
-                >
-                  <i className="ti ti-square-rounded-plus me-2" />
-                  Add Parent
-                </Link>
-              </div>
+              {!isParentRole && (
+                <div className="mb-2">
+                  <Link
+                    to="#"
+                    data-bs-toggle="modal"
+                    data-bs-target="#add_parent"
+                    className="btn btn-primary"
+                  >
+                    <i className="ti ti-square-rounded-plus me-2" />
+                    Add Parent
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
           {/* /Page Header */}

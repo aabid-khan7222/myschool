@@ -1,5 +1,6 @@
 const express = require('express');
-const { getAllParents, getParentById, getParentByStudentId, createParent, updateParent } = require('../controllers/parentController');
+const { authenticate } = require('../middleware/authMiddleware');
+const { getAllParents, getMyParents, getParentById, getParentByStudentId, createParent, updateParent } = require('../controllers/parentController');
 const { validate } = require('../utils/validate');
 const { createParentSchema, updateParentSchema } = require('../validations/parentValidation');
 
@@ -7,6 +8,9 @@ const router = express.Router();
 
 // Get all parents
 router.get('/', getAllParents);
+
+// Get current logged-in parent's data (must be before /:id)
+router.get('/me', authenticate, getMyParents);
 
 // Create new parent
 router.post('/', validate(createParentSchema), createParent);
