@@ -71,6 +71,77 @@ const getMyLeaveApplications = async (req, res) => {
   }
 };
 
+// Get leave applications for parent's children (students linked via parents table).
+// Used on Parent Dashboard - parent matched by user email/phone against father/mother email/phone.
+const getParentChildrenLeaves = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        status: 'ERROR',
+        message: 'Not authenticated'
+      });
+    }
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+
+    const userResult = await query(
+      'SELECT email, phone FROM users WHERE id = $1 AND is_active = true',
+      [userId]
+    );
+    if (userResult.rows.length === 0) {
+      return res.status(200).json({ status: 'SUCCESS', message: 'Leave applications fetched successfully', data: [], count: 0 });
+    }
+    const user = userResult.rows[0];
+    const userEmail = (user.email || '').toString().trim();
+    const userPhone = (user.phone || '').toString().trim();
+
+    const parentResult = await query(
+      `SELECT student_id FROM parents
+       WHERE (LOWER(TRIM(father_email)) = LOWER($1) AND $1 != '')
+          OR (LOWER(TRIM(mother_email)) = LOWER($1) AND $1 != '')
+          OR (TRIM(father_phone) = $2 AND $2 != '')
+          OR (TRIM(mother_phone) = $2 AND $2 != '')`,
+      [userEmail, userPhone]
+    );
+    const studentIds = [...new Set(parentResult.rows.map(r => r.student_id).filter(Boolean))];
+    if (studentIds.length === 0) {
+      return res.status(200).json({ status: 'SUCCESS', message: 'Leave applications fetched successfully', data: [], count: 0 });
+    }
+
+    const placeholders = studentIds.map((_, i) => `$${i + 2}`).join(', ');
+    const result = await query(
+      `SELECT
+        la.*,
+        lt.leave_type AS leave_type_name,
+        st.first_name AS applicant_first_name,
+        st.last_name AS applicant_last_name,
+        st.photo_url AS applicant_photo_url,
+        st.id AS student_id,
+        'Student' AS applicant_role
+       FROM leave_applications la
+       INNER JOIN students st ON la.student_id = st.id
+       LEFT JOIN leave_types lt ON la.leave_type_id = lt.id
+       WHERE la.student_id IN (${placeholders})
+       ORDER BY la.start_date DESC NULLS LAST
+       LIMIT $${studentIds.length + 1}`,
+      [...studentIds, limit]
+    );
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      message: 'Leave applications fetched successfully',
+      data: result.rows,
+      count: result.rows.length,
+    });
+  } catch (error) {
+    console.error('Error fetching parent children leaves:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Failed to fetch leave applications',
+    });
+  }
+};
+
 // Get leave applications for guardian's wards (students linked to this guardian).
 // Used on Guardian Dashboard - guardian matched by user email/phone.
 const getGuardianWardLeaves = async (req, res) => {
