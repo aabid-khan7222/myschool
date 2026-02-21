@@ -8,6 +8,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import Select from "react-select";
 import { Link } from "react-router-dom";
 import { all_routes } from "../../router/all_routes";
+import { useCalendarEvents } from "../../../core/hooks/useCalendarEvents";
 
 const Calendar = () => {
   const [, setcalenderevent] = useState(""),
@@ -15,30 +16,23 @@ const Calendar = () => {
     [, setaddneweventobj] = useState(null),
     [, setisnewevent] = useState(false),
     [, setevent_title] = useState(""),
-    [weekendsVisible] = useState(true),
-    defaultEvents = [
-      {
-        title: "Event Name 4",
-        start: Date.now() + 148000000,
-        className: "bg-purple",
-      },
-      {
-        title: "Test Event 1",
-        start: Date.now(),
-        end: Date.now(),
-        className: "bg-success",
-      },
-      {
-        title: "Test Event 2",
-        start: Date.now() + 168000000,
-        className: "bg-info",
-      },
-      {
-        title: "Test Event 3",
-        start: Date.now() + 338000000,
-        className: "bg-primary",
-      },
-    ];
+    [weekendsVisible] = useState(true);
+  
+  const { events, loading, error } = useCalendarEvents();
+  
+  // Transform API events to FullCalendar format
+  const calendarEvents = events.map((event: any) => ({
+    id: event.id.toString(),
+    title: event.title,
+    start: event.start_date,
+    end: event.end_date || undefined,
+    className: event.event_color || 'bg-primary',
+    allDay: event.is_all_day || false,
+    extendedProps: {
+      description: event.description,
+      location: event.location,
+    }
+  }));
   useEffect(() => {
     let elements = Array.from(
       document.getElementsByClassName("react-datepicker-wrapper")
@@ -154,7 +148,7 @@ const Calendar = () => {
                     selectMirror={true}
                     dayMaxEvents={true}
                     weekends={weekendsVisible}
-                    initialEvents={defaultEvents} // alternatively, use the `events` setting to fetch from a feed
+                    events={calendarEvents}
                     select={handleDateSelect}
                     eventClick={(clickInfo: any) => handleEventClick(clickInfo)}
                   />

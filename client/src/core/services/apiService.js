@@ -148,6 +148,13 @@ class ApiService {
     return this.makeRequest(`/classes/academic-year/${academicYearId}`);
   }
 
+  async updateClass(id, classData) {
+    return this.makeRequest(`/classes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(classData)
+    });
+  }
+
   // Sections
   async getSections() {
     return this.makeRequest('/sections');
@@ -168,6 +175,35 @@ class ApiService {
     });
   }
 
+  // Class Rooms
+  async getClassRooms() {
+    return this.makeRequest('/class-rooms');
+  }
+
+  async getClassRoomById(id) {
+    return this.makeRequest(`/class-rooms/${id}`);
+  }
+
+  async createClassRoom(data) {
+    return this.makeRequest('/class-rooms', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async updateClassRoom(id, data) {
+    return this.makeRequest(`/class-rooms/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async deleteClassRoom(id) {
+    return this.makeRequest(`/class-rooms/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
   // Class schedules (timetable: class + subject + time_slot)
   async getClassSchedules() {
     return this.makeRequest('/class-schedules');
@@ -175,6 +211,22 @@ class ApiService {
 
   async getClassScheduleById(id) {
     return this.makeRequest(`/class-schedules/${id}`);
+  }
+
+  // Schedules (time_slots / schedule table - ID, Type, Start Time, End Time, Status)
+  async getSchedules() {
+    return this.makeRequest('/schedules');
+  }
+
+  async getScheduleById(id) {
+    return this.makeRequest(`/schedules/${id}`);
+  }
+
+  async updateSchedule(id, scheduleData) {
+    return this.makeRequest(`/schedules/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(scheduleData)
+    });
   }
 
   // Students
@@ -514,6 +566,294 @@ class ApiService {
 
   async getMe() {
     return this.makeRequest('/auth/me');
+  }
+
+  // Chats
+  async getChats() {
+    return this.makeRequest('/chats');
+  }
+
+  async getConversations() {
+    return this.makeRequest('/chats/conversations');
+  }
+
+  async getChatById(id) {
+    return this.makeRequest(`/chats/${id}`);
+  }
+
+  async getChatMessages(recipientId) {
+    return this.makeRequest(`/chats/messages/${recipientId}`);
+  }
+
+  async getSharedMedia(recipientId, type) {
+    const qs = type ? `?type=${type}` : '';
+    return this.makeRequest(`/chats/shared-media/${recipientId}${qs}`);
+  }
+
+  async createChat(data) {
+    return this.makeRequest('/chats', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateChat(id, data) {
+    return this.makeRequest(`/chats/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateChatConversationPin(recipientId, isPinned) {
+    return this.makeRequest(`/chats/conversation/${recipientId}/pin`, {
+      method: 'PUT',
+      body: JSON.stringify({ is_pinned: isPinned }),
+    });
+  }
+
+  async deleteConversation(recipientId) {
+    return this.makeRequest(`/chats/conversation/${recipientId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async muteConversation(recipientId, isMuted, mutedUntil) {
+    return this.makeRequest(`/chats/conversation/${recipientId}/mute`, {
+      method: 'PUT',
+      body: JSON.stringify({ is_muted: isMuted, muted_until: mutedUntil }),
+    });
+  }
+
+  async clearConversation(recipientId) {
+    return this.makeRequest(`/chats/conversation/${recipientId}/clear`, {
+      method: 'PUT',
+    });
+  }
+
+  async reportUser(recipientId, reason) {
+    return this.makeRequest(`/chats/conversation/${recipientId}/report`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async blockUser(recipientId) {
+    return this.makeRequest(`/chats/conversation/${recipientId}/block`, {
+      method: 'POST',
+    });
+  }
+
+  async deleteChat(id) {
+    return this.makeRequest(`/chats/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Calls
+  async getCalls() {
+    return this.makeRequest('/calls');
+  }
+
+  async getCallById(id) {
+    return this.makeRequest(`/calls/${id}`);
+  }
+
+  async createCall(data) {
+    return this.makeRequest('/calls', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCall(id, data) {
+    return this.makeRequest(`/calls/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteCall(id) {
+    return this.makeRequest(`/calls/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Calendar Events
+  async getCalendarEvents(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.makeRequest(`/calendar${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getCalendarEventById(id) {
+    return this.makeRequest(`/calendar/${id}`);
+  }
+
+  async createCalendarEvent(data) {
+    return this.makeRequest('/calendar', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCalendarEvent(id, data) {
+    return this.makeRequest(`/calendar/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteCalendarEvent(id) {
+    return this.makeRequest(`/calendar/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Emails
+  async getEmails(folder = 'inbox') {
+    return this.makeRequest(`/emails?folder=${folder}`);
+  }
+
+  async getEmailById(id) {
+    return this.makeRequest(`/emails/${id}`);
+  }
+
+  async createEmail(data) {
+    return this.makeRequest('/emails', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateEmail(id, data) {
+    return this.makeRequest(`/emails/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteEmail(id) {
+    return this.makeRequest(`/emails/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Todos
+  async getTodos(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.makeRequest(`/todos${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getTodoById(id) {
+    return this.makeRequest(`/todos/${id}`);
+  }
+
+  async createTodo(data) {
+    return this.makeRequest('/todos', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateTodo(id, data) {
+    return this.makeRequest(`/todos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteTodo(id) {
+    return this.makeRequest(`/todos/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Notes
+  async getNotes(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.makeRequest(`/notes${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getNoteById(id) {
+    return this.makeRequest(`/notes/${id}`);
+  }
+
+  async createNote(data) {
+    return this.makeRequest('/notes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateNote(id, data) {
+    return this.makeRequest(`/notes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteNote(id) {
+    return this.makeRequest(`/notes/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Files
+  async getFiles(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.makeRequest(`/files${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getFileById(id) {
+    return this.makeRequest(`/files/${id}`);
+  }
+
+  async createFile(data) {
+    return this.makeRequest('/files', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateFile(id, data) {
+    return this.makeRequest(`/files/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteFile(id) {
+    return this.makeRequest(`/files/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Class Syllabus
+  async getClassSyllabus() {
+    return this.makeRequest('/class-syllabus');
+  }
+
+  async getClassSyllabusById(id) {
+    return this.makeRequest(`/class-syllabus/${id}`);
+  }
+
+  async createClassSyllabus(data) {
+    return this.makeRequest('/class-syllabus', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateClassSyllabus(id, data) {
+    return this.makeRequest(`/class-syllabus/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteClassSyllabus(id) {
+    return this.makeRequest(`/class-syllabus/${id}`, {
+      method: 'DELETE',
+    });
   }
 }
 

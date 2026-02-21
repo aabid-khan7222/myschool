@@ -1,6 +1,11 @@
-import { useRef, useState } from "react";
+
+import { useMemo, useRef, useState } from "react";
 import Table from "../../../core/common/dataTable/index";
 import { useClassSchedules } from "../../../core/hooks/useClassSchedules";
+import { useTeachers } from "../../../core/hooks/useTeachers";
+import { useClassRooms } from "../../../core/hooks/useClassRooms";
+import { useClasses } from "../../../core/hooks/useClasses";
+import { useSections } from "../../../core/hooks/useSections";
 import PredefinedDateRanges from "../../../core/common/datePicker";
 import CommonSelect from "../../../core/common/commonSelect";
 import {
@@ -19,12 +24,80 @@ import dayjs from "dayjs";
 
 const ClassRoutine = () => {
   const routes = all_routes;
+  const [selectedRoutine, setSelectedRoutine] = useState<any>(null);
   const { data: apiData, loading, error, fallbackData } = useClassSchedules();
+  const { teachers = [] } = useTeachers();
+  const { classRooms = [] } = useClassRooms();
+  const { classes = [] } = useClasses();
+  const { sections = [] } = useSections();
   // Real data only: use API result when loaded; use fallback only while loading so layout doesn't jump
   const data = loading ? fallbackData : (apiData ?? []);
-  
-  // State for edit modal
-  const [selectedRoutine, setSelectedRoutine] = useState<any>(null);
+
+  // Dynamic options from API for Edit modal – ensures real data shows correctly
+  const teacherOptions = useMemo(() => {
+    const fromApi = (teachers || []).map((t: any) => {
+      const name = [t.first_name, t.last_name].filter(Boolean).join(" ").trim() || t.employee_code || String(t.id);
+      return { value: name, label: name };
+    });
+    return [{ value: "Select", label: "Select" }, ...fromApi];
+  }, [teachers]);
+
+  const classRoomOptions = useMemo(() => {
+    const fromApi = (classRooms || []).map((r: any) => {
+      const roomNo = String(r.room_no ?? r.roomNo ?? r.id ?? "");
+      return roomNo ? { value: roomNo, label: roomNo } : null;
+    }).filter(Boolean) as { value: string; label: string }[];
+    return [{ value: "Select", label: "Select" }, ...fromApi];
+  }, [classRooms]);
+
+  const classOptions = useMemo(() => {
+    const fromApi = (classes || []).map((c: any) => {
+      const name = String(c.class_name ?? c.name ?? c.class_code ?? c.id ?? "");
+      return name ? { value: name, label: name } : null;
+    }).filter(Boolean) as { value: string; label: string }[];
+    return [{ value: "Select", label: "Select" }, ...fromApi];
+  }, [classes]);
+
+  const sectionOptions = useMemo(() => {
+    const fromApi = (sections || []).map((s: any) => {
+      const name = String(s.section_name ?? s.name ?? s.id ?? "");
+      return name ? { value: name, label: name } : null;
+    }).filter(Boolean) as { value: string; label: string }[];
+    return [{ value: "Select", label: "Select" }, ...fromApi];
+  }, [sections]);
+
+  // Options that include current record's value so Edit modal always shows real data
+  const editTeacherOptions = useMemo(() => {
+    const current = selectedRoutine?.teacher;
+    if (!current || current === "N/A") return teacherOptions;
+    const exists = teacherOptions.some((o: any) => o.value === current || o.label === current);
+    if (exists) return teacherOptions;
+    return [...teacherOptions, { value: current, label: current }];
+  }, [teacherOptions, selectedRoutine?.teacher]);
+
+  const editClassRoomOptions = useMemo(() => {
+    const current = selectedRoutine?.classRoom;
+    if (!current || current === "N/A") return classRoomOptions;
+    const exists = classRoomOptions.some((o: any) => o.value === current || o.label === current);
+    if (exists) return classRoomOptions;
+    return [...classRoomOptions, { value: current, label: current }];
+  }, [classRoomOptions, selectedRoutine?.classRoom]);
+
+  const editClassOptions = useMemo(() => {
+    const current = selectedRoutine?.class;
+    if (!current || current === "N/A") return classOptions;
+    const exists = classOptions.some((o: any) => o.value === current || o.label === current);
+    if (exists) return classOptions;
+    return [...classOptions, { value: current, label: current }];
+  }, [classOptions, selectedRoutine?.class]);
+
+  const editSectionOptions = useMemo(() => {
+    const current = selectedRoutine?.section;
+    if (!current || current === "N/A") return sectionOptions;
+    const exists = sectionOptions.some((o: any) => o.value === current || o.label === current);
+    if (exists) return sectionOptions;
+    return [...sectionOptions, { value: current, label: current }];
+  }, [sectionOptions, selectedRoutine?.section]);
 
   const getModalContainer = () => {
     const modalElement = document.getElementById("modal-datepicker");
@@ -451,20 +524,6 @@ const ClassRoutine = () => {
                         <label className="form-label">Class Room</label>
                         <CommonSelect className="select" options={count} />
                       </div>
-                      <div className="d-flex align-items-center justify-content-between">
-                        <div className="status-title">
-                          <h5>Status</h5>
-                          <p>Change the Status by toggle </p>
-                        </div>
-                        <div className="form-check form-switch">
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            role="switch"
-                            id="switch-sm"
-                          />
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -508,8 +567,10 @@ const ClassRoutine = () => {
                         <label className="form-label">Teacher</label>
                         <CommonSelect 
                           className="select" 
-                          options={teacher} 
-                          defaultValue={selectedRoutine?.teacher ? teacher.find((t: any) => t.value === selectedRoutine.teacher || t.label === selectedRoutine.teacher) || teacher[0] : teacher[0]}
+                          options={editTeacherOptions} 
+                          defaultValue={selectedRoutine?.teacher && selectedRoutine.teacher !== "N/A"
+                            ? editTeacherOptions.find((t: any) => t.value === selectedRoutine.teacher || t.label === selectedRoutine.teacher) || editTeacherOptions[0]
+                            : editTeacherOptions[0]}
                           key={`teacher-${selectedRoutine?.id || 'new'}`}
                         />
                       </div>
@@ -517,8 +578,10 @@ const ClassRoutine = () => {
                         <label className="form-label">Class</label>
                         <CommonSelect 
                           className="select" 
-                          options={allClass} 
-                          defaultValue={selectedRoutine?.class ? allClass.find((c: any) => c.value === selectedRoutine.class || c.label === selectedRoutine.class) || allClass[0] : allClass[0]}
+                          options={editClassOptions} 
+                          defaultValue={selectedRoutine?.class && selectedRoutine.class !== "N/A"
+                            ? editClassOptions.find((c: any) => c.value === selectedRoutine.class || c.label === selectedRoutine.class) || editClassOptions[0]
+                            : editClassOptions[0]}
                           key={`class-${selectedRoutine?.id || 'new'}`}
                         />
                       </div>
@@ -526,8 +589,10 @@ const ClassRoutine = () => {
                         <label className="form-label">Section</label>
                         <CommonSelect
                           className="select"
-                          options={classSection}
-                          defaultValue={selectedRoutine?.section ? classSection.find((s: any) => s.value === selectedRoutine.section || s.label === selectedRoutine.section) || classSection[0] : classSection[0]}
+                          options={editSectionOptions}
+                          defaultValue={selectedRoutine?.section && selectedRoutine.section !== "N/A"
+                            ? editSectionOptions.find((s: any) => s.value === selectedRoutine.section || s.label === selectedRoutine.section) || editSectionOptions[0]
+                            : editSectionOptions[0]}
                           key={`section-${selectedRoutine?.id || 'new'}`}
                         />
                       </div>
@@ -551,21 +616,16 @@ const ClassRoutine = () => {
                                 placeholder="Choose"
                                 format="h:mm A"
                                 className="form-control timepicker"
-                                defaultValue={selectedRoutine?.originalData?.startTime ? (() => {
-                                  const timeStr = String(selectedRoutine.originalData.startTime || '').trim();
+                                defaultValue={(() => {
+                                  const timeStr = String(selectedRoutine?.originalData?.startTime ?? selectedRoutine?.startTime ?? '').trim();
                                   if (!timeStr) return null;
-                                  // Try different formats - backend returns "HH:mm" format
-                                  if (dayjs(timeStr, 'HH:mm:ss', true).isValid()) {
-                                    return dayjs(timeStr, 'HH:mm:ss');
-                                  } else if (dayjs(timeStr, 'HH:mm', true).isValid()) {
-                                    return dayjs(timeStr, 'HH:mm');
-                                  } else if (dayjs(timeStr, 'h:mm A', true).isValid()) {
-                                    return dayjs(timeStr, 'h:mm A');
-                                  }
-                                  // Try parsing as-is
+                                  // Backend returns "HH:mm" or "HH:mm:ss"; display format is "h:mm A"
+                                  if (dayjs(timeStr, 'HH:mm:ss', true).isValid()) return dayjs(timeStr, 'HH:mm:ss');
+                                  if (dayjs(timeStr, 'HH:mm', true).isValid()) return dayjs(timeStr, 'HH:mm');
+                                  if (dayjs(timeStr, 'h:mm A', true).isValid()) return dayjs(timeStr, 'h:mm A');
                                   const parsed = dayjs(timeStr);
                                   return parsed.isValid() ? parsed : null;
-                                })() : null}
+                                })()}
                                 key={`startTime-${selectedRoutine?.id || 'new'}`}
                               />
                               <span className="cal-icon">
@@ -584,21 +644,16 @@ const ClassRoutine = () => {
                                 placeholder="Choose"
                                 format="h:mm A"
                                 className="form-control timepicker"
-                                defaultValue={selectedRoutine?.originalData?.endTime ? (() => {
-                                  const timeStr = String(selectedRoutine.originalData.endTime || '').trim();
+                                defaultValue={(() => {
+                                  const timeStr = String(selectedRoutine?.originalData?.endTime ?? selectedRoutine?.endTime ?? '').trim();
                                   if (!timeStr) return null;
-                                  // Try different formats - backend returns "HH:mm" format
-                                  if (dayjs(timeStr, 'HH:mm:ss', true).isValid()) {
-                                    return dayjs(timeStr, 'HH:mm:ss');
-                                  } else if (dayjs(timeStr, 'HH:mm', true).isValid()) {
-                                    return dayjs(timeStr, 'HH:mm');
-                                  } else if (dayjs(timeStr, 'h:mm A', true).isValid()) {
-                                    return dayjs(timeStr, 'h:mm A');
-                                  }
-                                  // Try parsing as-is
+                                  // Backend returns "HH:mm" or "HH:mm:ss"; display format is "h:mm A"
+                                  if (dayjs(timeStr, 'HH:mm:ss', true).isValid()) return dayjs(timeStr, 'HH:mm:ss');
+                                  if (dayjs(timeStr, 'HH:mm', true).isValid()) return dayjs(timeStr, 'HH:mm');
+                                  if (dayjs(timeStr, 'h:mm A', true).isValid()) return dayjs(timeStr, 'h:mm A');
                                   const parsed = dayjs(timeStr);
                                   return parsed.isValid() ? parsed : null;
-                                })() : null}
+                                })()}
                                 key={`endTime-${selectedRoutine?.id || 'new'}`}
                               />
                               <span className="cal-icon">
@@ -612,26 +667,12 @@ const ClassRoutine = () => {
                         <label className="form-label">Class Room</label>
                         <CommonSelect 
                           className="select" 
-                          options={count} 
-                          defaultValue={selectedRoutine?.classRoom ? count.find((c: any) => c.value === selectedRoutine.classRoom || c.label === selectedRoutine.classRoom) || count[0] : count[0]}
+                          options={editClassRoomOptions} 
+                          defaultValue={selectedRoutine?.classRoom && selectedRoutine.classRoom !== "N/A"
+                            ? editClassRoomOptions.find((c: any) => c.value === selectedRoutine.classRoom || c.label === selectedRoutine.classRoom) || editClassRoomOptions[0]
+                            : editClassRoomOptions[0]}
                           key={`classRoom-${selectedRoutine?.id || 'new'}`}
                         />
-                      </div>
-                      <div className="d-flex align-items-center justify-content-between">
-                        <div className="status-title">
-                          <h5>Status</h5>
-                          <p>Change the Status by toggle </p>
-                        </div>
-                        <div className="form-check form-switch">
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            role="switch"
-                            id="switch-sm2"
-                            defaultChecked={selectedRoutine?.originalData?.is_active !== false}
-                            key={`status-${selectedRoutine?.id || 'new'}`}
-                          />
-                        </div>
                       </div>
                     </div>
                   </div>

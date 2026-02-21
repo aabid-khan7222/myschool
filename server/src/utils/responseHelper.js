@@ -22,4 +22,7 @@ const error = (res, statusCode = 500, message = 'Something went wrong') => {
   });
 };
 
-module.exports = { success, error };
+// Alias for error function (used in controllers)
+const errorResponse = error;
+
+module.exports = { success, error, errorResponse };

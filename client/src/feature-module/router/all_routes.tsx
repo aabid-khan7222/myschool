@@ -160,8 +160,9 @@ export const all_routes = {
   todo: "/application/todo",
   email: "/application/email",
   videoCall: "/application/video-call",
-  chat: "/application/chat",
   audioCall: "/application/audio-call",
+  conferenceCall: "/application/conference-call",
+  chat: "/application/chat",
   callHistory: "/application/call-history",
   fileManager: "/application/file-manager",
 

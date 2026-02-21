@@ -34,7 +34,7 @@ export const SidebarData = [
           },
           {
             label: "Call",
-            link: routes.audioCall,
+            link: routes.callHistory,
             showSubRoute: false,
           },
           {

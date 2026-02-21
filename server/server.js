@@ -30,6 +30,8 @@ const houseRoutes = require('./src/routes/houseRoutes');
 const addressRoutes = require('./src/routes/addressRoutes');
 const transportRoutes = require('./src/routes/transportRoutes');
 const classScheduleRoutes = require('./src/routes/classScheduleRoutes');
+const classRoomRoutes = require('./src/routes/classRoomRoutes');
+const scheduleRoutes = require('./src/routes/scheduleRoutes');
 const hostelRoutes = require('./src/routes/hostelRoutes');
 const hostelRoomRoutes = require('./src/routes/hostelRoomRoutes');
 const roomTypeRoutes = require('./src/routes/roomTypeRoutes');
@@ -41,6 +43,14 @@ const userRoleRoutes = require('./src/routes/userRoleRoutes');
 const dashboardRoutes = require('./src/routes/dashboardRoutes');
 const leaveApplicationRoutes = require('./src/routes/leaveApplicationRoutes');
 const authRoutes = require('./src/routes/authRoutes');
+const chatRoutes = require('./src/routes/chatRoutes');
+const callRoutes = require('./src/routes/callRoutes');
+const calendarRoutes = require('./src/routes/calendarRoutes');
+const emailRoutes = require('./src/routes/emailRoutes');
+const todoRoutes = require('./src/routes/todoRoutes');
+const notesRoutes = require('./src/routes/notesRoutes');
+const fileRoutes = require('./src/routes/fileRoutes');
+const syllabusRoutes = require('./src/routes/syllabusRoutes');
 const { protectApi } = require('./src/middleware/authMiddleware');
 
 // Create Express app
@@ -103,6 +113,8 @@ app.use('/api/houses', houseRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/transport', transportRoutes);
 app.use('/api/class-schedules', classScheduleRoutes);
+app.use('/api/class-rooms', classRoomRoutes);
+app.use('/api/schedules', scheduleRoutes);
 app.use('/api/hostels', hostelRoutes);
 app.use('/api/hostel-rooms', hostelRoomRoutes);
 app.use('/api/room-types', roomTypeRoutes);
@@ -113,6 +125,14 @@ app.use('/api/users', userRoutes);
 app.use('/api/user-roles', userRoleRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/leave-applications', leaveApplicationRoutes);
+app.use('/api/chats', chatRoutes);
+app.use('/api/calls', callRoutes);
+app.use('/api/calendar', calendarRoutes);
+app.use('/api/emails', emailRoutes);
+app.use('/api/todos', todoRoutes);
+app.use('/api/notes', notesRoutes);
+app.use('/api/files', fileRoutes);
+app.use('/api/class-syllabus', syllabusRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

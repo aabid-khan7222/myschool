@@ -29,6 +29,7 @@ import StudentDasboard from "../mainMenu/studentDashboard";
 import AudioCall from "../application/call/audioCall";
 import CallHistory from "../application/call/callHistory";
 import Videocall from "../application/call/videoCall";
+import ConferenceCall from "../application/call/conferenceCall";
 import Chat from "../application/chat";
 import Email from "../application/email";
 import FileManager from "../application/fileManager";
@@ -515,6 +516,11 @@ export const publicRoutes = [
   {
     path: routes.videoCall,
     element: <Videocall />,
+    route: Route,
+  },
+  {
+    path: routes.conferenceCall,
+    element: <ConferenceCall />,
     route: Route,
   },
   {

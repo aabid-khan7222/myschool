@@ -205,7 +205,7 @@ const getSectionById = async (req, res) => {
       FROM sections s
       LEFT JOIN classes c ON s.class_id = c.id
       LEFT JOIN staff st ON s.section_teacher_id = st.id
-      WHERE s.id = $1 AND s.is_active = true
+      WHERE s.id = $1
     `, [id]);
 
     if (result.rows.length === 0) {
@@ -273,15 +273,10 @@ const getSectionsByClass = async (req, res) => {
 const updateSection = async (req, res) => {
   try {
     const { id } = req.params;
-    const { section_name, is_active } = req.body;
-
-    console.log('=== UPDATE SECTION REQUEST ===');
-    console.log('Params:', { id });
-    console.log('Body:', { section_name, is_active, is_active_type: typeof is_active });
+    const { section_name, no_of_students, is_active } = req.body;
 
     // Validate required fields
     if (!section_name) {
-      console.error('Validation failed: section_name is required');
       return res.status(400).json({
         status: 'ERROR',
         message: 'Section name is required'
@@ -295,25 +290,21 @@ const updateSection = async (req, res) => {
     } else if (is_active === false || is_active === 'false' || is_active === 0 || is_active === 'f' || is_active === 'F') {
       isActiveBoolean = false;
     } else {
-      // Default to false if not provided or invalid
       isActiveBoolean = false;
     }
 
-    console.log('Converted values:', {
-      original_is_active: is_active,
-      isActiveBoolean,
-      isActiveBoolean_type: typeof isActiveBoolean
-    });
+    const noOfStudents = no_of_students != null ? parseInt(no_of_students, 10) : null;
 
     // Update with modified_at column (as per database schema)
     const result = await query(`
       UPDATE sections SET
         section_name = $1,
-        is_active = $2,
+        no_of_students = $2,
+        is_active = $3,
         modified_at = NOW()
-      WHERE id = $3
-      RETURNING id, section_name, is_active, created_at, modified_at
-    `, [section_name, isActiveBoolean, id]);
+      WHERE id = $4
+      RETURNING id, section_name, is_active, no_of_students, created_at, modified_at
+    `, [section_name, noOfStudents, isActiveBoolean, id]);
 
     if (result.rows.length === 0) {
       console.error(`Section not found with id: ${id}`);
