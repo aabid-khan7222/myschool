@@ -1,4 +1,5 @@
 const { query } = require('../config/database');
+const { getParentsForUser } = require('../utils/parentUserMatch');
 
 // Get leave applications for the current user (student or staff/teacher by user_id from JWT).
 // Used on Student Dashboard (student leaves) and Teacher Dashboard (staff leaves).
@@ -72,7 +73,7 @@ const getMyLeaveApplications = async (req, res) => {
 };
 
 // Get leave applications for parent's children (students linked via parents table).
-// Used on Parent Dashboard - parent matched by user email/phone against father/mother email/phone.
+// Used on Parent Dashboard - uses parentUserMatch (username+@email.com, then email, then phone).
 const getParentChildrenLeaves = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -84,26 +85,8 @@ const getParentChildrenLeaves = async (req, res) => {
     }
     const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
 
-    const userResult = await query(
-      'SELECT email, phone FROM users WHERE id = $1 AND is_active = true',
-      [userId]
-    );
-    if (userResult.rows.length === 0) {
-      return res.status(200).json({ status: 'SUCCESS', message: 'Leave applications fetched successfully', data: [], count: 0 });
-    }
-    const user = userResult.rows[0];
-    const userEmail = (user.email || '').toString().trim();
-    const userPhone = (user.phone || '').toString().trim();
-
-    const parentResult = await query(
-      `SELECT student_id FROM parents
-       WHERE (LOWER(TRIM(father_email)) = LOWER($1) AND $1 != '')
-          OR (LOWER(TRIM(mother_email)) = LOWER($1) AND $1 != '')
-          OR (TRIM(father_phone) = $2 AND $2 != '')
-          OR (TRIM(mother_phone) = $2 AND $2 != '')`,
-      [userEmail, userPhone]
-    );
-    const studentIds = [...new Set(parentResult.rows.map(r => r.student_id).filter(Boolean))];
+    const { studentIds: rawIds } = await getParentsForUser(userId);
+    const studentIds = [...new Set(rawIds)];
     if (studentIds.length === 0) {
       return res.status(200).json({ status: 'SUCCESS', message: 'Leave applications fetched successfully', data: [], count: 0 });
     }
