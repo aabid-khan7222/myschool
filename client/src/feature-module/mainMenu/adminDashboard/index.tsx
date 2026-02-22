@@ -11,16 +11,56 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import AdminDashboardModal from "./adminDashboardModal";
+import { apiService } from "../../../core/services/apiService";
 import { useDashboardStats } from "../../../core/hooks/useDashboardStats";
 import { useLeaveApplications } from "../../../core/hooks/useLeaveApplications";
 import { useCurrentUser } from "../../../core/hooks/useCurrentUser";
+import {
+  useDashboardUpcomingEvents,
+  useDashboardClassRoutine,
+  useDashboardBestPerformers,
+  useDashboardStarStudents,
+  useDashboardPerformanceSummary,
+  useDashboardTopSubjects,
+  useDashboardRecentActivity,
+  useDashboardNoticeBoard,
+} from "../../../core/hooks/useDashboardData";
 
 const AdminDashboard = () => {
   const routes = all_routes;
+  const [leaveActionId, setLeaveActionId] = useState<number | null>(null);
+
+  const handleLeaveApprove = async (id: number) => {
+    if (leaveActionId) return;
+    setLeaveActionId(id);
+    try {
+      const res = await apiService.updateLeaveApplicationStatus(id, "approved");
+      if (res?.status === "SUCCESS") refetchLeaves();
+    } catch (_) {}
+    setLeaveActionId(null);
+  };
+
+  const handleLeaveReject = async (id: number) => {
+    if (leaveActionId) return;
+    setLeaveActionId(id);
+    try {
+      const res = await apiService.updateLeaveApplicationStatus(id, "rejected");
+      if (res?.status === "SUCCESS") refetchLeaves();
+    } catch (_) {}
+    setLeaveActionId(null);
+  };
   const [date, setDate] = useState<Nullable<Date>>(null);
   const { stats } = useDashboardStats();
-  const { leaveApplications, loading: leaveLoading, error: leaveError } = useLeaveApplications({ limit: 10 });
+  const { leaveApplications, loading: leaveLoading, error: leaveError, refetch: refetchLeaves } = useLeaveApplications({ limit: 10 });
   const { user: currentUser, loading: userLoading } = useCurrentUser();
+  const { events: upcomingEvents, loading: eventsLoading, refetch: refetchEvents } = useDashboardUpcomingEvents({ limit: 10 });
+  const { routine: classRoutine, loading: routineLoading, refetch: refetchRoutine } = useDashboardClassRoutine({ limit: 5 });
+  const { performers: bestPerformers } = useDashboardBestPerformers({ limit: 3 });
+  const { students: starStudents } = useDashboardStarStudents({ limit: 3 });
+  const { summary: performanceSummary } = useDashboardPerformanceSummary();
+  const { subjects: topSubjects } = useDashboardTopSubjects();
+  const { activity: recentActivity } = useDashboardRecentActivity();
+  const { notices: dashboardNotices } = useDashboardNoticeBoard({ limit: 5 });
   function SampleNextArrow(props: any) {
     const { style, onClick } = props;
     return (
@@ -108,7 +148,7 @@ const AdminDashboard = () => {
     nextArrow: <SampleNextArrow />,
     prevArrow: <SamplePrevArrow />,
   };
-  const [studentDonutChart] = useState<any>({
+  const studentDonutChart = {
     chart: {
       height: 218,
       width: 218,
@@ -121,7 +161,7 @@ const AdminDashboard = () => {
       show: false,
     },
     colors: ["#3D5EE1", "#6FCCD8"],
-    series: [3610, 44],
+    series: stats.students.total > 0 ? [stats.students.active, stats.students.inactive] : [0, 0],
     responsive: [
       {
         breakpoint: 480,
@@ -132,8 +172,8 @@ const AdminDashboard = () => {
         },
       },
     ],
-  });
-  const [teacherDonutChart] = useState<any>({
+  };
+  const teacherDonutChart = {
     chart: {
       height: 218,
       width: 218,
@@ -146,7 +186,7 @@ const AdminDashboard = () => {
       show: false,
     },
     colors: ["#3D5EE1", "#6FCCD8"],
-    series: [346, 54],
+    series: stats.teachers.total > 0 ? [stats.teachers.active, stats.teachers.inactive] : [0, 0],
     responsive: [
       {
         breakpoint: 480,
@@ -157,8 +197,8 @@ const AdminDashboard = () => {
         },
       },
     ],
-  });
-  const [staffDonutChart] = useState<any>({
+  };
+  const staffDonutChart = {
     chart: {
       height: 218,
       width: 218,
@@ -171,7 +211,7 @@ const AdminDashboard = () => {
       show: false,
     },
     colors: ["#3D5EE1", "#6FCCD8"],
-    series: [620, 80],
+    series: stats.staff.total > 0 ? [stats.staff.active, stats.staff.inactive] : [0, 0],
     responsive: [
       {
         breakpoint: 480,
@@ -182,8 +222,8 @@ const AdminDashboard = () => {
         },
       },
     ],
-  });
-  const [classDonutChart] = useState<any>({
+  };
+  const classDonutChart = {
     chart: {
       height: 218,
       width: 218,
@@ -209,7 +249,9 @@ const AdminDashboard = () => {
       },
     },
     colors: ["#3D5EE1", "#EAB300", "#E82646"],
-    series: [45, 11, 2],
+    series: (performanceSummary.good + performanceSummary.average + performanceSummary.below) > 0
+      ? [performanceSummary.good, performanceSummary.average, performanceSummary.below]
+      : [0, 0, 0],
     responsive: [
       {
         breakpoint: 480,
@@ -220,8 +262,8 @@ const AdminDashboard = () => {
         },
       },
     ],
-  });
-  const [feesBar] = useState<any>({
+  };
+  const feesBar = {
     chart: {
       height: 275,
       type: 'bar',
@@ -262,13 +304,13 @@ const AdminDashboard = () => {
   },
   series: [{
       name: 'Collected Fee',
-      data: [30, 40,  38, 40, 38, 30, 35, 38, 40]
+      data: [0]
   }, {
       name: 'Total Fee',
-      data: [45, 50, 48, 50, 48, 40, 40, 50, 55]
+      data: [0]
   }],
   xaxis: {
-      categories: ['Q1: 2023', 'Q1: 2023', 'Q1: 2023', 'Q1: 2023', 'Q1: 2023', 'uQ1: 2023l', 'Q1: 2023', 'Q1: 2023', 'Q1: 2023'],
+      categories: ['No fee data'],
   },
   yaxis: {
     tickAmount: 3,
@@ -287,8 +329,8 @@ const AdminDashboard = () => {
           }
       }
   }
-  })
-  const [totalEarningArea] = useState<any>({
+  };
+  const totalEarningArea = {
     chart: {
       height: 90,
       type: 'area',
@@ -308,10 +350,10 @@ const AdminDashboard = () => {
   },
   series: [{
       name: 'Earnings',
-      data: [50, 55, 40, 50, 45, 55, 50]
+      data: [0]
   }]
-  })
-  const [totalExpenseArea] = useState<any>({
+  };
+  const totalExpenseArea = {
     chart: {
       height: 90,
       type: 'area',
@@ -331,9 +373,9 @@ const AdminDashboard = () => {
   },
   series: [{
       name: 'Expense',
-      data: [40, 30, 60, 55, 50, 55, 40]
+      data: [0]
   }]
-  })
+  };
 
 
 
@@ -384,22 +426,19 @@ const AdminDashboard = () => {
               {/* /Page Header */}
               <div className="row">
                 <div className="col-md-12">
+                  {recentActivity && (
                   <div className="alert-message">
                     <div
                       className="alert alert-success rounded-pill d-flex align-items-center justify-content-between border-success mb-4"
                       role="alert"
                     >
                       <div className="d-flex align-items-center">
-                        <span className="me-1 avatar avatar-sm flex-shrink-0">
-                          <ImageWithBasePath
-                            src="assets/img/profiles/avatar-27.jpg"
-                            alt="Img"
-                            className="img-fluid rounded-circle"
-                          />
+                        <span className="me-1 avatar avatar-sm flex-shrink-0 bg-success rounded-circle d-flex align-items-center justify-content-center">
+                          <i className="ti ti-bell text-white fs-14" />
                         </span>
                         <p>
-                          Fahed III,C has paid Fees for the{" "}
-                          <strong className="mx-1">“Term1”</strong>
+                          {recentActivity.message}{" "}
+                          <strong className="mx-1">“{recentActivity.date ? new Date(recentActivity.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''}”</strong>
                         </p>
                       </div>
                       <button
@@ -414,6 +453,7 @@ const AdminDashboard = () => {
                       </button>
                     </div>
                   </div>
+                  )}
                   {/* Dashboard Content */}
                   <div className="card bg-dark">
                     <div className="overlay-img">
@@ -456,7 +496,7 @@ const AdminDashboard = () => {
                         </div>
                         <p className="text-white custom-text-white">
                           <i className="ti ti-refresh me-1" />
-                          Updated Recently on 15 Jun 2024
+                          Updated on {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
                       </div>
                     </div>
@@ -638,134 +678,34 @@ const AdminDashboard = () => {
                       />
                       <h5 className="mb-3">Upcoming Events</h5>
                       <div className="event-wrapper event-scroll">
-                        {/* Event Item */}
-                        <div className="border-start border-skyblue border-3 shadow-sm p-3 mb-3">
-                          <div className="d-flex align-items-center mb-3 pb-3 border-bottom">
-                            <span className="avatar p-1 me-2 bg-teal-transparent flex-shrink-0">
-                              <i className="ti ti-user-edit text-info fs-20" />
-                            </span>
-                            <div className="flex-fill">
-                              <h6 className="mb-1">Parents, Teacher Meet</h6>
-                              <p className="d-flex align-items-center">
-                                <i className="ti ti-calendar me-1" />
-                                15 July 2024
+                        {eventsLoading && (
+                          <p className="mb-0 text-muted small">Loading events...</p>
+                        )}
+                        {!eventsLoading && upcomingEvents.length === 0 && (
+                          <p className="mb-0 text-muted small">No upcoming events.</p>
+                        )}
+                        {!eventsLoading && upcomingEvents.length > 0 && upcomingEvents.map((ev) => (
+                          <div key={ev.id} className={`border-start border-3 shadow-sm p-3 mb-3 ${ev.eventColor === 'bg-danger' ? 'border-danger' : ev.eventColor === 'bg-success' ? 'border-success' : ev.eventColor === 'bg-warning' ? 'border-warning' : 'border-skyblue'}`}>
+                            <div className="d-flex align-items-center mb-3 pb-3 border-bottom">
+                              <span className="avatar p-1 me-2 bg-teal-transparent flex-shrink-0">
+                                <i className="ti ti-calendar-event text-info fs-20" />
+                              </span>
+                              <div className="flex-fill">
+                                <h6 className="mb-1">{ev.title}</h6>
+                                <p className="d-flex align-items-center mb-0">
+                                  <i className="ti ti-calendar me-1" />
+                                  {ev.startDateFormatted}{ev.endDateFormatted && ev.endDateFormatted !== ev.startDateFormatted ? ` - ${ev.endDateFormatted}` : ''}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="d-flex align-items-center justify-content-between">
+                              <p className="mb-0">
+                                <i className="ti ti-clock me-1" />
+                                {ev.timeRange}
                               </p>
                             </div>
                           </div>
-                          <div className="d-flex align-items-center justify-content-between">
-                            <p className="mb-0">
-                              <i className="ti ti-clock me-1" />
-                              09:10AM - 10:50PM
-                            </p>
-                            <div className="avatar-list-stacked avatar-group-sm">
-                              <span className="avatar border-0">
-                                <ImageWithBasePath
-                                  src="assets/img/parents/parent-01.jpg"
-                                  className="rounded-circle"
-                                  alt="img"
-                                />
-                              </span>
-                              <span className="avatar border-0">
-                                <ImageWithBasePath
-                                  src="assets/img/parents/parent-07.jpg"
-                                  className="rounded-circle"
-                                  alt="img"
-                                />
-                              </span>
-                              <span className="avatar border-0">
-                                <ImageWithBasePath
-                                  src="assets/img/parents/parent-02.jpg"
-                                  className="rounded-circle"
-                                  alt="img"
-                                />
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        {/* /Event Item */}
-                        {/* Event Item */}
-                        <div className="border-start border-info border-3 shadow-sm p-3 mb-3">
-                          <div className="d-flex align-items-center mb-3 pb-3 border-bottom">
-                            <span className="avatar p-1 me-2 bg-info-transparent flex-shrink-0">
-                              <i className="ti ti-user-edit fs-20" />
-                            </span>
-                            <div className="flex-fill">
-                              <h6 className="mb-1">Parents, Teacher Meet</h6>
-                              <p className="d-flex align-items-center">
-                                <i className="ti ti-calendar me-1" />
-                                15 July 2024
-                              </p>
-                            </div>
-                          </div>
-                          <div className="d-flex align-items-center justify-content-between">
-                            <p className="mb-0">
-                              <i className="ti ti-clock me-1" />
-                              09:10AM - 10:50PM
-                            </p>
-                            <div className="avatar-list-stacked avatar-group-sm">
-                              <span className="avatar border-0">
-                                <ImageWithBasePath
-                                  src="assets/img/parents/parent-05.jpg"
-                                  className="rounded-circle"
-                                  alt="img"
-                                />
-                              </span>
-                              <span className="avatar border-0">
-                                <ImageWithBasePath
-                                  src="assets/img/parents/parent-06.jpg"
-                                  className="rounded-circle"
-                                  alt="img"
-                                />
-                              </span>
-                              <span className="avatar border-0">
-                                <ImageWithBasePath
-                                  src="assets/img/parents/parent-07.jpg"
-                                  className="rounded-circle"
-                                  alt="img"
-                                />
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        {/* /Event Item */}
-                        {/* Event Item */}
-                        <div className="border-start border-danger border-3 shadow-sm p-3 mb-3">
-                          <div className="d-flex align-items-center mb-3 pb-3 border-bottom">
-                            <span className="avatar p-1 me-2 bg-danger-transparent flex-shrink-0">
-                              <i className="ti ti-vacuum-cleaner fs-24" />
-                            </span>
-                            <div className="flex-fill">
-                              <h6 className="mb-1">Vacation Meeting</h6>
-                              <p className="d-flex align-items-center">
-                                <i className="ti ti-calendar me-1" />
-                                07 July 2024 - 07 July 2024
-                              </p>
-                            </div>
-                          </div>
-                          <div className="d-flex align-items-center justify-content-between">
-                            <p className="mb-0">
-                              <i className="ti ti-clock me-1" />
-                              09:10 AM - 10:50 PM
-                            </p>
-                            <div className="avatar-list-stacked avatar-group-sm">
-                              <span className="avatar border-0">
-                                <ImageWithBasePath
-                                  src="assets/img/parents/parent-11.jpg"
-                                  className="rounded-circle"
-                                  alt="img"
-                                />
-                              </span>
-                              <span className="avatar border-0">
-                                <ImageWithBasePath
-                                  src="assets/img/parents/parent-13.jpg"
-                                  className="rounded-circle"
-                                  alt="img"
-                                />
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        {/* /Event Item */}
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -846,15 +786,15 @@ const AdminDashboard = () => {
                             <div className="col-sm-4">
                               <div className="card bg-light-300 shadow-none border-0">
                                 <div className="card-body p-3 text-center">
-                                  <h5>28</h5>
-                                  <p className="fs-12">Emergency</p>
+                                  <h5>{stats.students.active}</h5>
+                                  <p className="fs-12">Present</p>
                                 </div>
                               </div>
                             </div>
                             <div className="col-sm-4">
                               <div className="card bg-light-300 shadow-none border-0">
                                 <div className="card-body p-3 text-center">
-                                  <h5>01</h5>
+                                  <h5>{stats.students.inactive}</h5>
                                   <p className="fs-12">Absent</p>
                                 </div>
                               </div>
@@ -862,12 +802,13 @@ const AdminDashboard = () => {
                             <div className="col-sm-4">
                               <div className="card bg-light-300 shadow-none border-0">
                                 <div className="card-body p-3 text-center">
-                                  <h5>01</h5>
+                                  <h5>0</h5>
                                   <p className="fs-12">Late</p>
                                 </div>
                               </div>
                             </div>
                           </div>
+                          <p className="small text-muted text-center mb-2">Attendance data from student stats. Use Attendance module for daily records.</p>
                           <div className="text-center">
                             <ReactApexChart
                               id="student-chart"
@@ -891,15 +832,15 @@ const AdminDashboard = () => {
                             <div className="col-sm-4">
                               <div className="card bg-light-300 shadow-none border-0">
                                 <div className="card-body p-3 text-center">
-                                  <h5>30</h5>
-                                  <p className="fs-12">Emergency</p>
+                                  <h5>{stats.teachers.active}</h5>
+                                  <p className="fs-12">Present</p>
                                 </div>
                               </div>
                             </div>
                             <div className="col-sm-4">
                               <div className="card bg-light-300 shadow-none border-0">
                                 <div className="card-body p-3 text-center">
-                                  <h5>03</h5>
+                                  <h5>{stats.teachers.inactive}</h5>
                                   <p className="fs-12">Absent</p>
                                 </div>
                               </div>
@@ -907,7 +848,7 @@ const AdminDashboard = () => {
                             <div className="col-sm-4">
                               <div className="card bg-light-300 shadow-none border-0">
                                 <div className="card-body p-3 text-center">
-                                  <h5>03</h5>
+                                  <h5>0</h5>
                                   <p className="fs-12">Late</p>
                                 </div>
                               </div>
@@ -923,7 +864,7 @@ const AdminDashboard = () => {
                               height={210}
                             />
                             <Link
-                              to="teacher-attendance"
+                              to={routes.teacherAttendance}
                               className="btn btn-light"
                             >
                               <i className="ti ti-calendar-share me-1" />
@@ -936,15 +877,15 @@ const AdminDashboard = () => {
                             <div className="col-sm-4">
                               <div className="card bg-light-300 shadow-none border-0">
                                 <div className="card-body p-3 text-center">
-                                  <h5>45</h5>
-                                  <p className="fs-12">Emergency</p>
+                                  <h5>{stats.staff.active}</h5>
+                                  <p className="fs-12">Present</p>
                                 </div>
                               </div>
                             </div>
                             <div className="col-sm-4">
                               <div className="card bg-light-300 shadow-none border-0">
                                 <div className="card-body p-3 text-center">
-                                  <h5>01</h5>
+                                  <h5>{stats.staff.inactive}</h5>
                                   <p className="fs-12">Absent</p>
                                 </div>
                               </div>
@@ -952,7 +893,7 @@ const AdminDashboard = () => {
                             <div className="col-sm-4">
                               <div className="card bg-light-300 shadow-none border-0">
                                 <div className="card-body p-3 text-center">
-                                  <h5>10</h5>
+                                  <h5>0</h5>
                                   <p className="fs-12">Late</p>
                                 </div>
                               </div>
@@ -988,38 +929,39 @@ const AdminDashboard = () => {
                           {...student}
                           className="owl-carousel student-slider h-100"
                         >
-                          <div className="item h-100">
-                            <div className="d-flex justify-content-between flex-column h-100">
-                              <div>
-                                <h5 className="mb-3 text-white">
-                                  Best Performer
-                                </h5>
-                                <h4 className="mb-1 text-white">Rubell</h4>
-                                <p className="text-light">Physics Teacher</p>
+                          {bestPerformers.length === 0 && (
+                            <div className="item h-100">
+                              <div className="d-flex justify-content-between flex-column h-100">
+                                <div>
+                                  <h5 className="mb-3 text-white">Best Performer</h5>
+                                  <p className="text-light mb-0">No teachers found.</p>
+                                </div>
+                                <ImageWithBasePath
+                                  src="assets/img/performer/performer-01.png"
+                                  alt="img"
+                                />
                               </div>
-                              <ImageWithBasePath
-                                src="assets/img/performer/performer-01.png"
-                                alt="img"
-                              />
                             </div>
-                          </div>
-                          <div className="item h-100">
-                            <div className="d-flex justify-content-between flex-column h-100">
-                              <div>
-                                <h5 className="mb-3 text-white">
-                                  Best Performer
-                                </h5>
-                                <h4 className="mb-1 text-white">
-                                  George Odell
-                                </h4>
-                                <p className="text-light">English Teacher</p>
+                          )}
+                          {bestPerformers.map((p) => (
+                            <div key={p.id} className="item h-100">
+                              <div className="d-flex justify-content-between flex-column h-100">
+                                <div>
+                                  <h5 className="mb-3 text-white">Best Performer</h5>
+                                  <h4 className="mb-1 text-white">{p.name}</h4>
+                                  <p className="text-light">{p.subject}</p>
+                                </div>
+                                {p.photoUrl ? (
+                                  <img src={p.photoUrl} alt={p.name} className="img-fluid" style={{ maxHeight: 120, objectFit: 'contain' }} />
+                                ) : (
+                                  <ImageWithBasePath
+                                    src="assets/img/performer/performer-01.png"
+                                    alt="img"
+                                  />
+                                )}
                               </div>
-                              <ImageWithBasePath
-                                src="assets/img/performer/performer-02.png"
-                                alt="img"
-                              />
                             </div>
-                          </div>
+                          ))}
                         </Slider>
                       </div>
                     </div>
@@ -1031,36 +973,39 @@ const AdminDashboard = () => {
                           {...teacher}
                           className="owl-carousel teacher-slider h-100"
                         >
-                          <div className="item h-100">
-                            <div className="d-flex justify-content-between flex-column h-100">
-                              <div>
-                                <h5 className="mb-3 text-white">
-                                  Star Students
-                                </h5>
-                                <h4 className="mb-1 text-white">Tenesa</h4>
-                                <p className="text-light">XII, A</p>
+                          {starStudents.length === 0 && (
+                            <div className="item h-100">
+                              <div className="d-flex justify-content-between flex-column h-100">
+                                <div>
+                                  <h5 className="mb-3 text-white">Star Students</h5>
+                                  <p className="text-light mb-0">No students found.</p>
+                                </div>
+                                <ImageWithBasePath
+                                  src="assets/img/performer/student-performer-01.png"
+                                  alt="img"
+                                />
                               </div>
-                              <ImageWithBasePath
-                                src="assets/img/performer/student-performer-01.png"
-                                alt="img"
-                              />
                             </div>
-                          </div>
-                          <div className="item h-100">
-                            <div className="d-flex justify-content-between flex-column h-100">
-                              <div>
-                                <h5 className="mb-3 text-white">
-                                  Star Students
-                                </h5>
-                                <h4 className="mb-1 text-white">Michael </h4>
-                                <p>XII, B</p>
+                          )}
+                          {starStudents.map((s) => (
+                            <div key={s.id} className="item h-100">
+                              <div className="d-flex justify-content-between flex-column h-100">
+                                <div>
+                                  <h5 className="mb-3 text-white">Star Students</h5>
+                                  <h4 className="mb-1 text-white">{s.name}</h4>
+                                  <p className="text-light">{s.classSection}</p>
+                                </div>
+                                {s.photoUrl ? (
+                                  <img src={s.photoUrl} alt={s.name} className="img-fluid" style={{ maxHeight: 120, objectFit: 'contain' }} />
+                                ) : (
+                                  <ImageWithBasePath
+                                    src="assets/img/performer/student-performer-01.png"
+                                    alt="img"
+                                  />
+                                )}
                               </div>
-                              <ImageWithBasePath
-                                src="assets/img/performer/student-performer-02.png"
-                                alt="img"
-                              />
                             </div>
-                          </div>
+                          ))}
                         </Slider>
                       </div>
                     </div>
@@ -1170,72 +1115,40 @@ const AdminDashboard = () => {
                       </Link>
                     </div>
                     <div className="card-body">
-                      <div className="d-flex align-items-center rounded border p-3 mb-3">
-                        <span className="avatar avatar-md flex-shrink-0 border rounded me-2">
-                          <ImageWithBasePath
-                            src="assets/img/teachers/teacher-01.jpg"
-                            className="rounded"
-                            alt="Profile"
-                          />
-                        </span>
-                        <div className="w-100">
-                          <p className="mb-1">Oct 2024</p>
-                          <div className="progress progress-xs  flex-grow-1 mb-1">
-                            <div
-                              className="progress-bar progress-bar-striped progress-bar-animated bg-primary rounded"
-                              role="progressbar"
-                              style={{ width: "80%" }}
-                              aria-valuenow={80}
-                              aria-valuemin={0}
-                              aria-valuemax={100}
-                            />
+                      {routineLoading && (
+                        <p className="mb-0 text-muted small">Loading class routine...</p>
+                      )}
+                      {!routineLoading && classRoutine.length === 0 && (
+                        <p className="mb-0 text-muted small">No class routine found.</p>
+                      )}
+                      {!routineLoading && classRoutine.length > 0 && classRoutine.map((r, idx) => (
+                        <div key={r.id || idx} className={`d-flex align-items-center rounded border p-3 ${idx < classRoutine.length - 1 ? 'mb-3' : 'mb-0'}`}>
+                          <span className="avatar avatar-md flex-shrink-0 border rounded me-2">
+                            {r.teacherPhotoUrl ? (
+                              <img src={r.teacherPhotoUrl} alt={r.teacherName} className="rounded" style={{ width: 40, height: 40, objectFit: 'cover' }} />
+                            ) : (
+                              <span className="d-flex align-items-center justify-content-center w-100 h-100 bg-primary rounded text-white">
+                                <i className="ti ti-user" />
+                              </span>
+                            )}
+                          </span>
+                          <div className="w-100">
+                            <p className="mb-1">
+                              {[r.className, r.sectionName].filter(Boolean).join(' - ') || 'Class'} • {r.subjectName || 'Subject'} • {r.day || 'Day'}
+                            </p>
+                            <div className="progress progress-xs flex-grow-1 mb-1">
+                              <div
+                                className={`progress-bar progress-bar-striped progress-bar-animated rounded ${idx % 3 === 0 ? 'bg-primary' : idx % 3 === 1 ? 'bg-warning' : 'bg-success'}`}
+                                role="progressbar"
+                                style={{ width: "100%" }}
+                                aria-valuenow={100}
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                              />
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="d-flex align-items-center rounded border p-3 mb-3">
-                        <span className="avatar avatar-md flex-shrink-0 border rounded me-2">
-                          <ImageWithBasePath
-                            src="assets/img/teachers/teacher-02.jpg"
-                            className="rounded"
-                            alt="Profile"
-                          />
-                        </span>
-                        <div className="w-100">
-                          <p className="mb-1">Nov 2024</p>
-                          <div className="progress progress-xs  flex-grow-1 mb-1">
-                            <div
-                              className="progress-bar progress-bar-striped progress-bar-animated bg-warning rounded"
-                              role="progressbar"
-                              style={{ width: "80%" }}
-                              aria-valuenow={80}
-                              aria-valuemin={0}
-                              aria-valuemax={100}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="d-flex align-items-center rounded border p-3 mb-0">
-                        <span className="avatar avatar-md flex-shrink-0 border rounded me-2">
-                          <ImageWithBasePath
-                            src="assets/img/teachers/teacher-03.jpg"
-                            className="rounded"
-                            alt="Profile"
-                          />
-                        </span>
-                        <div className="w-100">
-                          <p className="mb-1">Oct 2024</p>
-                          <div className="progress progress-xs  flex-grow-1 mb-1">
-                            <div
-                              className="progress-bar progress-bar-striped progress-bar-animated bg-success rounded"
-                              role="progressbar"
-                              style={{ width: "80%" }}
-                              aria-valuenow={80}
-                              aria-valuemin={0}
-                              aria-valuemax={100}
-                            />
-                          </div>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
                   {/* /Class Routine */}
@@ -1282,23 +1195,23 @@ const AdminDashboard = () => {
                           <div className="border border-dashed p-3 rounded d-flex align-items-center justify-content-between mb-1">
                             <p className="mb-0 me-2">
                               <i className="ti ti-arrow-badge-down-filled me-2 text-primary" />
-                              Top
+                              Good
                             </p>
-                            <h5>45</h5>
+                            <h5>{performanceSummary.good}</h5>
                           </div>
-                          <div className="border border-dashed p-3 rounde d-flex align-items-center justify-content-between mb-1">
+                          <div className="border border-dashed p-3 rounded d-flex align-items-center justify-content-between mb-1">
                             <p className="mb-0 me-2">
                               <i className="ti ti-arrow-badge-down-filled me-2 text-warning" />
                               Average
                             </p>
-                            <h5>11</h5>
+                            <h5>{performanceSummary.average}</h5>
                           </div>
                           <div className="border border-dashed p-3 rounded d-flex align-items-center justify-content-between mb-0">
                             <p className="mb-0 me-2">
                               <i className="ti ti-arrow-badge-down-filled me-2 text-danger" />
                               Below Avg
                             </p>
-                            <h5>02</h5>
+                            <h5>{performanceSummary.below}</h5>
                           </div>
                         </div>
                         {/* <div id="class-chart" className="text-center text-md-left" /> */}
@@ -1435,18 +1348,24 @@ const AdminDashboard = () => {
                                 </div>
                               </div>
                               <div className="d-flex align-items-center">
-                                <Link
-                                  to="#"
+                                <button
+                                  type="button"
                                   className="avatar avatar-xs p-0 btn btn-success me-1"
+                                  onClick={() => item.id != null && handleLeaveApprove(Number(item.id))}
+                                  disabled={leaveActionId != null || (item.status || "").toLowerCase() === "approved"}
+                                  title="Approve"
                                 >
                                   <i className="ti ti-checks" />
-                                </Link>
-                                <Link
-                                  to="#"
+                                </button>
+                                <button
+                                  type="button"
                                   className="avatar avatar-xs p-0 btn btn-danger"
+                                  onClick={() => item.id != null && handleLeaveReject(Number(item.id))}
+                                  disabled={leaveActionId != null || (item.status || "").toLowerCase() === "rejected"}
+                                  title="Reject"
                                 >
                                   <i className="ti ti-x" />
-                                </Link>
+                                </button>
                               </div>
                             </div>
                             <div className="d-flex align-items-center justify-content-between border-top pt-3">
@@ -1581,7 +1500,8 @@ const AdminDashboard = () => {
                       <div className="d-flex align-items-center justify-content-between">
                         <div>
                           <h6 className="mb-1">Total Earnings</h6>
-                          <h2>$64,522,24</h2>
+                          <h2>N/A</h2>
+                          <small className="text-muted">No earnings data available</small>
                         </div>
                         <span className="avatar avatar-lg bg-primary">
                           <i className="ti ti-user-dollar" />
@@ -1631,106 +1551,25 @@ const AdminDashboard = () => {
                     </div>
                     <div className="card-body">
                       <div className="notice-widget">
-                        <div className="d-sm-flex align-items-center justify-content-between mb-4">
-                          <div className="d-flex align-items-center overflow-hidden me-2 mb-2 mb-sm-0">
-                            <span className="bg-primary-transparent avatar avatar-md me-2 rounded-circle flex-shrink-0">
-                              <i className="ti ti-books fs-16" />
-                            </span>
-                            <div className="overflow-hidden">
-                              <h6 className="text-truncate mb-1">
-                                New Syllabus Instructions
-                              </h6>
-                              <p>
-                                <i className="ti ti-calendar me-2" />
-                                Added on : 11 Mar 2024
-                              </p>
+                        {dashboardNotices.length === 0 && (
+                          <p className="mb-0 text-muted">No notices yet.</p>
+                        )}
+                        {dashboardNotices.map((n) => (
+                          <div key={n.id} className="d-sm-flex align-items-center justify-content-between mb-4">
+                            <div className="d-flex align-items-center overflow-hidden me-2 mb-2 mb-sm-0">
+                              <span className="bg-primary-transparent avatar avatar-md me-2 rounded-circle flex-shrink-0">
+                                <i className="ti ti-books fs-16" />
+                              </span>
+                              <div className="overflow-hidden">
+                                <h6 className="text-truncate mb-1">{n.title}</h6>
+                                <p className="mb-0">
+                                  <i className="ti ti-calendar me-2" />
+                                  {n.modified_at ? `Modified: ${new Date(n.modified_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : `Added: ${new Date(n.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                                </p>
+                              </div>
                             </div>
                           </div>
-                          <span className="badge bg-light text-dark">
-                            <i className="ti ti-clck me-1" />
-                            20 Days
-                          </span>
-                        </div>
-                        <div className="d-sm-flex align-items-center justify-content-between mb-4">
-                          <div className="d-flex align-items-center overflow-hidden me-2 mb-2 mb-sm-0">
-                            <span className="bg-success-transparent avatar avatar-md me-2 rounded-circle flex-shrink-0">
-                              <i className="ti ti-note fs-16" />
-                            </span>
-                            <div className="overflow-hidden">
-                              <h6 className="text-truncate mb-1">
-                                World Environment Day Program.....!!!
-                              </h6>
-                              <p>
-                                <i className="ti ti-calendar me-2" />
-                                Added on : 21 Apr 2024
-                              </p>
-                            </div>
-                          </div>
-                          <span className="badge bg-light text-dark">
-                            <i className="ti ti-clck me-1" />
-                            15 Days
-                          </span>
-                        </div>
-                        <div className="d-sm-flex align-items-center justify-content-between mb-4">
-                          <div className="d-flex align-items-center overflow-hidden me-2 mb-2 mb-sm-0">
-                            <span className="bg-danger-transparent avatar avatar-md me-2 rounded-circle flex-shrink-0">
-                              <i className="ti ti-bell-check fs-16" />
-                            </span>
-                            <div className="overflow-hidden">
-                              <h6 className="text-truncate mb-1">
-                                Exam Preparation Notification!
-                              </h6>
-                              <p>
-                                <i className="ti ti-calendar me-2" />
-                                Added on : 13 Mar 2024
-                              </p>
-                            </div>
-                          </div>
-                          <span className="badge bg-light text-dark">
-                            <i className="ti ti-clck me-1" />
-                            12 Days
-                          </span>
-                        </div>
-                        <div className="d-sm-flex align-items-center justify-content-between mb-4">
-                          <div className="d-flex align-items-center overflow-hidden me-2 mb-2 mb-sm-0">
-                            <span className="bg-skyblue-transparent avatar avatar-md me-2 rounded-circle flex-shrink-0">
-                              <i className="ti ti-notes fs-16" />
-                            </span>
-                            <div className="overflow-hidden">
-                              <h6 className="text-truncate mb-1">
-                                Online Classes Preparation
-                              </h6>
-                              <p>
-                                <i className="ti ti-calendar me-2" />
-                                Added on : 24 May 2024
-                              </p>
-                            </div>
-                          </div>
-                          <span className="badge bg-light text-dark">
-                            <i className="ti ti-clck me-1" />
-                            02 Days
-                          </span>
-                        </div>
-                        <div className="d-sm-flex align-items-center justify-content-between mb-0">
-                          <div className="d-flex align-items-center overflow-hidden me-2 mb-2 mb-sm-0">
-                            <span className="bg-warning-transparent avatar avatar-md me-2 rounded-circle flex-shrink-0">
-                              <i className="ti ti-package fs-16" />
-                            </span>
-                            <div className="overflow-hidden">
-                              <h6 className="text-truncate mb-1">
-                                Exam Time Table Release
-                              </h6>
-                              <p>
-                                <i className="ti ti-calendar me-2" />
-                                Added on : 24 May 2024
-                              </p>
-                            </div>
-                          </div>
-                          <span className="badge bg-light text-dark">
-                            <i className="ti ti-clck me-1" />
-                            06 Days
-                          </span>
-                        </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -1742,7 +1581,7 @@ const AdminDashboard = () => {
                     <div className="card-body">
                       <p className="mb-2">Total Fees Collected</p>
                       <div className="d-flex align-items-end justify-content-between">
-                        <h4>$25,000,02</h4>
+                        <h4>N/A</h4>
                         <span className="badge badge-soft-success">
                           <i className="ti ti-chart-line me-1" />
                           1.2%
@@ -1754,7 +1593,7 @@ const AdminDashboard = () => {
                     <div className="card-body">
                       <p className="mb-2">Fine Collected till date</p>
                       <div className="d-flex align-items-end justify-content-between">
-                        <h4>$4,56,64</h4>
+                        <h4>N/A</h4>
                         <span className="badge badge-soft-danger">
                           <i className="ti ti-chart-line me-1" />
                           1.2%
@@ -1766,7 +1605,7 @@ const AdminDashboard = () => {
                     <div className="card-body">
                       <p className="mb-2">Student Not Paid</p>
                       <div className="d-flex align-items-end justify-content-between">
-                        <h4>$545</h4>
+                        <h4>N/A</h4>
                         <span className="badge badge-soft-info">
                           <i className="ti ti-chart-line me-1" />
                           1.2%
@@ -1778,7 +1617,7 @@ const AdminDashboard = () => {
                     <div className="card-body">
                       <p className="mb-2">Total Outstanding</p>
                       <div className="d-flex align-items-end justify-content-between">
-                        <h4>$4,56,64</h4>
+                        <h4>N/A</h4>
                         <span className="badge badge-soft-danger">
                           <i className="ti ti-chart-line me-1" />
                           1.2%
@@ -1840,139 +1679,36 @@ const AdminDashboard = () => {
                         </div>
                       </div>
                       <ul className="list-group">
-                        <li className="list-group-item">
-                          <div className="row align-items-center">
-                            <div className="col-sm-4">
-                              <p className="text-dark">Maths</p>
-                            </div>
-                            <div className="col-sm-8">
-                              <div className="progress progress-xs flex-grow-1">
-                                <div
-                                  className="progress-bar bg-primary rounded"
-                                  role="progressbar"
-                                  style={{ width: "20%" }}
-                                  aria-valuenow={30}
-                                  aria-valuemin={0}
-                                  aria-valuemax={100}
-                                />
+                        {topSubjects.length === 0 && (
+                          <li className="list-group-item">
+                            <p className="mb-0 text-muted">No subjects found.</p>
+                          </li>
+                        )}
+                        {topSubjects.map((subj, idx) => {
+                          const colors = ['bg-primary', 'bg-secondary', 'bg-info', 'bg-success', 'bg-warning', 'bg-danger'];
+                          const pct = topSubjects.length > 1 ? Math.min(100, 30 + Math.floor((idx / (topSubjects.length - 1)) * 60)) : 100;
+                          return (
+                            <li key={subj.id} className="list-group-item">
+                              <div className="row align-items-center">
+                                <div className="col-sm-4">
+                                  <p className="text-dark mb-0">{subj.name}</p>
+                                </div>
+                                <div className="col-sm-8">
+                                  <div className="progress progress-xs flex-grow-1">
+                                    <div
+                                      className={`progress-bar ${colors[idx % colors.length]} rounded`}
+                                      role="progressbar"
+                                      style={{ width: `${pct}%` }}
+                                      aria-valuenow={pct}
+                                      aria-valuemin={0}
+                                      aria-valuemax={100}
+                                    />
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                        </li>
-                        <li className="list-group-item">
-                          <div className="row align-items-center">
-                            <div className="col-sm-4">
-                              <p className="text-dark">Physics</p>
-                            </div>
-                            <div className="col-sm-8">
-                              <div className="progress progress-xs flex-grow-1">
-                                <div
-                                  className="progress-bar bg-secondary rounded"
-                                  role="progressbar"
-                                  style={{ width: "30%" }}
-                                  aria-valuenow={30}
-                                  aria-valuemin={0}
-                                  aria-valuemax={100}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </li>
-                        <li className="list-group-item">
-                          <div className="row align-items-center">
-                            <div className="col-sm-4">
-                              <p className="text-dark">Chemistry</p>
-                            </div>
-                            <div className="col-sm-8">
-                              <div className="progress progress-xs flex-grow-1">
-                                <div
-                                  className="progress-bar bg-info rounded"
-                                  role="progressbar"
-                                  style={{ width: "40%" }}
-                                  aria-valuenow={30}
-                                  aria-valuemin={0}
-                                  aria-valuemax={100}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </li>
-                        <li className="list-group-item">
-                          <div className="row align-items-center">
-                            <div className="col-sm-4">
-                              <p className="text-dark">Botany</p>
-                            </div>
-                            <div className="col-sm-8">
-                              <div className="progress progress-xs flex-grow-1">
-                                <div
-                                  className="progress-bar bg-success rounded"
-                                  role="progressbar"
-                                  style={{ width: "50%" }}
-                                  aria-valuenow={30}
-                                  aria-valuemin={0}
-                                  aria-valuemax={100}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </li>
-                        <li className="list-group-item">
-                          <div className="row align-items-center">
-                            <div className="col-sm-4">
-                              <p className="text-dark">English</p>
-                            </div>
-                            <div className="col-sm-8">
-                              <div className="progress progress-xs flex-grow-1">
-                                <div
-                                  className="progress-bar bg-warning rounded"
-                                  role="progressbar"
-                                  style={{ width: "70%" }}
-                                  aria-valuenow={30}
-                                  aria-valuemin={0}
-                                  aria-valuemax={100}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </li>
-                        <li className="list-group-item">
-                          <div className="row align-items-center">
-                            <div className="col-sm-4">
-                              <p className="text-dark">Spanish</p>
-                            </div>
-                            <div className="col-sm-8">
-                              <div className="progress progress-xs flex-grow-1">
-                                <div
-                                  className="progress-bar bg-danger rounded"
-                                  role="progressbar"
-                                  style={{ width: "80%" }}
-                                  aria-valuenow={30}
-                                  aria-valuemin={0}
-                                  aria-valuemax={100}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </li>
-                        <li className="list-group-item">
-                          <div className="row align-items-center">
-                            <div className="col-sm-4">
-                              <p className="text-dark">Japanese</p>
-                            </div>
-                            <div className="col-sm-8">
-                              <div className="progress progress-xs flex-grow-1">
-                                <div
-                                  className="progress-bar bg-primary rounded"
-                                  role="progressbar"
-                                  style={{ width: "85%" }}
-                                  aria-valuenow={30}
-                                  aria-valuemin={0}
-                                  aria-valuemax={100}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </li>
+                            </li>
+                          );
+                        })}
                       </ul>
                     </div>
                   </div>
@@ -2225,7 +1961,7 @@ const AdminDashboard = () => {
         </div>
       </div>
       {/* /Page Wrapper */}
-      <AdminDashboardModal/>
+      <AdminDashboardModal refetchRoutine={refetchRoutine} refetchEvents={refetchEvents} />
     </>
   );
 };

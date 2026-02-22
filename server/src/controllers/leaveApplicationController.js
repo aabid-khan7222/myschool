@@ -1,6 +1,199 @@
 const { query } = require('../config/database');
 const { getParentsForUser } = require('../utils/parentUserMatch');
 
+// Seed leave types if table is empty (handles case when migration seed didn't run)
+const seedLeaveTypesIfEmpty = async () => {
+  const check = await query('SELECT COUNT(*) AS c FROM leave_types');
+  if (parseInt(check.rows[0]?.c || '0', 10) > 0) return;
+  const types = [
+    ['Medical Leave', 'Leave for medical reasons', 10],
+    ['Casual Leave', 'Casual leave', 12],
+    ['Special Leave', 'Special leave', 5],
+    ['Maternity Leave', 'Maternity leave', 90],
+    ['Paternity Leave', 'Paternity leave', 15],
+    ['Emergency Leave', 'Emergency situations', 5],
+  ];
+  for (const [lt, desc, maxDays] of types) {
+    await query(
+      'INSERT INTO leave_types (leave_type, description, max_days_per_year) VALUES ($1, $2, $3) ON CONFLICT (leave_type) DO NOTHING',
+      [lt, desc, maxDays]
+    );
+  }
+};
+
+// Get all leave types from leave_types table
+const getLeaveTypes = async (req, res) => {
+  try {
+    await seedLeaveTypesIfEmpty();
+    const result = await query(
+      'SELECT id, leave_type FROM leave_types WHERE is_active = true ORDER BY leave_type'
+    );
+    res.status(200).json({
+      status: 'SUCCESS',
+      message: 'Leave types fetched successfully',
+      data: result.rows,
+      count: result.rows.length,
+    });
+  } catch (error) {
+    console.error('Error fetching leave types:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Failed to fetch leave types',
+    });
+  }
+};
+
+// Create leave application (student or staff)
+const createLeaveApplication = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ status: 'ERROR', message: 'Not authenticated' });
+    }
+    const { leave_type_id, student_id, staff_id, start_date, end_date, reason } = req.body;
+
+    if (!leave_type_id || !start_date || !end_date) {
+      return res.status(400).json({
+        status: 'ERROR',
+        message: 'Leave type, start date and end date are required',
+      });
+    }
+    if (!student_id && !staff_id) {
+      const staffByUser = await query('SELECT id FROM staff WHERE user_id = $1 LIMIT 1', [userId]);
+      if (staffByUser.rows.length > 0) {
+        req.body.staff_id = staffByUser.rows[0].id;
+      } else {
+        return res.status(400).json({
+          status: 'ERROR',
+          message: 'Either student_id or staff_id is required',
+        });
+      }
+    }
+    let reqStaffId = req.body.staff_id ?? staff_id;
+    let reqStudentId = student_id;
+
+    if (reqStudentId && reqStaffId) {
+      return res.status(400).json({
+        status: 'ERROR',
+        message: 'Provide only student_id OR staff_id, not both',
+      });
+    }
+
+    let resolvedStudentId = null;
+    let resolvedStaffId = null;
+
+    if (reqStudentId) {
+      const studCheck = await query(
+        'SELECT id FROM students WHERE id = $1 AND user_id = $2',
+        [reqStudentId, userId]
+      );
+      if (studCheck.rows.length === 0) {
+        const parentCheck = await getParentsForUser(userId);
+        const childIds = parentCheck.studentIds || [];
+        if (!childIds.includes(Number(reqStudentId))) {
+          const guardianCheck = await query(
+            `SELECT student_id FROM guardians g
+             INNER JOIN users u ON (LOWER(TRIM(g.email)) = LOWER(TRIM(u.email)) OR (g.phone = u.phone AND g.phone != ''))
+             WHERE u.id = $1 AND g.student_id = $2`,
+            [userId, reqStudentId]
+          );
+          if (guardianCheck.rows.length === 0) {
+            return res.status(403).json({
+              status: 'ERROR',
+              message: 'You can only apply leave for your own or your children/wards',
+            });
+          }
+        }
+      }
+      resolvedStudentId = reqStudentId;
+    } else {
+      const staffCheck = await query(
+        'SELECT id FROM staff WHERE id = $1 AND user_id = $2',
+        [reqStaffId, userId]
+      );
+      if (staffCheck.rows.length === 0) {
+        const teacherCheck = await query(
+          'SELECT s.id FROM teachers t INNER JOIN staff s ON t.staff_id = s.id WHERE s.id = $1 AND s.user_id = $2',
+          [reqStaffId, userId]
+        );
+        if (teacherCheck.rows.length === 0) {
+          return res.status(403).json({
+            status: 'ERROR',
+            message: 'You can only apply leave for your own staff account',
+          });
+        }
+      }
+      resolvedStaffId = reqStaffId;
+    }
+
+    const start = new Date(start_date);
+    const end = new Date(end_date);
+    const totalDays = Math.max(1, Math.ceil((end - start) / (24 * 60 * 60 * 1000)) + 1);
+    const applicantType = resolvedStudentId ? 'student' : 'staff';
+
+    const result = await query(
+      `INSERT INTO leave_applications (leave_type_id, student_id, staff_id, applicant_type, start_date, end_date, total_days, reason, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
+       RETURNING *`,
+      [
+        leave_type_id,
+        resolvedStudentId,
+        resolvedStaffId,
+        applicantType,
+        start_date,
+        end_date,
+        totalDays,
+        reason || null,
+      ]
+    );
+
+    res.status(201).json({
+      status: 'SUCCESS',
+      message: 'Leave application submitted successfully',
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error('Error creating leave application:', error);
+    const detail = error.detail || error.message || '';
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Failed to submit leave application',
+      detail: process.env.NODE_ENV !== 'production' ? String(detail) : undefined,
+    });
+  }
+};
+
+// Update leave application status (approve/reject)
+const updateLeaveApplicationStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    if (!id) {
+      return res.status(400).json({ status: 'ERROR', message: 'Leave application ID required' });
+    }
+    const statusVal = String(status || '').toLowerCase();
+    if (!['approved', 'rejected', 'reject', 'pending'].includes(statusVal)) {
+      return res.status(400).json({ status: 'ERROR', message: 'Status must be approved or rejected' });
+    }
+    const dbStatus = statusVal === 'reject' ? 'rejected' : statusVal;
+    const result = await query(
+      'UPDATE leave_applications SET status = $1 WHERE id = $2 RETURNING *',
+      [dbStatus, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ status: 'ERROR', message: 'Leave application not found' });
+    }
+    res.status(200).json({
+      status: 'SUCCESS',
+      message: `Leave ${dbStatus} successfully`,
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error('Error updating leave status:', error);
+    res.status(500).json({ status: 'ERROR', message: 'Failed to update leave status' });
+  }
+};
+
 // Get leave applications for the current user (student or staff/teacher by user_id from JWT).
 // Used on Student Dashboard (student leaves) and Teacher Dashboard (staff leaves).
 const getMyLeaveApplications = async (req, res) => {
@@ -195,11 +388,23 @@ const getGuardianWardLeaves = async (req, res) => {
 };
 
 // Get leave applications for dashboard (e.g. pending or recent).
-// Applicants: students use student_id → students; staff use staff_id → staff + designations.
-// leave_types gives the type name.
+// Optional filters: ?student_id=X, ?staff_id=X (for admin viewing specific student/teacher).
 const getLeaveApplications = async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+    const studentId = req.query.student_id ? parseInt(req.query.student_id, 10) : null;
+    const staffId = req.query.staff_id ? parseInt(req.query.staff_id, 10) : null;
+
+    let whereClause = '';
+    const params = [];
+    if (studentId) {
+      whereClause = ' WHERE la.student_id = $1';
+      params.push(studentId);
+    } else if (staffId) {
+      whereClause = ' WHERE la.staff_id = $1';
+      params.push(staffId);
+    }
+    params.push(limit);
 
     const result = await query(
       `
@@ -215,10 +420,11 @@ const getLeaveApplications = async (req, res) => {
       LEFT JOIN staff s ON la.staff_id = s.id
       LEFT JOIN designations d ON s.designation_id = d.id
       LEFT JOIN students st ON la.student_id = st.id
+      ${whereClause}
       ORDER BY la.start_date DESC NULLS LAST
-      LIMIT $1
+      LIMIT $${params.length}
       `,
-      [limit]
+      params
     );
 
     res.status(200).json({
@@ -237,6 +443,9 @@ const getLeaveApplications = async (req, res) => {
 };
 
 module.exports = {
+  getLeaveTypes,
+  createLeaveApplication,
+  updateLeaveApplicationStatus,
   getLeaveApplications,
   getMyLeaveApplications,
   getParentChildrenLeaves,

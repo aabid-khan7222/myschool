@@ -10,7 +10,18 @@ const createStudent = async (req, res) => {
       blood_group_id, house_id, religion_id, cast_id, phone, email, mother_tongue_id,
       // Parent fields
       father_name, father_email, father_phone, father_occupation, father_image_url,
-      mother_name, mother_email, mother_phone, mother_occupation, mother_image_url
+      mother_name, mother_email, mother_phone, mother_occupation, mother_image_url,
+      // Guardian fields
+      guardian_first_name, guardian_last_name, guardian_relation, guardian_phone,
+      guardian_email, guardian_occupation, guardian_address,
+      // Address, siblings, transport, hostel, bank, medical
+      current_address, permanent_address, address,
+      previous_school,
+      sibiling_1, sibiling_2, sibiling_1_class, sibiling_2_class,
+      is_transport_required, route_id, pickup_point_id,
+      is_hostel_required, hostel_id, hostel_room_id,
+      bank_name, branch, ifsc,
+      known_allergies, medications
     } = req.body;
 
     // Validate required fields
@@ -23,6 +34,17 @@ const createStudent = async (req, res) => {
 
     const hasParentInfo = father_name || father_email || father_phone || father_occupation ||
                          mother_name || mother_email || mother_phone || mother_occupation;
+
+    const hasGuardianInfo = guardian_first_name || guardian_last_name || guardian_phone ||
+                           guardian_email || guardian_occupation || guardian_relation;
+
+    const addrVal = current_address || address || null;
+    const knownAllergiesVal = Array.isArray(known_allergies)
+      ? known_allergies.join(',')
+      : (typeof known_allergies === 'string' ? known_allergies : (known_allergies || null));
+    const medicationsVal = Array.isArray(medications)
+      ? medications.join(',')
+      : (typeof medications === 'string' ? medications : (medications || null));
 
     const student = await executeTransaction(async (client) => {
       const existingStudent = await client.query(
@@ -41,15 +63,31 @@ const createStudent = async (req, res) => {
           academic_year_id, admission_number, admission_date, roll_number,
           first_name, last_name, class_id, section_id, gender, date_of_birth,
           blood_group_id, house_id, religion_id, cast_id, phone, email,
-          mother_tongue_id, is_active, created_at, modified_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
+          mother_tongue_id, is_active,
+          address, previous_school,
+          sibiling_1, sibiling_2, sibiling_1_class, sibiling_2_class,
+          is_transport_required, route_id, pickup_point_id,
+          is_hostel_required, hostel_id, hostel_room_id,
+          bank_name, branch, ifsc,
+          known_allergies, medications,
+          created_at, modified_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, NOW(), NOW())
         RETURNING *
       `, [
         academic_year_id || null, admission_number, admission_date || null, roll_number || null,
         first_name, last_name, class_id || null, section_id || null, gender || null,
         date_of_birth || null, blood_group_id || null, house_id || null, religion_id || null,
         cast_id || null, phone || null, email || null, mother_tongue_id || null,
-        status === 'Active' ? true : false
+        status === 'Active' ? true : false,
+        addrVal,
+        previous_school || null,
+        sibiling_1 || null, sibiling_2 || null, sibiling_1_class || null, sibiling_2_class || null,
+        is_transport_required === true || is_transport_required === 'true',
+        route_id || null, pickup_point_id || null,
+        is_hostel_required === true || is_hostel_required === 'true',
+        hostel_id || null, hostel_room_id || null,
+        bank_name || null, branch || null, ifsc || null,
+        knownAllergiesVal, medicationsVal
       ]);
 
       const studentRow = result.rows[0];
@@ -74,6 +112,31 @@ const createStudent = async (req, res) => {
         `, [parentResult.rows[0].id, studentRow.id]);
 
         studentRow.parent_id = parentResult.rows[0].id;
+      }
+
+      if (hasGuardianInfo) {
+        const guardianResult = await client.query(`
+          INSERT INTO guardians (
+            student_id, first_name, last_name, relation, occupation, phone, email, address,
+            is_active, created_at, modified_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW(), NOW())
+          RETURNING id
+        `, [
+          studentRow.id,
+          guardian_first_name || 'Guardian',
+          guardian_last_name || '',
+          guardian_relation || null,
+          guardian_occupation || null,
+          guardian_phone || '',
+          guardian_email || null,
+          guardian_address || null
+        ]);
+
+        await client.query(`
+          UPDATE students SET guardian_id = $1, modified_at = NOW() WHERE id = $2
+        `, [guardianResult.rows[0].id, studentRow.id]);
+
+        studentRow.guardian_id = guardianResult.rows[0].id;
       }
 
       return studentRow;
@@ -106,7 +169,18 @@ const updateStudent = async (req, res) => {
       blood_group_id, house_id, religion_id, cast_id, phone, email, mother_tongue_id,
       // Parent fields
       father_name, father_email, father_phone, father_occupation, father_image_url,
-      mother_name, mother_email, mother_phone, mother_occupation, mother_image_url
+      mother_name, mother_email, mother_phone, mother_occupation, mother_image_url,
+      // Guardian fields
+      guardian_first_name, guardian_last_name, guardian_relation, guardian_phone,
+      guardian_email, guardian_occupation, guardian_address,
+      // Address, siblings, transport, hostel, bank, medical
+      current_address, permanent_address, address,
+      previous_school,
+      sibiling_1, sibiling_2, sibiling_1_class, sibiling_2_class,
+      is_transport_required, route_id, pickup_point_id,
+      is_hostel_required, hostel_id, hostel_room_id,
+      bank_name, branch, ifsc,
+      known_allergies, medications
     } = req.body;
 
     // Validate required fields
@@ -119,6 +193,17 @@ const updateStudent = async (req, res) => {
 
     const hasParentInfo = father_name || father_email || father_phone || father_occupation ||
                          mother_name || mother_email || mother_phone || mother_occupation;
+
+    const hasGuardianInfo = guardian_first_name || guardian_last_name || guardian_phone ||
+                           guardian_email || guardian_occupation || guardian_relation;
+
+    const addrVal = current_address || address || null;
+    const knownAllergiesVal = Array.isArray(known_allergies)
+      ? known_allergies.join(',')
+      : (typeof known_allergies === 'string' ? known_allergies : (known_allergies || null));
+    const medicationsVal = Array.isArray(medications)
+      ? medications.join(',')
+      : (typeof medications === 'string' ? medications : (medications || null));
 
     const student = await executeTransaction(async (client) => {
       const existingStudent = await client.query(
@@ -152,15 +237,42 @@ const updateStudent = async (req, res) => {
           email = $16,
           mother_tongue_id = $17,
           is_active = $18,
+          address = $19,
+          previous_school = $20,
+          sibiling_1 = $21,
+          sibiling_2 = $22,
+          sibiling_1_class = $23,
+          sibiling_2_class = $24,
+          is_transport_required = $25,
+          route_id = $26,
+          pickup_point_id = $27,
+          is_hostel_required = $28,
+          hostel_id = $29,
+          hostel_room_id = $30,
+          bank_name = $31,
+          branch = $32,
+          ifsc = $33,
+          known_allergies = $34,
+          medications = $35,
           modified_at = NOW()
-        WHERE id = $19
+        WHERE id = $36
         RETURNING *
       `, [
         academic_year_id || null, admission_number, admission_date || null, roll_number || null,
         first_name, last_name, class_id || null, section_id || null, gender || null,
         date_of_birth || null, blood_group_id || null, house_id || null, religion_id || null,
         cast_id || null, phone || null, email || null, mother_tongue_id || null,
-        status === 'Active' ? true : false, id
+        status === 'Active' ? true : false,
+        addrVal,
+        previous_school || null,
+        sibiling_1 || null, sibiling_2 || null, sibiling_1_class || null, sibiling_2_class || null,
+        is_transport_required === true || is_transport_required === 'true',
+        route_id || null, pickup_point_id || null,
+        is_hostel_required === true || is_hostel_required === 'true',
+        hostel_id || null, hostel_room_id || null,
+        bank_name || null, branch || null, ifsc || null,
+        knownAllergiesVal, medicationsVal,
+        id
       ]);
 
       if (result.rows.length === 0) {
@@ -225,6 +337,61 @@ const updateStudent = async (req, res) => {
           `, [parentResult.rows[0].id, studentRow.id]);
 
           studentRow.parent_id = parentResult.rows[0].id;
+        }
+      }
+
+      if (hasGuardianInfo) {
+        const existingGuardian = await client.query(
+          'SELECT id FROM guardians WHERE student_id = $1',
+          [studentRow.id]
+        );
+
+        if (existingGuardian.rows.length > 0) {
+          await client.query(`
+            UPDATE guardians SET
+              first_name = $1,
+              last_name = $2,
+              relation = $3,
+              occupation = $4,
+              phone = $5,
+              email = $6,
+              address = $7,
+              modified_at = NOW()
+            WHERE student_id = $8
+          `, [
+            guardian_first_name || 'Guardian',
+            guardian_last_name || '',
+            guardian_relation || null,
+            guardian_occupation || null,
+            guardian_phone || '',
+            guardian_email || null,
+            guardian_address || null,
+            studentRow.id
+          ]);
+          studentRow.guardian_id = existingGuardian.rows[0].id;
+        } else {
+          const guardianResult = await client.query(`
+            INSERT INTO guardians (
+              student_id, first_name, last_name, relation, occupation, phone, email, address,
+              is_active, created_at, modified_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW(), NOW())
+            RETURNING id
+          `, [
+            studentRow.id,
+            guardian_first_name || 'Guardian',
+            guardian_last_name || '',
+            guardian_relation || null,
+            guardian_occupation || null,
+            guardian_phone || '',
+            guardian_email || null,
+            guardian_address || null
+          ]);
+
+          await client.query(`
+            UPDATE students SET guardian_id = $1, modified_at = NOW() WHERE id = $2
+          `, [guardianResult.rows[0].id, studentRow.id]);
+
+          studentRow.guardian_id = guardianResult.rows[0].id;
         }
       }
 
@@ -312,7 +479,7 @@ const getAllStudents = async (req, res) => {
         g.email as guardian_email,
         g.occupation as guardian_occupation,
         g.relation as guardian_relation,
-        addr.current_address,
+        COALESCE(addr.current_address, s.address) as current_address,
         addr.permanent_address
       FROM students s
       LEFT JOIN classes c ON s.class_id = c.id
@@ -362,7 +529,8 @@ const getStudentById = async (req, res) => {
       p.mother_name, p.mother_email, p.mother_phone, p.mother_occupation,
       g.first_name as guardian_first_name, g.last_name as guardian_last_name,
       g.phone as guardian_phone, g.email as guardian_email, g.occupation as guardian_occupation, g.relation as guardian_relation,
-      addr.current_address, addr.permanent_address`;
+      COALESCE(addr.current_address, s.address) as current_address,
+      addr.permanent_address`;
     const fromAndJoins = `
       FROM students s
       LEFT JOIN classes c ON s.class_id = c.id
@@ -612,7 +780,8 @@ const getCurrentStudent = async (req, res) => {
       p.mother_name, p.mother_email, p.mother_phone, p.mother_occupation,
       g.first_name as guardian_first_name, g.last_name as guardian_last_name,
       g.phone as guardian_phone, g.email as guardian_email, g.occupation as guardian_occupation, g.relation as guardian_relation,
-      addr.current_address, addr.permanent_address`;
+      COALESCE(addr.current_address, s.address) as current_address,
+      addr.permanent_address`;
     const fromAndJoins = `
       FROM students s
       LEFT JOIN classes c ON s.class_id = c.id
@@ -746,7 +915,7 @@ const getStudentsByClass = async (req, res) => {
         g.email as guardian_email,
         g.occupation as guardian_occupation,
         g.relation as guardian_relation,
-        addr.current_address,
+        COALESCE(addr.current_address, s.address) as current_address,
         addr.permanent_address
       FROM students s
       LEFT JOIN classes c ON s.class_id = c.id

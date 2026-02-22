@@ -369,7 +369,7 @@ const ParentGrid = () => {
         </div>
       </div>
       {/* /Page Wrapper */}
-      <ParentModal parentToEdit={parentToEdit} />
+      <ParentModal parentToEdit={parentToEdit} refetch={refetch} />
 
       <Modal show={show} onHide={handleClose} centered size="lg">
         <div className="modal-header">

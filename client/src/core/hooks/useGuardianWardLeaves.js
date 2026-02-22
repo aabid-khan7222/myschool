@@ -28,7 +28,7 @@ function getBadgeClass(leaveTypeName) {
 }
 
 export const useGuardianWardLeaves = (options = {}) => {
-  const { limit = 20 } = options;
+  const { limit = 20, studentId = null } = options;
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -47,7 +47,11 @@ export const useGuardianWardLeaves = (options = {}) => {
       const response = await apiService.getGuardianWardLeaves({ limit });
 
       if (response.status === 'SUCCESS' && Array.isArray(response.data)) {
-        const mapped = response.data.map((row, index) => {
+        let rows = response.data;
+        if (studentId != null) {
+          rows = rows.filter((r) => Number(r.student_id) === Number(studentId));
+        }
+        const mapped = rows.map((row, index) => {
           const name =
             [row.applicant_first_name, row.applicant_last_name].filter(Boolean).join(' ') ||
             row.applicant_name ||
@@ -58,6 +62,7 @@ export const useGuardianWardLeaves = (options = {}) => {
           const leaveRange = formatLeaveRange(startDate, endDate);
           const statusVal = row.status || row.leave_status || 'Pending';
           const statusLower = String(statusVal).toLowerCase();
+          const noOfDays = row.no_of_days ?? (startDate && endDate ? Math.ceil((new Date(endDate) - new Date(startDate)) / (24 * 60 * 60 * 1000)) + 1 : 1);
 
           return {
             key: row.id != null ? String(row.id) : `leave-${index}`,
@@ -65,6 +70,9 @@ export const useGuardianWardLeaves = (options = {}) => {
             name,
             leaveType,
             leaveRange,
+            leaveDate: leaveRange,
+            noOfDays: String(noOfDays),
+            applyOn: formatLeaveDate(row.applied_at || row.created_at || startDate),
             studentId: row.student_id,
             badgeClass: getBadgeClass(leaveType),
             status: statusVal,
@@ -86,7 +94,7 @@ export const useGuardianWardLeaves = (options = {}) => {
 
   useEffect(() => {
     fetchList();
-  }, [limit, isGuardian]);
+  }, [limit, isGuardian, studentId]);
 
   return {
     leaveApplications: list,

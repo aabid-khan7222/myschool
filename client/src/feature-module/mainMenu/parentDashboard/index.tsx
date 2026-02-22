@@ -112,7 +112,7 @@ const ParentDashboard = () => {
                         {selectedChild?.student_id && (
                           <Link
                             to={routes.studentDetail}
-                            state={{ studentId: selectedChild.student_id }}
+                            state={{ studentId: selectedChild.student_id, returnTo: routes.parentDashboard }}
                             className="btn btn-primary btn-sm mt-2"
                           >
                             View Child Profile

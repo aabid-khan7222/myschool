@@ -80,6 +80,9 @@ const getAllTeachers = async (req, res) => {
 const getCurrentTeacher = async (req, res) => {
   try {
     const userId = req.user?.id;
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Teacher] getCurrentTeacher - userId from JWT:', userId, 'username:', req.user?.username);
+    }
     if (!userId) {
       return res.status(401).json({
         status: 'ERROR',
@@ -617,91 +620,118 @@ const getTeacherRoutine = async (req, res) => {
   }
 };
 
-// Update teacher
+// Update teacher (full update: staff + teachers tables)
 const updateTeacher = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, is_active } = req.body;
+    const {
+      status, is_active,
+      first_name, last_name, gender, date_of_birth, phone, email, address,
+      emergency_contact_name, emergency_contact_phone, designation_id, department_id,
+      joining_date, salary, qualification, experience_years,
+      class_id, subject_id, father_name, mother_name, marital_status, languages_known,
+      blood_group, blood_group_id, previous_school_name, previous_school_address, previous_school_phone,
+      current_address, permanent_address, pan_number, id_number,
+      bank_name, branch, ifsc, contract_type, shift, work_location,
+      facebook, twitter, linkedin
+    } = req.body;
 
-    console.log('=== UPDATE TEACHER REQUEST ===');
-    console.log('Params:', { id });
-    console.log('Body:', { status, is_active, status_type: typeof status, is_active_type: typeof is_active });
-
-    // Determine the active status from either status field or is_active field
     let isActiveBoolean = false;
-    
-    // Check status field first (from teachers table)
-    if (status === 'Active' || status === 'active') {
-      isActiveBoolean = true;
-    } else if (status === 'Inactive' || status === 'inactive') {
-      isActiveBoolean = false;
-    }
-    // Check is_active field (from staff table)
-    else if (is_active === true || is_active === 'true' || is_active === 1 || is_active === 't' || is_active === 'T') {
-      isActiveBoolean = true;
-    } else if (is_active === false || is_active === 'false' || is_active === 0 || is_active === 'f' || is_active === 'F') {
-      isActiveBoolean = false;
-    }
+    if (status === 'Active' || status === 'active') isActiveBoolean = true;
+    else if (status === 'Inactive' || status === 'inactive') isActiveBoolean = false;
+    else if (is_active === true || is_active === 'true' || is_active === 1 || is_active === 't' || is_active === 'T') isActiveBoolean = true;
+    else if (is_active === false || is_active === 'false' || is_active === 0 || is_active === 'f' || is_active === 'F') isActiveBoolean = false;
 
-    console.log('Converted values:', {
-      original_status: status,
-      original_is_active: is_active,
-      isActiveBoolean,
-      isActiveBoolean_type: typeof isActiveBoolean
-    });
-
-    // First get the staff_id for this teacher
-    const teacherCheck = await query(`
-      SELECT staff_id FROM teachers WHERE id = $1
-    `, [id]);
-
+    const teacherCheck = await query(`SELECT staff_id FROM teachers WHERE id = $1`, [id]);
     if (teacherCheck.rows.length === 0) {
-      console.error(`Teacher not found with id: ${id}`);
-      return res.status(404).json({
-        status: 'ERROR',
-        message: 'Teacher not found'
-      });
+      return res.status(404).json({ status: 'ERROR', message: 'Teacher not found' });
     }
-
     const staffId = teacherCheck.rows[0].staff_id;
     const statusValue = isActiveBoolean ? 'Active' : 'Inactive';
 
-    // Update teachers.status
+    const languagesArr = Array.isArray(languages_known) ? languages_known : (typeof languages_known === 'string' ? languages_known.split(',').map(s => s.trim()).filter(Boolean) : null);
+
+    if (first_name != null || last_name != null || gender != null || date_of_birth != null ||
+        phone != null || email != null || address != null || emergency_contact_name != null ||
+        emergency_contact_phone != null || designation_id != null || department_id != null ||
+        joining_date != null || salary != null || qualification != null || experience_years != null) {
+      const staffUpdates = [];
+      const staffParams = [];
+      let idx = 1;
+      const add = (col, val) => { if (val !== undefined && val !== null) { staffUpdates.push(`${col} = $${idx}`); staffParams.push(val); idx++; } };
+      add('first_name', first_name);
+      add('last_name', last_name);
+      add('gender', gender);
+      add('date_of_birth', date_of_birth);
+      add('phone', phone);
+      add('email', email);
+      add('address', address);
+      add('emergency_contact_name', emergency_contact_name);
+      add('emergency_contact_phone', emergency_contact_phone);
+      add('designation_id', designation_id || null);
+      add('department_id', department_id || null);
+      add('joining_date', joining_date);
+      add('salary', salary);
+      add('qualification', qualification);
+      add('experience_years', experience_years != null ? parseInt(experience_years, 10) : null);
+      add('blood_group_id', blood_group_id || null);
+      add('is_active', isActiveBoolean);
+      add('modified_at', new Date());
+      if (staffUpdates.length > 0) {
+        staffParams.push(staffId);
+        await query(`UPDATE staff SET ${staffUpdates.join(', ')} WHERE id = $${idx}`, staffParams);
+      } else if (is_active !== undefined) {
+        await query(`UPDATE staff SET is_active = $1 WHERE id = $2`, [isActiveBoolean, staffId]);
+      }
+    } else if (is_active !== undefined) {
+      await query(`UPDATE staff SET is_active = $1 WHERE id = $2`, [isActiveBoolean, staffId]);
+    }
+
+    const teacherUpdates = [];
+    const teacherParams = [];
+    let tidx = 1;
+    const tadd = (col, val) => { if (val !== undefined && val !== null) { teacherUpdates.push(`${col} = $${tidx}`); teacherParams.push(val); tidx++; } };
+    tadd('status', statusValue);
+    tadd('class_id', class_id);
+    tadd('subject_id', subject_id);
+    tadd('father_name', father_name);
+    tadd('mother_name', mother_name);
+    tadd('marital_status', marital_status);
+    tadd('languages_known', languagesArr);
+    tadd('blood_group', blood_group);
+    tadd('previous_school_name', previous_school_name);
+    tadd('previous_school_address', previous_school_address);
+    tadd('previous_school_phone', previous_school_phone);
+    tadd('current_address', current_address);
+    tadd('permanent_address', permanent_address);
+    tadd('pan_number', pan_number);
+    tadd('id_number', id_number);
+    tadd('bank_name', bank_name);
+    tadd('branch', branch);
+    tadd('ifsc', ifsc);
+    tadd('contract_type', contract_type);
+    tadd('shift', shift);
+    tadd('work_location', work_location);
+    tadd('facebook', facebook);
+    tadd('twitter', twitter);
+    tadd('linkedin', linkedin);
+    teacherUpdates.push('updated_at = NOW()');
+    teacherParams.push(id);
+    await query(`UPDATE teachers SET ${teacherUpdates.join(', ')} WHERE id = $${tidx}`, teacherParams);
+
     const result = await query(`
-      UPDATE teachers
-      SET status = $1,
-          updated_at = NOW()
-      WHERE id = $2
-      RETURNING id, status, updated_at
-    `, [statusValue, id]);
-
-    // Also update staff.is_active
-    await query(`
-      UPDATE staff
-      SET is_active = $1
-      WHERE id = $2
-    `, [isActiveBoolean, staffId]);
-
-    console.log('Teacher updated successfully:', {
-      id: result.rows[0].id,
-      status: result.rows[0].status,
-      is_active: isActiveBoolean
-    });
+      SELECT t.id, t.status, t.staff_id, s.is_active
+      FROM teachers t INNER JOIN staff s ON t.staff_id = s.id
+      WHERE t.id = $1
+    `, [id]);
 
     res.status(200).json({
       status: 'SUCCESS',
       message: 'Teacher updated successfully',
-      data: {
-        id: result.rows[0].id,
-        status: result.rows[0].status,
-        is_active: isActiveBoolean
-      }
+      data: result.rows[0] || { id, status: statusValue, is_active: isActiveBoolean }
     });
   } catch (error) {
-    console.error('=== ERROR UPDATING TEACHER ===');
-    console.error('Error:', error);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
+    console.error('Error updating teacher:', error);
     res.status(500).json({
       status: 'ERROR',
       message: `Failed to update teacher: ${error.message || 'Unknown error'}`,

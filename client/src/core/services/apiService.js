@@ -213,6 +213,13 @@ class ApiService {
     return this.makeRequest(`/class-schedules/${id}`);
   }
 
+  async createClassSchedule(data) {
+    return this.makeRequest('/class-schedules', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
   // Schedules (time_slots / schedule table - ID, Type, Start Time, End Time, Status)
   async getSchedules() {
     return this.makeRequest('/schedules');
@@ -353,6 +360,20 @@ class ApiService {
     return this.makeRequest(`/guardians/student/${studentId}`);
   }
 
+  async createGuardian(guardianData) {
+    return this.makeRequest('/guardians', {
+      method: 'POST',
+      body: JSON.stringify(guardianData)
+    });
+  }
+
+  async updateGuardian(id, guardianData) {
+    return this.makeRequest(`/guardians/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(guardianData)
+    });
+  }
+
   // Teachers
   async getTeachers() {
     return this.makeRequest('/teachers');
@@ -449,11 +470,110 @@ class ApiService {
     return this.makeRequest('/dashboard/stats');
   }
 
-  async getLeaveApplications(params = {}) {
+  async getDashboardUpcomingEvents(params = {}) {
     const searchParams = new URLSearchParams();
     if (params.limit != null) searchParams.set('limit', params.limit);
     const qs = searchParams.toString();
+    return this.makeRequest(`/dashboard/upcoming-events${qs ? `?${qs}` : ''}`);
+  }
+
+  async getDashboardClassRoutine(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.limit != null) searchParams.set('limit', params.limit);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/dashboard/class-routine${qs ? `?${qs}` : ''}`);
+  }
+
+  async getDashboardBestPerformers(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.limit != null) searchParams.set('limit', params.limit);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/dashboard/best-performers${qs ? `?${qs}` : ''}`);
+  }
+
+  async getDashboardStarStudents(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.limit != null) searchParams.set('limit', params.limit);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/dashboard/star-students${qs ? `?${qs}` : ''}`);
+  }
+
+  async getDashboardPerformanceSummary() {
+    return this.makeRequest('/dashboard/performance-summary');
+  }
+
+  async getDashboardTopSubjects() {
+    return this.makeRequest('/dashboard/top-subjects');
+  }
+
+  async getDashboardRecentActivity() {
+    return this.makeRequest('/dashboard/recent-activity');
+  }
+
+  async getDashboardNoticeBoard(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.limit != null) searchParams.set('limit', params.limit);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/dashboard/notice-board${qs ? `?${qs}` : ''}`);
+  }
+
+  // Notice Board
+  async getNoticeBoard(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.limit != null) searchParams.set('limit', params.limit);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/notice-board${qs ? `?${qs}` : ''}`);
+  }
+
+  async getNoticeById(id) {
+    return this.makeRequest(`/notice-board/${id}`);
+  }
+
+  async createNotice(data) {
+    return this.makeRequest('/notice-board', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async updateNotice(id, data) {
+    return this.makeRequest(`/notice-board/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async deleteNotice(id) {
+    return this.makeRequest(`/notice-board/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  async getLeaveTypes() {
+    return this.makeRequest('/leave-applications/leave-types');
+  }
+
+  async getLeaveApplications(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.limit != null) searchParams.set('limit', params.limit);
+    if (params.student_id != null) searchParams.set('student_id', params.student_id);
+    if (params.staff_id != null) searchParams.set('staff_id', params.staff_id);
+    const qs = searchParams.toString();
     return this.makeRequest(`/leave-applications${qs ? `?${qs}` : ''}`);
+  }
+
+  async createLeaveApplication(data) {
+    return this.makeRequest('/leave-applications', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async updateLeaveApplicationStatus(id, status) {
+    return this.makeRequest(`/leave-applications/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ status })
+    });
   }
 
   async getMyLeaveApplications(params = {}) {

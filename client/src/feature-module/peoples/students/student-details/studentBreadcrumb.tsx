@@ -1,5 +1,5 @@
 import { all_routes } from '../../../router/all_routes'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { selectUser } from '../../../../core/data/redux/authSlice'
 import { getDashboardForRole } from '../../../../core/utils/roleUtils'
@@ -8,11 +8,20 @@ interface StudentBreadcrumbProps {
   studentId?: number | string
 }
 
+interface LocationState {
+  returnTo?: string
+}
+
 const StudentBreadcrumb = ({ studentId }: StudentBreadcrumbProps) => {
   const routes = all_routes
+  const location = useLocation()
+  const state = location.state as LocationState | null
   const user = useSelector(selectUser)
   const role = user?.role || ''
-  const backTo = role?.toLowerCase() === 'student' ? getDashboardForRole(role) : routes.studentList
+  const roleLower = (role || '').trim().toLowerCase()
+  const dashboardRoles = ['student', 'parent', 'guardian', 'teacher']
+  const roleBasedBack = dashboardRoles.includes(roleLower) ? getDashboardForRole(role) : routes.studentList
+  const backTo = state?.returnTo || roleBasedBack
 
   return (
     <div className="col-md-12">

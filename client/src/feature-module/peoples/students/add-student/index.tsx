@@ -474,7 +474,32 @@ const AddStudent = () => {
         mother_email: formData.mother_email || null,
         mother_phone: formData.mother_phone || null,
         mother_occupation: formData.mother_occupation || null,
-        mother_image_url: formData.mother_image_url || null
+        mother_image_url: formData.mother_image_url || null,
+        // Guardian, address, siblings, transport, hostel, bank, medical
+        guardian_first_name: formData.guardian_first_name || null,
+        guardian_last_name: formData.guardian_last_name || null,
+        guardian_relation: formData.guardian_relation || null,
+        guardian_phone: formData.guardian_phone || null,
+        guardian_email: formData.guardian_email || null,
+        guardian_occupation: formData.guardian_occupation || null,
+        guardian_address: formData.guardian_address || null,
+        current_address: formData.current_address || null,
+        previous_school: formData.previous_school || null,
+        sibiling_1: formData.sibiling_1 || null,
+        sibiling_2: formData.sibiling_2 || null,
+        sibiling_1_class: formData.sibiling_1_class || null,
+        sibiling_2_class: formData.sibiling_2_class || null,
+        is_transport_required: formData.is_transport_required || false,
+        route_id: formData.route_id ? (typeof formData.route_id === 'string' ? parseInt(formData.route_id) : formData.route_id) : null,
+        pickup_point_id: formData.pickup_point_id ? (typeof formData.pickup_point_id === 'string' ? parseInt(formData.pickup_point_id) : formData.pickup_point_id) : null,
+        is_hostel_required: formData.is_hostel_required || false,
+        hostel_id: formData.hostel_id ? (typeof formData.hostel_id === 'string' ? parseInt(formData.hostel_id) : formData.hostel_id) : null,
+        hostel_room_id: formData.hostel_room_id ? (typeof formData.hostel_room_id === 'string' ? parseInt(formData.hostel_room_id) : formData.hostel_room_id) : null,
+        bank_name: formData.bank_name || null,
+        branch: formData.branch || null,
+        ifsc: formData.ifsc || null,
+        known_allergies: Array.isArray(owner1) ? owner1 : (owner1 ? String(owner1).split(',').map(s => s.trim()).filter(Boolean) : []),
+        medications: Array.isArray(owner2) ? owner2 : (owner2 ? String(owner2).split(',').map(s => s.trim()).filter(Boolean) : [])
       };
 
       // Debug: Log the processed submit data

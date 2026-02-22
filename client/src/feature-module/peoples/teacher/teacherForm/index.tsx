@@ -201,6 +201,7 @@ const TeacherForm = () => {
                           <div className="mb-3">
                             <label className="form-label">First Name</label>
                             <input
+                              name="first_name"
                               type="text"
                               className="form-control"
                               defaultValue={isEdit && t ? (t.first_name ?? "") : undefined}
@@ -211,6 +212,7 @@ const TeacherForm = () => {
                           <div className="mb-3">
                             <label className="form-label">Last Name</label>
                             <input
+                              name="last_name"
                               type="text"
                               className="form-control"
                               defaultValue={isEdit && t ? (t.last_name ?? "") : undefined}
@@ -253,6 +255,7 @@ const TeacherForm = () => {
                               Primary Contact Number
                             </label>
                             <input
+                              name="phone"
                               type="text"
                               className="form-control"
                               defaultValue={isEdit && t ? (t.phone ?? "") : undefined}
@@ -263,6 +266,7 @@ const TeacherForm = () => {
                           <div className="mb-3">
                             <label className="form-label">Email Address</label>
                             <input
+                              name="email"
                               type="email"
                               className="form-control"
                               defaultValue={isEdit && t ? (t.email ?? "") : undefined}
@@ -299,11 +303,10 @@ const TeacherForm = () => {
                           <div className="mb-3">
                             <label className="form-label">Father’s Name</label>
                             <input
+                              name="father_name"
                               type="text"
                               className="form-control"
-                              defaultValue={
-                                isEdit ? "Francis Saviour" : undefined
-                              }
+                              defaultValue={isEdit && t ? (t.father_name ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -311,6 +314,7 @@ const TeacherForm = () => {
                           <div className="mb-3">
                             <label className="form-label">Mother’s Name</label>
                             <input
+                              name="mother_name"
                               type="text"
                               className="form-control"
                               defaultValue={isEdit && t ? (t.mother_name ?? "") : undefined}
@@ -369,6 +373,7 @@ const TeacherForm = () => {
                           <div className="mb-3">
                             <label className="form-label">Qualification</label>
                             <input
+                              name="qualification"
                               type="text"
                               className="form-control"
                               defaultValue={isEdit && t ? (t.qualification ?? "") : undefined}
@@ -381,6 +386,7 @@ const TeacherForm = () => {
                               Work Experience
                             </label>
                             <input
+                              name="experience_years"
                               type="text"
                               className="form-control"
                               defaultValue={isEdit && t ? (t.experience_years != null ? String(t.experience_years) : "") : undefined}
@@ -393,6 +399,7 @@ const TeacherForm = () => {
                               Previous School if Any
                             </label>
                             <input
+                              name="previous_school_name"
                               type="text"
                               className="form-control"
                               defaultValue={isEdit && t ? (t.previous_school_name ?? "") : undefined}
@@ -427,6 +434,7 @@ const TeacherForm = () => {
                           <div className="mb-3">
                             <label className="form-label">Address</label>
                             <input
+                              name="address"
                               type="text"
                               className="form-control"
                               defaultValue={isEdit && t ? (t.current_address ?? t.address ?? "") : undefined}
@@ -439,6 +447,7 @@ const TeacherForm = () => {
                               Permanent Address
                             </label>
                             <input
+                              name="permanent_address"
                               type="text"
                               className="form-control"
                               defaultValue={isEdit && t ? (t.permanent_address ?? "") : undefined}
@@ -690,6 +699,7 @@ const TeacherForm = () => {
                           <div className="mb-3">
                             <label className="form-label">Bank Name</label>
                             <input
+                              name="bank_name"
                               type="text"
                               className="form-control"
                               defaultValue={isEdit && t ? (t.bank_name ?? "") : undefined}
@@ -700,6 +710,7 @@ const TeacherForm = () => {
                           <div className="mb-3">
                             <label className="form-label">IFSC Code</label>
                             <input
+                              name="ifsc"
                               type="text"
                               className="form-control"
                               defaultValue={isEdit && t ? (t.ifsc ?? "") : undefined}
@@ -710,6 +721,7 @@ const TeacherForm = () => {
                           <div className="mb-3">
                             <label className="form-label">Branch Name</label>
                             <input
+                              name="branch"
                               type="text"
                               className="form-control"
                               defaultValue={isEdit && t ? (t.branch ?? "") : undefined}
@@ -835,11 +847,10 @@ const TeacherForm = () => {
                           <div className="mb-3">
                             <label className="form-label">Facebook</label>
                             <input
+                              name="facebook"
                               type="text"
                               className="form-control"
-                              defaultValue={
-                                isEdit ? "www.facebook.com" : undefined
-                              }
+                              defaultValue={isEdit && t ? (t.facebook ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -859,11 +870,10 @@ const TeacherForm = () => {
                           <div className="mb-3">
                             <label className="form-label">Linked In</label>
                             <input
+                              name="linkedin"
                               type="text"
                               className="form-control"
-                              defaultValue={
-                                isEdit ? "www.Linkedin.com" : undefined
-                              }
+                              defaultValue={isEdit && t ? (t.linkedin ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -883,11 +893,10 @@ const TeacherForm = () => {
                           <div className="mb-3">
                             <label className="form-label">Twitter URL</label>
                             <input
+                              name="twitter"
                               type="text"
                               className="form-control"
-                              defaultValue={
-                                isEdit ? "www.twitter.com" : undefined
-                              }
+                              defaultValue={isEdit && t ? (t.twitter ?? "") : undefined}
                             />
                           </div>
                         </div>
@@ -1005,21 +1014,44 @@ const TeacherForm = () => {
                       className="btn btn-primary"
                       onClick={async (e) => {
                         e.preventDefault();
-                        if (!teacherId) return;
-                        
+                        if (!teacherId || !formRef.current) return;
+                        const form = formRef.current;
+                        const get = (name: string) => (form.querySelector(`[name="${name}"]`) as HTMLInputElement)?.value?.trim() || null;
+                        const getNum = (name: string) => { const v = get(name); return v ? parseInt(v, 10) : undefined; };
                         setIsUpdating(true);
                         try {
-                          const updateData = {
+                          const updateData: Record<string, any> = {
                             status: selectedStatus,
-                            is_active: selectedStatus === 'Active'
+                            is_active: selectedStatus === 'Active',
+                            first_name: get('first_name') || teacherData?.first_name,
+                            last_name: get('last_name') || teacherData?.last_name,
+                            phone: get('phone') || teacherData?.phone,
+                            email: get('email') || teacherData?.email,
+                            address: get('address') || teacherData?.address,
+                            father_name: get('father_name') || teacherData?.father_name,
+                            mother_name: get('mother_name') || teacherData?.mother_name,
+                            qualification: get('qualification') || teacherData?.qualification,
+                            experience_years: getNum('experience_years') ?? teacherData?.experience_years,
+                            previous_school_name: get('previous_school_name') || teacherData?.previous_school_name,
+                            bank_name: get('bank_name') || teacherData?.bank_name,
+                            branch: get('branch') || teacherData?.branch,
+                            ifsc: get('ifsc') || teacherData?.ifsc,
+                            address: get('address') || teacherData?.address,
+                            current_address: get('address') || teacherData?.current_address || teacherData?.address,
+                            permanent_address: get('permanent_address') || teacherData?.permanent_address,
+                            facebook: get('facebook') || teacherData?.facebook,
+                            twitter: get('twitter') || teacherData?.twitter,
+                            linkedin: get('linkedin') || teacherData?.linkedin,
+                            languages_known: owner?.length ? owner : (teacherData?.languages_known ? (Array.isArray(teacherData.languages_known) ? teacherData.languages_known : [teacherData.languages_known]) : undefined),
+                            class_id: teacherData?.class_id,
+                            subject_id: teacherData?.subject_id,
+                            gender: teacherData?.gender,
+                            date_of_birth: teacherData?.date_of_birth ? dayjs(teacherData.date_of_birth).format('YYYY-MM-DD') : undefined,
+                            joining_date: teacherData?.joining_date ? dayjs(teacherData.joining_date).format('YYYY-MM-DD') : undefined,
                           };
-                          
-                          console.log('Updating teacher:', teacherId, updateData);
+                          Object.keys(updateData).forEach(k => { if (updateData[k] === undefined || updateData[k] === null) delete updateData[k]; });
                           const response = await apiService.updateTeacher(teacherId, updateData);
-                          
                           if (response && response.status === 'SUCCESS') {
-                            console.log('Teacher updated successfully');
-                            // Navigate back to teacher list with a flag to trigger refetch
                             navigate(routes.teacherList, { state: { refresh: true } });
                           } else {
                             alert(response?.message || 'Failed to update teacher');

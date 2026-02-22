@@ -1,5 +1,133 @@
 const { query } = require('../config/database');
 
+// Create new guardian
+const createGuardian = async (req, res) => {
+  try {
+    const {
+      student_id, guardian_type, first_name, last_name, relation, occupation,
+      phone, email, address, office_address, is_primary_contact, is_emergency_contact
+    } = req.body;
+
+    if (!first_name || !last_name || !phone) {
+      return res.status(400).json({
+        status: 'ERROR',
+        message: 'First name, last name, and phone are required'
+      });
+    }
+
+    if (!student_id) {
+      return res.status(400).json({
+        status: 'ERROR',
+        message: 'Student ID is required'
+      });
+    }
+
+    const result = await query(`
+      INSERT INTO guardians (
+        student_id, guardian_type, first_name, last_name, relation, occupation,
+        phone, email, address, office_address, is_primary_contact, is_emergency_contact,
+        is_active, created_at, modified_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true, NOW(), NOW())
+      RETURNING *
+    `, [
+      student_id,
+      guardian_type || null,
+      first_name,
+      last_name,
+      relation || null,
+      occupation || null,
+      phone,
+      email || null,
+      address || null,
+      office_address || null,
+      is_primary_contact === true || is_primary_contact === 'true',
+      is_emergency_contact === true || is_emergency_contact === 'true'
+    ]);
+
+    res.status(201).json({
+      status: 'SUCCESS',
+      message: 'Guardian created successfully',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error creating guardian:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Failed to create guardian',
+    });
+  }
+};
+
+// Update guardian
+const updateGuardian = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      student_id, guardian_type, first_name, last_name, relation, occupation,
+      phone, email, address, office_address, is_primary_contact, is_emergency_contact
+    } = req.body;
+
+    if (!first_name || !last_name || !phone) {
+      return res.status(400).json({
+        status: 'ERROR',
+        message: 'First name, last name, and phone are required'
+      });
+    }
+
+    const result = await query(`
+      UPDATE guardians SET
+        student_id = COALESCE($1, student_id),
+        guardian_type = $2,
+        first_name = $3,
+        last_name = $4,
+        relation = $5,
+        occupation = $6,
+        phone = $7,
+        email = $8,
+        address = $9,
+        office_address = $10,
+        is_primary_contact = $11,
+        is_emergency_contact = $12,
+        modified_at = NOW()
+      WHERE id = $13
+      RETURNING *
+    `, [
+      student_id || null,
+      guardian_type || null,
+      first_name,
+      last_name,
+      relation || null,
+      occupation || null,
+      phone,
+      email || null,
+      address || null,
+      office_address || null,
+      is_primary_contact === true || is_primary_contact === 'true',
+      is_emergency_contact === true || is_emergency_contact === 'true',
+      id
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        status: 'ERROR',
+        message: 'Guardian not found'
+      });
+    }
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      message: 'Guardian updated successfully',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error updating guardian:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Failed to update guardian',
+    });
+  }
+};
+
 // Get all guardians
 const getAllGuardians = async (req, res) => {
   try {
@@ -220,6 +348,8 @@ const getGuardianByStudentId = async (req, res) => {
 };
 
 module.exports = {
+  createGuardian,
+  updateGuardian,
   getAllGuardians,
   getCurrentGuardian,
   getGuardianById,

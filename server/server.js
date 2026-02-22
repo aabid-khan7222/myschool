@@ -51,6 +51,7 @@ const todoRoutes = require('./src/routes/todoRoutes');
 const notesRoutes = require('./src/routes/notesRoutes');
 const fileRoutes = require('./src/routes/fileRoutes');
 const syllabusRoutes = require('./src/routes/syllabusRoutes');
+const noticeBoardRoutes = require('./src/routes/noticeBoardRoutes');
 const { protectApi } = require('./src/middleware/authMiddleware');
 
 // Create Express app
@@ -133,6 +134,7 @@ app.use('/api/todos', todoRoutes);
 app.use('/api/notes', notesRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/class-syllabus', syllabusRoutes);
+app.use('/api/notice-board', noticeBoardRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

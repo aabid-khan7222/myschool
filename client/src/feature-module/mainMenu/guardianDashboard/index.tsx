@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { all_routes } from "../../router/all_routes";
 import ImageWithBasePath from "../../../core/common/imageWithBasePath";
@@ -15,13 +15,7 @@ const GuardianDashboard = () => {
 
   const wards = guardians ?? [];
   const firstWard = wards[0];
-  const [activeStudentId, setActiveStudentId] = useState<string | null>(null);
-  const effectiveActiveId = activeStudentId ?? (firstWard?.student_id != null ? String(firstWard.student_id) : null);
-
-  const activeWard = useMemo(() => {
-    if (!activeStudentId) return firstWard ?? null;
-    return wards.find((w: { student_id?: number }) => w.student_id != null && String(w.student_id) === activeStudentId) ?? firstWard ?? null;
-  }, [wards, activeStudentId, firstWard]);
+  const activeWard = firstWard ?? null;
 
   const displayGuardian = activeWard ?? firstWard;
   const guardianName = displayGuardian
@@ -80,31 +74,6 @@ const GuardianDashboard = () => {
                 </ol>
               </nav>
             </div>
-            {wards.length > 1 && (
-              <div className="dash-select-student d-flex align-items-center mb-2">
-                <h6 className="mb-0">Select Student</h6>
-                <div className="student-active d-flex align-items-center ms-2">
-                  {wards.map((ward: { student_id?: number; Child?: string; ChildImage?: string }) => {
-                    const sid = ward.student_id != null ? String(ward.student_id) : "";
-                    if (!sid) return null;
-                    const isActive = effectiveActiveId === sid;
-                    return (
-                      <Link
-                        key={ward.student_id}
-                        to="#"
-                        onClick={(e) => { e.preventDefault(); setActiveStudentId(sid); }}
-                        className={`avatar avatar-lg p-1 me-2 ${isActive ? "active" : ""}`}
-                      >
-                        <ImageWithBasePath
-                          src={ward.ChildImage || "assets/img/students/student-01.jpg"}
-                          alt={ward.Child || "Student"}
-                        />
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
 
           {guardianLoading && (
@@ -142,12 +111,8 @@ const GuardianDashboard = () => {
                           </span>
                           <h4 className="text-truncate text-white mb-1">{guardianName}</h4>
                           <div className="d-flex align-items-center flex-wrap row-gap-2 class-info">
-                            {wards.length > 0 ? (
-                              wards.map((w: { Child?: string; student_id?: number }) => (
-                                <span key={w.student_id}>
-                                  Ward : {w.Child || "—"}
-                                </span>
-                              ))
+                            {(activeWard ?? firstWard) ? (
+                              <span>Ward : {(activeWard ?? firstWard).Child || "—"}</span>
                             ) : (
                               <span>No ward linked</span>
                             )}

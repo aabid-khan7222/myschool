@@ -26,7 +26,7 @@ function getBadgeClass(leaveTypeName) {
 }
 
 export const useLeaveApplications = (options = {}) => {
-  const { limit = 20, studentOnly = false, parentChildren = false } = options;
+  const { limit = 20, studentOnly = false, parentChildren = false, studentId = null, staffId = null } = options;
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -40,12 +40,20 @@ export const useLeaveApplications = (options = {}) => {
         response = await apiService.getParentChildrenLeaves({ limit });
       } else if (studentOnly) {
         response = await apiService.getMyLeaveApplications({ limit });
+      } else if (studentId != null) {
+        response = await apiService.getLeaveApplications({ limit, student_id: studentId });
+      } else if (staffId != null) {
+        response = await apiService.getLeaveApplications({ limit, staff_id: staffId });
       } else {
         response = await apiService.getLeaveApplications({ limit });
       }
 
       if (response.status === 'SUCCESS' && Array.isArray(response.data)) {
-        const mapped = response.data.map((row, index) => {
+        let rows = response.data;
+        if (parentChildren && studentId != null) {
+          rows = rows.filter((r) => Number(r.student_id) === Number(studentId));
+        }
+        const mapped = rows.map((row, index) => {
           const name =
             [row.applicant_first_name, row.applicant_last_name].filter(Boolean).join(' ') ||
             [row.staff_first_name, row.staff_last_name].filter(Boolean).join(' ') ||
@@ -73,6 +81,8 @@ export const useLeaveApplications = (options = {}) => {
           const statusVal = row.status || row.leave_status || 'Pending';
           const statusLower = String(statusVal).toLowerCase();
 
+          const noOfDays = row.no_of_days ?? row.noOfDays ?? (startDate && endDate ? Math.ceil((new Date(endDate) - new Date(startDate)) / (24 * 60 * 60 * 1000)) + 1 : 1);
+
           return {
             key: row.id != null ? String(row.id) : `leave-${index}`,
             id: row.id,
@@ -80,6 +90,8 @@ export const useLeaveApplications = (options = {}) => {
             leaveType,
             role,
             leaveRange,
+            leaveDate: leaveRange,
+            noOfDays: String(noOfDays),
             applyOn,
             photoUrl,
             badgeClass: getBadgeClass(leaveType),
@@ -102,7 +114,7 @@ export const useLeaveApplications = (options = {}) => {
 
   useEffect(() => {
     fetchList();
-  }, [limit, studentOnly, parentChildren]);
+  }, [limit, studentOnly, parentChildren, studentId, staffId]);
 
   return {
     leaveApplications: list,

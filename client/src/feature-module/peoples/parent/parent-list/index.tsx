@@ -413,7 +413,7 @@ const ParentList = () => {
         </div>
       </div>
       {/* /Page Wrapper */}
-      <ParentModal parentToEdit={parentToEdit} />
+      <ParentModal parentToEdit={parentToEdit} refetch={refetch} />
       <Modal show={show} onHide={handleClose} centered size="lg">
         <div className="modal-header">
           <h4 className="modal-title">View Details</h4>

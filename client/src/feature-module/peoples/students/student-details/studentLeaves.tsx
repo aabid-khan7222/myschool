@@ -1,15 +1,17 @@
 
 import { Link, useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { all_routes } from "../../../router/all_routes";
 import StudentModals from "../studentModals";
 import StudentSidebar from "./studentSidebar";
 import StudentBreadcrumb from "./studentBreadcrumb";
 import Table from "../../../../core/common/dataTable/index";
 import type { TableData } from "../../../../core/data/interface";
-import { leaveData } from "../../../../core/data/json/leaveData";
 import { Attendance } from "../../../../core/data/json/attendance";
 import { apiService } from "../../../../core/services/apiService";
+import { useLeaveApplications } from "../../../../core/hooks/useLeaveApplications";
+import { useGuardianWardLeaves } from "../../../../core/hooks/useGuardianWardLeaves";
+import { useCurrentUser } from "../../../../core/hooks/useCurrentUser";
 
 interface StudentDetailsLocationState {
   studentId?: number;
@@ -64,7 +66,37 @@ const StudentLeaves = () => {
   const studentId = state?.studentId ?? state?.student?.id;
   const [student, setStudent] = useState<any>(state?.student ?? null);
   const [loading, setLoading] = useState(!!studentId);
-  const data = leaveData;
+  const { user: currentUser } = useCurrentUser();
+  const role = (currentUser?.role || "").toString().toLowerCase();
+
+  const { leaveApplications: leaveList, loading: leaveLoading, refetch: refetchLeaves } = useLeaveApplications({
+    limit: 50,
+    parentChildren: role === "parent",
+    studentOnly: role === "student" || (!studentId && role !== "admin" && role !== "parent" && role !== "guardian"),
+    studentId: studentId && (role === "admin" || role === "parent") ? studentId : null,
+  });
+
+  const { leaveApplications: guardianLeaves, loading: guardianLoading, refetch: refetchGuardianLeaves } = useGuardianWardLeaves({
+    limit: 50,
+    studentId: studentId && role === "guardian" ? studentId : null,
+  });
+
+  const data = useMemo(() => {
+    if (role === "guardian") return guardianLeaves;
+    return leaveList;
+  }, [role, leaveList, guardianLeaves]);
+
+  const leaveDataLoading = role === "guardian" ? guardianLoading : leaveLoading;
+  const refetchLeaveData = role === "guardian" ? refetchGuardianLeaves : refetchLeaves;
+
+  const leaveCounts = useMemo(() => {
+    const medical = data.filter((l: { leaveType?: string }) => String(l.leaveType || "").toLowerCase().includes("medical"));
+    const casual = data.filter((l: { leaveType?: string }) => String(l.leaveType || "").toLowerCase().includes("casual"));
+    const maternity = data.filter((l: { leaveType?: string }) => String(l.leaveType || "").toLowerCase().includes("maternity"));
+    const paternity = data.filter((l: { leaveType?: string }) => String(l.leaveType || "").toLowerCase().includes("paternity"));
+    return { medical: medical.length, casual: casual.length, maternity: maternity.length, paternity: paternity.length };
+  }, [data]);
+
   const data2 = Attendance;
 
   useEffect(() => {
@@ -509,12 +541,10 @@ const StudentLeaves = () => {
                         <div className="col-lg-6 col-xxl-3 d-flex">
                           <div className="card flex-fill">
                             <div className="card-body">
-                              <h5 className="mb-2">Medical Leave (10)</h5>
+                              <h5 className="mb-2">Medical Leave</h5>
                               <div className="d-flex align-items-center flex-wrap">
-                                <p className="border-end pe-2 me-2 mb-0">
-                                  Used : 5
-                                </p>
-                                <p className="mb-0">Available : 5</p>
+                                <p className="border-end pe-2 me-2 mb-0">Used : {leaveCounts.medical}</p>
+                                <p className="mb-0">Total : {leaveCounts.medical}</p>
                               </div>
                             </div>
                           </div>
@@ -522,12 +552,10 @@ const StudentLeaves = () => {
                         <div className="col-lg-6 col-xxl-3 d-flex">
                           <div className="card flex-fill">
                             <div className="card-body">
-                              <h5 className="mb-2">Casual Leave (12)</h5>
+                              <h5 className="mb-2">Casual Leave</h5>
                               <div className="d-flex align-items-center flex-wrap">
-                                <p className="border-end pe-2 me-2 mb-0">
-                                  Used : 1
-                                </p>
-                                <p className="mb-0">Available : 11</p>
+                                <p className="border-end pe-2 me-2 mb-0">Used : {leaveCounts.casual}</p>
+                                <p className="mb-0">Total : {leaveCounts.casual}</p>
                               </div>
                             </div>
                           </div>
@@ -535,12 +563,10 @@ const StudentLeaves = () => {
                         <div className="col-lg-6 col-xxl-3 d-flex">
                           <div className="card flex-fill">
                             <div className="card-body">
-                              <h5 className="mb-2">Maternity Leave (10)</h5>
+                              <h5 className="mb-2">Maternity Leave</h5>
                               <div className="d-flex align-items-center flex-wrap">
-                                <p className="border-end pe-2 me-2 mb-0">
-                                  Used : 0
-                                </p>
-                                <p className="mb-0">Available : 10</p>
+                                <p className="border-end pe-2 me-2 mb-0">Used : {leaveCounts.maternity}</p>
+                                <p className="mb-0">Total : {leaveCounts.maternity}</p>
                               </div>
                             </div>
                           </div>
@@ -548,12 +574,10 @@ const StudentLeaves = () => {
                         <div className="col-lg-6 col-xxl-3 d-flex">
                           <div className="card flex-fill">
                             <div className="card-body">
-                              <h5 className="mb-2">Paternity Leave (0)</h5>
+                              <h5 className="mb-2">Paternity Leave</h5>
                               <div className="d-flex align-items-center flex-wrap">
-                                <p className="border-end pe-2 me-2 mb-0">
-                                  Used : 0
-                                </p>
-                                <p className="mb-0">Available : 0</p>
+                                <p className="border-end pe-2 me-2 mb-0">Used : {leaveCounts.paternity}</p>
+                                <p className="mb-0">Total : {leaveCounts.paternity}</p>
                               </div>
                             </div>
                           </div>
@@ -574,11 +598,16 @@ const StudentLeaves = () => {
                         </div>
                         {/* Leaves List */}
                         <div className="card-body p-0 py-3">
+                          {leaveDataLoading && (
+                          <div className="p-4 text-center text-muted">Loading leave data...</div>
+                        )}
+                        {!leaveDataLoading && (
                           <Table
                             dataSource={data}
                             columns={columns}
                             Selection={false}
                           />
+                        )}
                         </div>
                         {/* /Leaves List */}
                       </div>
@@ -824,7 +853,7 @@ const StudentLeaves = () => {
         </div>
       </div>
       {/* /Page Wrapper */}
-      <StudentModals />
+      <StudentModals studentId={student?.id} onLeaveApplied={refetchLeaveData} />
     </>
   );
 };

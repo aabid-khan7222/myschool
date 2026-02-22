@@ -403,7 +403,7 @@ const GuardianList = () => {
         </div>
       </div>
       {/* /Page Wrapper */}
-      <GuardianModal guardianToEdit={guardianToEdit} />
+      <GuardianModal guardianToEdit={guardianToEdit} refetch={refetch} />
 
       <Modal show={show} onHide={handleClose} centered size="lg">
         <div className="modal-header">
