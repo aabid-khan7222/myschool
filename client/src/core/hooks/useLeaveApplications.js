@@ -53,6 +53,14 @@ export const useLeaveApplications = (options = {}) => {
         if (parentChildren && studentId != null) {
           rows = rows.filter((r) => Number(r.student_id) === Number(studentId));
         }
+        // Safety: when viewing a specific student's leaves, filter to only that student_id
+        if (!parentChildren && !studentOnly && studentId != null) {
+          rows = rows.filter((r) => r.student_id != null && Number(r.student_id) === Number(studentId));
+        }
+        // Safety: when viewing a specific staff's leaves, filter to only that staff_id
+        if (!parentChildren && !studentOnly && staffId != null) {
+          rows = rows.filter((r) => r.staff_id != null && Number(r.staff_id) === Number(staffId));
+        }
         const mapped = rows.map((row, index) => {
           const name =
             [row.applicant_first_name, row.applicant_last_name].filter(Boolean).join(' ') ||

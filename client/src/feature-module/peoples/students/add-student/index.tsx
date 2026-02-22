@@ -6,7 +6,6 @@ import dayjs from "dayjs";
 import { all_routes } from "../../../router/all_routes";
 import {
   AdmissionNo,
-  Hostel,
   PickupPoint,
   VehicleNumber,
   allClass,
@@ -15,7 +14,6 @@ import {
   rollno,
   route,
   status,
-  roomNO,
 } from "../../../../core/common/selectoption/selectoption";
 
 import CommonSelect from "../../../../core/common/commonSelect";
@@ -29,6 +27,8 @@ import { useReligions } from "../../../../core/hooks/useReligions";
 import { useCasts } from "../../../../core/hooks/useCasts";
 import { useMotherTongues } from "../../../../core/hooks/useMotherTongues";
 import { useHouses } from "../../../../core/hooks/useHouses";
+import { useHostels } from "../../../../core/hooks/useHostels";
+import { useHostelRooms } from "../../../../core/hooks/useHostelRooms";
 import { apiService } from "../../../../core/services/apiService";
 
 // Lookup item types (hooks are JS and return untyped arrays)
@@ -231,6 +231,18 @@ const AddStudent = () => {
   
   // Fetch houses from API
   const { houses, loading: housesLoading, error: housesError } = useHouses();
+
+  // Fetch hostels and hostel rooms from API (for dropdowns with real IDs)
+  const { hostels } = useHostels();
+  const { hostelRooms } = useHostelRooms();
+  const hostelOptions = (hostels || []).map((h: { originalData?: { id: number }; hostelName?: string }) => ({
+    value: String((h.originalData as { id?: number })?.id ?? ""),
+    label: (h.hostelName as string) || "N/A",
+  })).filter((o: { value: string }) => o.value);
+  const roomOptions = (hostelRooms || []).map((r: { originalData?: { id: number }; roomNo?: string }) => ({
+    value: String((r.originalData as { id?: number })?.id ?? ""),
+    label: (r.roomNo as string) || "N/A",
+  })).filter((o: { value: string }) => o.value);
 
   // Typed lists (hooks are JS and return untyped arrays - avoid 'never' inference)
   const academicYearsList = (academicYears || []) as AcademicYearItem[];
@@ -1621,9 +1633,20 @@ const AddStudent = () => {
                           <label className="form-label">Hostel</label>
                           <CommonSelect
                             className="select"
-                            options={formData.hostel_name && !Hostel.find(o => o.value === formData.hostel_name) ? [{ value: formData.hostel_name, label: formData.hostel_name }, ...Hostel] : Hostel}
-                            value={formData.hostel_name || null}
-                            onChange={(v) => handleInputChange('hostel_name', v || '')}
+                            options={
+                              formData.hostel_id && !hostelOptions.find(o => o.value === formData.hostel_id)
+                                ? [{ value: formData.hostel_id, label: formData.hostel_name || formData.hostel_id }, ...hostelOptions]
+                                : hostelOptions.length > 0 ? hostelOptions : [{ value: "", label: "No hostels" }]
+                            }
+                            value={formData.hostel_id || null}
+                            onChange={(v) => {
+                              const opt = hostelOptions.find(o => o.value === v);
+                              setFormData(prev => ({
+                                ...prev,
+                                hostel_id: v || null,
+                                hostel_name: opt?.label ?? "",
+                              }));
+                            }}
                           />
                         </div>
                       </div>
@@ -1632,9 +1655,20 @@ const AddStudent = () => {
                           <label className="form-label">Room No</label>
                           <CommonSelect
                             className="select"
-                            options={formData.hostel_room_number && !roomNO.find(o => o.value === formData.hostel_room_number) ? [{ value: formData.hostel_room_number, label: formData.hostel_room_number }, ...roomNO] : roomNO}
-                            value={formData.hostel_room_number || null}
-                            onChange={(v) => handleInputChange('hostel_room_number', v || '')}
+                            options={
+                              formData.hostel_room_id && !roomOptions.find(o => o.value === formData.hostel_room_id)
+                                ? [{ value: formData.hostel_room_id, label: formData.hostel_room_number || formData.hostel_room_id }, ...roomOptions]
+                                : roomOptions.length > 0 ? roomOptions : [{ value: "", label: "No rooms" }]
+                            }
+                            value={formData.hostel_room_id || null}
+                            onChange={(v) => {
+                              const opt = roomOptions.find(o => o.value === v);
+                              setFormData(prev => ({
+                                ...prev,
+                                hostel_room_id: v || null,
+                                hostel_room_number: opt?.label ?? "",
+                              }));
+                            }}
                           />
                         </div>
                       </div>

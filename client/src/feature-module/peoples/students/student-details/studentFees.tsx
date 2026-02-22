@@ -6,6 +6,8 @@ import StudentModals from "../studentModals";
 import StudentSidebar from "./studentSidebar";
 import StudentBreadcrumb from "./studentBreadcrumb";
 import { apiService } from "../../../../core/services/apiService";
+import { useCurrentStudent } from "../../../../core/hooks/useCurrentStudent";
+import { useCurrentUser } from "../../../../core/hooks/useCurrentUser";
 
 interface StudentDetailsLocationState {
   studentId?: number;
@@ -16,13 +18,32 @@ const StudentFees = () => {
   const routes = all_routes;
   const location = useLocation();
   const state = location.state as StudentDetailsLocationState | null;
-  const studentId = state?.studentId ?? state?.student?.id;
-  const [student, setStudent] = useState<any>(state?.student ?? null);
-  const [loading, setLoading] = useState(!!studentId);
+  const { user: currentUser } = useCurrentUser();
+  const { student: currentStudent, loading: currentStudentLoading } = useCurrentStudent();
+  const role = (currentUser?.role || "").toString().toLowerCase();
+  const isStudentRole = role === "student";
+
+  const studentId = state?.studentId ?? state?.student?.id ?? (isStudentRole && currentStudent ? currentStudent.id : null);
+  const [student, setStudent] = useState<any>(state?.student ?? (isStudentRole ? currentStudent : null));
+  const [loading, setLoading] = useState(
+    (!!studentId && !state?.student && !(isStudentRole && currentStudent)) ||
+    (isStudentRole && !studentId && currentStudentLoading)
+  );
 
   useEffect(() => {
     if (!studentId) {
       if (state?.student) setStudent(state.student);
+      else if (isStudentRole && currentStudent) setStudent(currentStudent);
+      return;
+    }
+    if (state?.student && state.student.id === studentId) {
+      setStudent(state.student);
+      setLoading(false);
+      return;
+    }
+    if (isStudentRole && currentStudent?.id === studentId) {
+      setStudent(currentStudent);
+      setLoading(false);
       return;
     }
     setLoading(true);
@@ -36,9 +57,10 @@ const StudentFees = () => {
         setStudent(null);
       })
       .finally(() => setLoading(false));
-  }, [studentId, state?.student]);
+  }, [studentId, state?.student, isStudentRole, currentStudent]);
 
-  if (loading) {
+  const showLoading = loading || (isStudentRole && !student && !state?.student && currentStudentLoading);
+  if (showLoading) {
     return (
       <div className="page-wrapper">
         <div className="content">

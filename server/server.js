@@ -59,7 +59,8 @@ const app = express();
 
 // Middleware
 app.use(helmet()); // Security headers
-app.use(morgan('combined')); // Logging
+// Logging: use 'dev' (shorter), skip OPTIONS to reduce noise
+app.use(morgan('dev', { skip: (req) => req.method === 'OPTIONS' }));
 // CORS: in production allow any origin so frontend can read response; in dev use localhost.
 const corsOrigins = ['http://localhost:3000', 'http://localhost:5173'];
 if (serverConfig.corsOrigin) {

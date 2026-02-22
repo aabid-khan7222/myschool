@@ -89,7 +89,7 @@ const ParentList = () => {
           </div>
         </div>
       ),
-      sorter: (a: TableData, b: TableData) => a.name.length - b.name.length,
+      sorter: (a: TableData, b: TableData) => (String(a?.name ?? '').length) - (String(b?.name ?? '').length),
     },
     {
       title: "Child",
@@ -120,17 +120,17 @@ const ParentList = () => {
           </div>
         </div>
       ),
-      sorter: (a: TableData, b: TableData) => a.Child.length - b.Child.length,
+      sorter: (a: TableData, b: TableData) => (String(a?.Child ?? '').length) - (String(b?.Child ?? '').length),
     },
     {
       title: "Phone",
       dataIndex: "phone",
-      sorter: (a: TableData, b: TableData) => a.phone.length - b.phone.length,
+      sorter: (a: TableData, b: TableData) => (String(a?.phone ?? '').length) - (String(b?.phone ?? '').length),
     },
     {
       title: "Email",
       dataIndex: "email",
-      sorter: (a: TableData, b: TableData) => a.email.length - b.email.length,
+      sorter: (a: TableData, b: TableData) => (String(a?.email ?? '').length) - (String(b?.email ?? '').length),
     },
     {
       title: "Action",

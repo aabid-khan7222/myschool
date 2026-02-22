@@ -511,12 +511,10 @@ const getAllStudents = async (req, res) => {
 const getStudentById = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('Fetching student with ID:', id);
-
     const baseSelect = `
       s.id, s.admission_number, s.roll_number, s.first_name, s.last_name,
       s.gender, s.date_of_birth, s.place_of_birth, s.blood_group_id, s.cast_id, s.mother_tongue_id,
-      s.nationality, s.phone, s.email, s.address, s.user_id, s.academic_year_id,
+      s.nationality, COALESCE(NULLIF(TRIM(s.phone), ''), u.phone) AS phone, COALESCE(NULLIF(TRIM(s.email), ''), u.email) AS email, s.address, s.user_id, s.academic_year_id,
       s.class_id, s.section_id, s.house_id, s.admission_date, s.previous_school,
       s.photo_url, s.is_transport_required, s.route_id, s.pickup_point_id,
       s.is_hostel_required, s.hostel_id, s.hostel_room_id, s.parent_id, s.guardian_id, s.is_active, s.created_at,
@@ -533,6 +531,7 @@ const getStudentById = async (req, res) => {
       addr.permanent_address`;
     const fromAndJoins = `
       FROM students s
+      LEFT JOIN users u ON s.user_id = u.id
       LEFT JOIN classes c ON s.class_id = c.id
       LEFT JOIN sections sec ON s.section_id = sec.id
       LEFT JOIN blood_groups bg ON s.blood_group_id = bg.id
@@ -568,8 +567,6 @@ const getStudentById = async (req, res) => {
       }
     }
 
-    console.log('Query result for student', id, ':', JSON.stringify(result.rows[0], null, 2));
-
     if (result.rows.length === 0) {
       return res.status(404).json({
         status: 'ERROR',
@@ -601,74 +598,61 @@ const getStudentById = async (req, res) => {
     }
     try {
       if (studentData.hostel_id || studentData.hostel_room_id) {
-        console.log('Fetching hostel data for student', id, 'hostel_id:', studentData.hostel_id, 'hostel_room_id:', studentData.hostel_room_id);
+        // Tables: hostels (id, hostel_name), hostel_rooms (id, hostel_id, room_number)
+        // student.hostel_id -> hostels.id | student.hostel_room_id -> hostel_rooms.id
+        // Get hostel from student.hostel_id OR from room's hostel_id (room belongs to hostel)
         const hostelExtra = await query(`
           SELECT 
             h.hostel_name as hostel_name,
-            COALESCE(h.floor, h.floor_number, h.floor_name) as floor,
-            COALESCE(
-              hr.room_number,
-              hr.room_no,
-              hr.number,
-              hr.room_name,
-              h.hostel_room_number,
-              h.room_number,
-              h.room_no,
-              h.number,
-              h.room_name
-            ) as hostel_room_number
+            COALESCE(hr.floor_number, h.floor, h.floor_number, h.floor_name) as floor,
+            COALESCE(hr.room_number, hr.room_no, hr.number, hr.room_name) as hostel_room_number
           FROM students s
-          LEFT JOIN hostels h ON s.hostel_id = h.id
-          LEFT JOIN hostel_room hr ON s.hostel_room_id = hr.id
+          LEFT JOIN hostel_rooms hr ON s.hostel_room_id = hr.id
+          LEFT JOIN hostels h ON COALESCE(s.hostel_id, hr.hostel_id) = h.id
           WHERE s.id = $1
         `, [id]);
         if (hostelExtra.rows.length > 0 && hostelExtra.rows[0]) {
-          const hostelRow = hostelExtra.rows[0];
-          studentData.hostel_name = hostelRow.hostel_name;
-          studentData.floor = hostelRow.floor;
-          studentData.hostel_room_number = hostelRow.hostel_room_number;
-          console.log('Hostel data fetched for student', id, ':', { hostel_name: hostelRow.hostel_name, floor: hostelRow.floor, hostel_room_number: hostelRow.hostel_room_number });
-        } else {
-          console.log('Hostel JOIN query returned empty for student', id, '- trying direct queries');
+          const row = hostelExtra.rows[0];
+          console.log('[HOSTEL DEBUG getStudentById] id=', id, 'hostel_id=', studentData.hostel_id, 'hostel_room_id=', studentData.hostel_room_id, 'row=', row);
+          studentData.hostel_name = row.hostel_name || null;
+          studentData.floor = row.floor != null ? String(row.floor) : null;
+          studentData.hostel_room_number = row.hostel_room_number != null ? String(row.hostel_room_number) : null;
         }
-        // Always try direct queries if names are missing (even if JOIN returned a row with nulls)
-        if (studentData.hostel_id && !studentData.hostel_name) {
-          const hostelTableNames = ['hostel', 'hostels'];
-          for (const tableName of hostelTableNames) {
-            try {
-              const hostelDirect = await query(`SELECT * FROM ${tableName} WHERE id = $1`, [studentData.hostel_id]);
-              if (hostelDirect.rows.length > 0) {
-                const h = hostelDirect.rows[0];
-                studentData.hostel_name = h.hostel_name || h.name || h.hostel_name || null;
-                studentData.floor = h.floor || h.floor_number || h.floor_name || null;
-                console.log(`Hostel data fetched directly from ${tableName}:`, { hostel_name: studentData.hostel_name, floor: studentData.floor, allColumns: Object.keys(h) });
-                break;
-              }
-            } catch (e3) {
-              console.error(`Direct hostel query failed for table ${tableName}:`, e3.message);
+        // Fallback: direct queries if JOIN returned nulls (e.g. table name differs)
+        if (!studentData.hostel_name && studentData.hostel_id) {
+          const hRes = await query('SELECT hostel_name, floor, floor_number, floor_name FROM hostels WHERE id = $1', [studentData.hostel_id]);
+          if (hRes.rows.length > 0) {
+            const h = hRes.rows[0];
+            studentData.hostel_name = h.hostel_name || null;
+            studentData.floor = h.floor || h.floor_number || h.floor_name || null;
+          }
+        }
+        if (!studentData.hostel_room_number && studentData.hostel_room_id) {
+          const rRes = await query('SELECT room_number, room_no, number, room_name, room_id FROM hostel_rooms WHERE id = $1', [studentData.hostel_room_id]);
+          if (rRes.rows.length > 0) {
+            const r = rRes.rows[0];
+            studentData.hostel_room_number = r.room_number || r.room_no || r.number || r.room_name || null;
+            if (!studentData.hostel_room_number && r.room_id) {
+              try {
+                const rmRes = await query('SELECT room_number, room_no, number, room_name FROM room WHERE id = $1', [r.room_id]);
+                if (rmRes.rows.length > 0) {
+                  const rm = rmRes.rows[0];
+                  studentData.hostel_room_number = rm.room_number || rm.room_no || rm.number || rm.room_name || null;
+                }
+              } catch (_e) { /* room table may not exist */ }
             }
           }
         }
-        if (studentData.hostel_room_id && !studentData.hostel_room_number) {
-          const roomTableNames = ['hostel_room', 'hostel_rooms', 'hostel_room'];
-          for (const tableName of roomTableNames) {
-            try {
-              const roomDirect = await query(`SELECT * FROM ${tableName} WHERE id = $1`, [studentData.hostel_room_id]);
-              if (roomDirect.rows.length > 0) {
-                const hr = roomDirect.rows[0];
-                studentData.hostel_room_number = hr.room_number || hr.room_no || hr.number || hr.room_name || hr.room_no || null;
-                console.log(`Room data fetched directly from ${tableName}:`, { hostel_room_number: studentData.hostel_room_number, allColumns: Object.keys(hr) });
-                break;
-              }
-            } catch (e4) {
-              console.error(`Direct room query failed for table ${tableName}:`, e4.message);
+        // If we have room but no hostel_name, get it from room's hostel_id
+        if (!studentData.hostel_name && studentData.hostel_room_id) {
+          const rRes = await query('SELECT hostel_id FROM hostel_rooms WHERE id = $1', [studentData.hostel_room_id]);
+          if (rRes.rows.length > 0 && rRes.rows[0].hostel_id) {
+            const hRes = await query('SELECT hostel_name FROM hostels WHERE id = $1', [rRes.rows[0].hostel_id]);
+            if (hRes.rows.length > 0) {
+              const h = hRes.rows[0];
+              studentData.hostel_name = h.hostel_name || null;
             }
           }
-        }
-        if (!studentData.hostel_name && !studentData.hostel_room_number && !studentData.hostel_id && !studentData.hostel_room_id) {
-          studentData.hostel_name = null;
-          studentData.floor = null;
-          studentData.hostel_room_number = null;
         }
       } else {
         studentData.hostel_name = null;
@@ -677,44 +661,9 @@ const getStudentById = async (req, res) => {
       }
     } catch (e) {
       console.error('Error fetching hostel data for student', id, ':', e.message);
-      if (e.message && (e.message.includes('hostel') || e.message.includes('does not exist'))) {
-        try {
-          const hostelExtraAlt = await query(`
-            SELECT 
-              h.hostel_name as hostel_name,
-              COALESCE(h.floor, h.floor_number, h.floor_name) as floor,
-              COALESCE(
-                hr.room_number,
-                hr.room_no,
-                hr.number,
-                hr.room_name,
-                h.hostel_room_number,
-                h.room_number,
-                h.room_no,
-                h.number,
-                h.room_name
-              ) as hostel_room_number
-            FROM students s
-            LEFT JOIN hostels h ON s.hostel_id = h.id
-            LEFT JOIN hostel_rooms hr ON s.hostel_room_id = hr.id
-            WHERE s.id = $1
-          `, [id]);
-          if (hostelExtraAlt.rows.length > 0 && hostelExtraAlt.rows[0]) {
-            const hostelRow = hostelExtraAlt.rows[0];
-            studentData.hostel_name = hostelRow.hostel_name;
-            studentData.floor = hostelRow.floor;
-            studentData.hostel_room_number = hostelRow.hostel_room_number;
-            console.log('Hostel data fetched with alternative table names');
-          }
-        } catch (e2) {
-          console.error('Alternative hostel query also failed:', e2.message);
-        }
-      }
-      if (!studentData.hostel_name && !studentData.hostel_room_number) {
-        studentData.hostel_name = null;
-        studentData.floor = null;
-        studentData.hostel_room_number = null;
-      }
+      studentData.hostel_name = null;
+      studentData.floor = null;
+      studentData.hostel_room_number = null;
     }
     // Transport: resolve route and pickup point names for edit form
     try {
@@ -735,10 +684,18 @@ const getStudentById = async (req, res) => {
     } catch (e) {
       console.error('Error fetching transport names for student', id, ':', e.message);
     }
-    console.log('Sending response with user_id:', studentData.user_id);
-    console.log('Sending response with current_address:', studentData.current_address);
-    console.log('Sending response with permanent_address:', studentData.permanent_address);
-    
+    // Fallback: if phone/email still empty, fetch from users table (safety for JOIN edge cases)
+    if (studentData.user_id && (!studentData.phone || !studentData.email)) {
+      try {
+        const userRow = await query('SELECT phone, email FROM users WHERE id = $1', [studentData.user_id]);
+        if (userRow.rows.length > 0) {
+          const u = userRow.rows[0];
+          studentData.phone = studentData.phone || u.phone;
+          studentData.email = studentData.email || u.email;
+        }
+      } catch (e) {}
+    }
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.status(200).json({
       status: 'SUCCESS',
       message: 'Student fetched successfully',
@@ -767,7 +724,7 @@ const getCurrentStudent = async (req, res) => {
     const baseSelect = `
       s.id, s.admission_number, s.roll_number, s.first_name, s.last_name,
       s.gender, s.date_of_birth, s.place_of_birth, s.blood_group_id, s.cast_id, s.mother_tongue_id,
-      s.nationality, s.phone, s.email, s.address, s.user_id, s.academic_year_id,
+      s.nationality, COALESCE(NULLIF(TRIM(s.phone), ''), u.phone) AS phone, COALESCE(NULLIF(TRIM(s.email), ''), u.email) AS email, s.address, s.user_id, s.academic_year_id,
       s.class_id, s.section_id, s.house_id, s.admission_date, s.previous_school,
       s.photo_url, s.is_transport_required, s.route_id, s.pickup_point_id,
       s.is_hostel_required, s.hostel_id, s.hostel_room_id, s.parent_id, s.guardian_id, s.is_active, s.created_at,
@@ -784,6 +741,7 @@ const getCurrentStudent = async (req, res) => {
       addr.permanent_address`;
     const fromAndJoins = `
       FROM students s
+      LEFT JOIN users u ON s.user_id = u.id
       LEFT JOIN classes c ON s.class_id = c.id
       LEFT JOIN sections sec ON s.section_id = sec.id
       LEFT JOIN blood_groups bg ON s.blood_group_id = bg.id
@@ -844,7 +802,71 @@ const getCurrentStudent = async (req, res) => {
       studentData.known_allergies = studentData.known_allergies ?? null;
       studentData.medications = studentData.medications ?? null;
     }
-
+    // Fallback: if phone/email still empty, fetch from users table
+    if (studentData.user_id && (!studentData.phone || !studentData.email)) {
+      try {
+        const userRow = await query('SELECT phone, email FROM users WHERE id = $1', [studentData.user_id]);
+        if (userRow.rows.length > 0) {
+          const u = userRow.rows[0];
+          studentData.phone = studentData.phone || u.phone;
+          studentData.email = studentData.email || u.email;
+        }
+      } catch (e) {}
+    }
+    // Hostel: resolve hostel_name, floor, hostel_room_number from hostels + hostel_rooms
+    try {
+      if (studentData.hostel_id || studentData.hostel_room_id) {
+        const hostelRes = await query(`
+          SELECT h.hostel_name as hostel_name, COALESCE(hr.floor_number, h.floor, h.floor_number, h.floor_name) as floor, COALESCE(hr.room_number, hr.room_no, hr.number, hr.room_name) as hostel_room_number
+          FROM students s
+          LEFT JOIN hostel_rooms hr ON s.hostel_room_id = hr.id
+          LEFT JOIN hostels h ON COALESCE(s.hostel_id, hr.hostel_id) = h.id
+          WHERE s.id = $1
+        `, [studentId]);
+        if (hostelRes.rows.length > 0 && hostelRes.rows[0]) {
+          const row = hostelRes.rows[0];
+          console.log('[HOSTEL DEBUG] studentId=', studentId, 'hostel_id=', studentData.hostel_id, 'hostel_room_id=', studentData.hostel_room_id, 'row=', row);
+          studentData.hostel_name = row.hostel_name || null;
+          studentData.floor = row.floor != null ? String(row.floor) : null;
+          studentData.hostel_room_number = row.hostel_room_number != null ? String(row.hostel_room_number) : null;
+        }
+        if (!studentData.hostel_name && studentData.hostel_id) {
+          const hRes = await query('SELECT hostel_name FROM hostels WHERE id = $1', [studentData.hostel_id]);
+          if (hRes.rows.length > 0) { studentData.hostel_name = hRes.rows[0].hostel_name || null; }
+        }
+        if (!studentData.hostel_room_number && studentData.hostel_room_id) {
+          const rRes = await query('SELECT room_number, room_no, number, room_name FROM hostel_rooms WHERE id = $1', [studentData.hostel_room_id]);
+          if (rRes.rows.length > 0) { const r = rRes.rows[0]; studentData.hostel_room_number = r.room_number || r.room_no || r.number || r.room_name || null; }
+        }
+        if (!studentData.hostel_name && studentData.hostel_room_id) {
+          const rRes = await query('SELECT hostel_id FROM hostel_rooms WHERE id = $1', [studentData.hostel_room_id]);
+          if (rRes.rows.length > 0 && rRes.rows[0].hostel_id) {
+            const hRes = await query('SELECT hostel_name FROM hostels WHERE id = $1', [rRes.rows[0].hostel_id]);
+            if (hRes.rows.length > 0) { studentData.hostel_name = hRes.rows[0].hostel_name || null; }
+          }
+        }
+      } else {
+        studentData.hostel_name = null;
+        studentData.floor = null;
+        studentData.hostel_room_number = null;
+      }
+    } catch (e) {
+      studentData.hostel_name = null;
+      studentData.floor = null;
+      studentData.hostel_room_number = null;
+    }
+    // Transport: route_name, pickup_point_name for display
+    try {
+      if (studentData.route_id) {
+        const routeRes = await query('SELECT route_name, name FROM routes WHERE id = $1', [studentData.route_id]);
+        if (routeRes.rows.length > 0) { studentData.route_name = routeRes.rows[0].route_name || routeRes.rows[0].name || null; }
+      }
+      if (studentData.pickup_point_id) {
+        const ppRes = await query('SELECT pickup_point_name, name FROM pickup_points WHERE id = $1', [studentData.pickup_point_id]);
+        if (ppRes.rows.length > 0) { studentData.pickup_point_name = ppRes.rows[0].pickup_point_name || ppRes.rows[0].name || null; }
+      }
+    } catch (e) {}
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.status(200).json({
       status: 'SUCCESS',
       message: 'Current student fetched successfully',

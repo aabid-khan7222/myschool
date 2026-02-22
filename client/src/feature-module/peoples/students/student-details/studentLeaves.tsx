@@ -12,6 +12,7 @@ import { apiService } from "../../../../core/services/apiService";
 import { useLeaveApplications } from "../../../../core/hooks/useLeaveApplications";
 import { useGuardianWardLeaves } from "../../../../core/hooks/useGuardianWardLeaves";
 import { useCurrentUser } from "../../../../core/hooks/useCurrentUser";
+import { useCurrentStudent } from "../../../../core/hooks/useCurrentStudent";
 
 interface StudentDetailsLocationState {
   studentId?: number;
@@ -63,17 +64,26 @@ const StudentLeaves = () => {
   const routes = all_routes;
   const location = useLocation();
   const state = location.state as StudentDetailsLocationState | null;
-  const studentId = state?.studentId ?? state?.student?.id;
-  const [student, setStudent] = useState<any>(state?.student ?? null);
-  const [loading, setLoading] = useState(!!studentId);
   const { user: currentUser } = useCurrentUser();
+  const { student: currentStudent, loading: currentStudentLoading } = useCurrentStudent();
   const role = (currentUser?.role || "").toString().toLowerCase();
+  const isStudentRole = role === "student";
 
+  const studentId = state?.studentId ?? state?.student?.id ?? (isStudentRole && currentStudent ? currentStudent.id : null);
+  const [student, setStudent] = useState<any>(state?.student ?? (isStudentRole ? currentStudent : null));
+  const [loading, setLoading] = useState(
+    (!!studentId && !state?.student && !(isStudentRole && currentStudent)) ||
+    (isStudentRole && !studentId && currentStudentLoading)
+  );
+
+  // studentOnly = for current logged-in student (uses JWT)
+  // parentChildren = for parent's children (API returns all children, we filter by studentId)
+  // studentId = for admin/teacher/any role viewing a SPECIFIC student's leave page - MUST pass to filter by student_id
   const { leaveApplications: leaveList, loading: leaveLoading, refetch: refetchLeaves } = useLeaveApplications({
     limit: 50,
     parentChildren: role === "parent",
-    studentOnly: role === "student" || (!studentId && role !== "admin" && role !== "parent" && role !== "guardian"),
-    studentId: studentId && (role === "admin" || role === "parent") ? studentId : null,
+    studentOnly: role === "student",
+    studentId: studentId != null ? studentId : null,
   });
 
   const { leaveApplications: guardianLeaves, loading: guardianLoading, refetch: refetchGuardianLeaves } = useGuardianWardLeaves({
@@ -102,6 +112,17 @@ const StudentLeaves = () => {
   useEffect(() => {
     if (!studentId) {
       if (state?.student) setStudent(state.student);
+      else if (isStudentRole && currentStudent) setStudent(currentStudent);
+      return;
+    }
+    if (state?.student && state.student.id === studentId) {
+      setStudent(state.student);
+      setLoading(false);
+      return;
+    }
+    if (isStudentRole && currentStudent?.id === studentId) {
+      setStudent(currentStudent);
+      setLoading(false);
       return;
     }
     setLoading(true);
@@ -115,9 +136,10 @@ const StudentLeaves = () => {
         setStudent(null);
       })
       .finally(() => setLoading(false));
-  }, [studentId, state?.student]);
+  }, [studentId, state?.student, isStudentRole, currentStudent]);
 
-  if (loading) {
+  const showLoading = loading || (isStudentRole && !student && !state?.student && currentStudentLoading);
+  if (showLoading) {
     return (
       <div className="page-wrapper">
         <div className="content">

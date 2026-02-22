@@ -120,8 +120,8 @@ import NotificationActivities from "../pages/profile/activities";
 import UnderMaintenance from "../pages/underMaintenance";
 import GuardianGrid from "../peoples/guardian/guardian-grid";
 import GuardianList from "../peoples/guardian/guardian-list";
-import ParentGrid from "../peoples/parent/parent-grid";
-import ParentList from "../peoples/parent/parent-list";
+import ParentGridPage from "../peoples/parent/parent-grid/ParentGridPage";
+import ParentListPage from "../peoples/parent/parent-list/ParentListPage";
 import AddStudent from "../peoples/students/add-student";
 import StudentDetails from "../peoples/students/student-details/studentDetails";
 import StudentFees from "../peoples/students/student-details/studentFees";
@@ -934,12 +934,12 @@ export const publicRoutes = [
   },
   {
     path: routes.parentGrid,
-    element: <ParentGrid />,
+    element: <ParentGridPage />,
        route: Route,
   },
   {
     path: routes.parentList,
-    element: <ParentList />,
+    element: <ParentListPage />,
        route: Route,
   },
   {

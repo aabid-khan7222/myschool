@@ -146,45 +146,85 @@ const getAllParents = async (req, res) => {
   try {
     const { page, limit, offset } = parsePagination(req.query);
 
-    const countResult = await query(`
-      SELECT COUNT(*)::int as total
-      FROM parents p
-      LEFT JOIN students s ON p.student_id = s.id
-      WHERE s.is_active = true
-    `);
-    const total = countResult.rows[0].total;
+    let countResult;
+    let result;
+    try {
+      countResult = await query(`
+        SELECT COUNT(*)::int as total
+        FROM parents p
+        LEFT JOIN students s ON p.student_id = s.id
+        WHERE s.is_active = true
+      `);
+      result = await query(`
+        SELECT
+          p.id,
+          p.student_id,
+          p.father_name,
+          p.father_email,
+          p.father_phone,
+          p.father_occupation,
+          p.father_image_url,
+          p.mother_name,
+          p.mother_email,
+          p.mother_phone,
+          p.mother_occupation,
+          p.mother_image_url,
+          p.created_at,
+          p.updated_at,
+          s.first_name as student_first_name,
+          s.last_name as student_last_name,
+          s.admission_number,
+          s.roll_number,
+          c.class_name,
+          sec.section_name
+        FROM parents p
+        LEFT JOIN students s ON p.student_id = s.id
+        LEFT JOIN classes c ON s.class_id = c.id
+        LEFT JOIN sections sec ON s.section_id = sec.id
+        WHERE s.is_active = true
+        ORDER BY s.first_name ASC, s.last_name ASC
+        LIMIT $1 OFFSET $2
+      `, [limit, offset]);
+    } catch (queryErr) {
+      // Fallback: simpler query if classes/sections tables are missing or have schema issues
+      console.warn('Parent list full query failed, using fallback:', queryErr.message);
+      countResult = await query(`
+        SELECT COUNT(*)::int as total
+        FROM parents p
+        LEFT JOIN students s ON p.student_id = s.id
+        WHERE s.is_active = true
+      `);
+      result = await query(`
+        SELECT
+          p.id,
+          p.student_id,
+          p.father_name,
+          p.father_email,
+          p.father_phone,
+          p.father_occupation,
+          p.father_image_url,
+          p.mother_name,
+          p.mother_email,
+          p.mother_phone,
+          p.mother_occupation,
+          p.mother_image_url,
+          p.created_at,
+          p.updated_at,
+          s.first_name as student_first_name,
+          s.last_name as student_last_name,
+          s.admission_number,
+          s.roll_number,
+          NULL::text as class_name,
+          NULL::text as section_name
+        FROM parents p
+        LEFT JOIN students s ON p.student_id = s.id
+        WHERE s.is_active = true
+        ORDER BY s.first_name ASC, s.last_name ASC
+        LIMIT $1 OFFSET $2
+      `, [limit, offset]);
+    }
 
-    const result = await query(`
-      SELECT
-        p.id,
-        p.student_id,
-        p.father_name,
-        p.father_email,
-        p.father_phone,
-        p.father_occupation,
-        p.father_image_url,
-        p.mother_name,
-        p.mother_email,
-        p.mother_phone,
-        p.mother_occupation,
-        p.mother_image_url,
-        p.created_at,
-        p.updated_at,
-        s.first_name as student_first_name,
-        s.last_name as student_last_name,
-        s.admission_number,
-        s.roll_number,
-        c.class_name,
-        sec.section_name
-      FROM parents p
-      LEFT JOIN students s ON p.student_id = s.id
-      LEFT JOIN classes c ON s.class_id = c.id
-      LEFT JOIN sections sec ON s.section_id = sec.id
-      WHERE s.is_active = true
-      ORDER BY s.first_name ASC, s.last_name ASC
-      LIMIT $1 OFFSET $2
-    `, [limit, offset]);
-    
+    const total = countResult.rows[0].total;
     res.status(200).json({
       status: 'SUCCESS',
       message: 'Parents fetched successfully',

@@ -374,6 +374,7 @@ const StudentDasboard = () => {
                     <div className="col-sm-6 col-xl-3 d-flex">
                       <Link
                         to={routes.studentFees}
+                        state={student ? { studentId: student.id, student } : undefined}
                         className="card border-0 border-bottom border-primary border-2 flex-fill animate-card"
                       >
                         <div className="card-body">
@@ -389,6 +390,7 @@ const StudentDasboard = () => {
                     <div className="col-sm-6 col-xl-3 d-flex">
                       <Link
                         to={routes.studentResult}
+                        state={student ? { studentId: student.id, student } : undefined}
                         className="card border-0 border-bottom border-success flex-fill animate-card"
                       >
                         <div className="card-body">
@@ -404,6 +406,7 @@ const StudentDasboard = () => {
                     <div className="col-sm-6 col-xl-3 d-flex">
                       <Link
                         to={routes.studentTimeTable}
+                        state={student ? { studentId: student.id, student } : undefined}
                         className="card border-0 border-bottom border-warning flex-fill animate-card"
                       >
                         <div className="card-body">
@@ -419,6 +422,7 @@ const StudentDasboard = () => {
                     <div className="col-sm-6 col-xl-3 d-flex">
                       <Link
                         to={routes.studentLeaves}
+                        state={student ? { studentId: student.id, student } : undefined}
                         className="card border-0 border-bottom border-dark border-2 flex-fill animate-card"
                       >
                         <div className="card-body">

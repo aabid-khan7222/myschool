@@ -1036,7 +1036,6 @@ const TeacherForm = () => {
                             bank_name: get('bank_name') || teacherData?.bank_name,
                             branch: get('branch') || teacherData?.branch,
                             ifsc: get('ifsc') || teacherData?.ifsc,
-                            address: get('address') || teacherData?.address,
                             current_address: get('address') || teacherData?.current_address || teacherData?.address,
                             permanent_address: get('permanent_address') || teacherData?.permanent_address,
                             facebook: get('facebook') || teacherData?.facebook,

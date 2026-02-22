@@ -30,6 +30,11 @@ interface StudentSidebarProps {
     hostel_name?: string | null;
     floor?: string | null;
     hostel_room_number?: string | null;
+    route_id?: number | null;
+    pickup_point_id?: number | null;
+    route_name?: string | null;
+    pickup_point_name?: string | null;
+    vehicle_number?: string | null;
   } | null;
 }
 
@@ -107,7 +112,7 @@ const StudentSidebar = ({ student }: StudentSidebarProps) => {
               <dt className="col-6 fw-medium text-dark mb-3">Caste</dt>
               <dd className="col-6 mb-3">{caste}</dd>
               <dt className="col-6 fw-medium text-dark mb-3">Category</dt>
-              <dd className="col-6 mb-3">N/A</dd>
+              <dd className="col-6 mb-3">{caste}</dd>
               <dt className="col-6 fw-medium text-dark mb-3">Mother tongue</dt>
               <dd className="col-6 mb-3">{motherTongue}</dd>
               <dt className="col-6 fw-medium text-dark mb-3">Class &amp; Section</dt>
@@ -229,29 +234,35 @@ const StudentSidebar = ({ student }: StudentSidebarProps) => {
                 )}
               </div>
               <div className="tab-pane fade" id="transport">
-                <div className="d-flex align-items-center mb-3">
-                  <span className="avatar avatar-md bg-light-300 rounded me-2 flex-shrink-0 text-default">
-                    <i className="ti ti-bus fs-16" />
-                  </span>
-                  <div>
-                    <span className="fs-12 mb-1">Route</span>
-                    <p className="text-dark">Newyork</p>
-                  </div>
-                </div>
-                <div className="row">
-                  <div className="col-sm-6">
-                    <div className="mb-3">
-                      <span className="fs-12 mb-1">Bus Number</span>
-                      <p className="text-dark">AM 54548</p>
+                {(student?.route_name || student?.pickup_point_name || student?.vehicle_number || student?.route_id || student?.pickup_point_id) ? (
+                  <>
+                    <div className="d-flex align-items-center mb-3">
+                      <span className="avatar avatar-md bg-light-300 rounded me-2 flex-shrink-0 text-default">
+                        <i className="ti ti-bus fs-16" />
+                      </span>
+                      <div>
+                        <span className="fs-12 mb-1">Route</span>
+                        <p className="text-dark">{student.route_name ?? 'N/A'}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="col-sm-6">
-                    <div className="mb-3">
-                      <span className="fs-12 mb-1">Pickup Point</span>
-                      <p className="text-dark">Cincinatti</p>
+                    <div className="row">
+                      <div className="col-sm-6">
+                        <div className="mb-3">
+                          <span className="fs-12 mb-1">Bus Number</span>
+                          <p className="text-dark">{student.vehicle_number ?? 'N/A'}</p>
+                        </div>
+                      </div>
+                      <div className="col-sm-6">
+                        <div className="mb-3">
+                          <span className="fs-12 mb-1">Pickup Point</span>
+                          <p className="text-dark">{student.pickup_point_name ?? 'N/A'}</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </>
+                ) : (
+                  <p className="text-muted mb-0">No transport information available</p>
+                )}
               </div>
             </div>
           </div>

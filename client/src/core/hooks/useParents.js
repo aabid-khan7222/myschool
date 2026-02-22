@@ -17,12 +17,21 @@ export const useParents = (options = {}) => {
       setError(null);
       const apiMethod = forCurrentUser ? apiService.getMyParents.bind(apiService) : apiService.getParents.bind(apiService);
       const response = await apiMethod();
-      if (response.status === 'SUCCESS') {
-        const transformedData = (response.data || []).map((parent) => ({
+      if (response && response.status === 'SUCCESS') {
+        const rawData = Array.isArray(response.data) ? response.data : [];
+        const transformedData = rawData.map((parent) => {
+          if (!parent || typeof parent !== 'object') return null;
+          let addedon = 'N/A';
+          try {
+            if (parent.created_at) {
+              addedon = `Added on ${new Date(parent.created_at).toLocaleDateString('en-GB')}`;
+            }
+          } catch (_) {}
+          return {
           key: parent.id,
           id: parent.id,
           name: parent.father_name || 'N/A',
-          Addedon: parent.created_at ? `Added on ${new Date(parent.created_at).toLocaleDateString('en-GB')}` : 'N/A',
+          Addedon: addedon,
           Child: `${parent.student_first_name || ''} ${parent.student_last_name || ''}`.trim() || 'N/A',
           class: `${parent.class_name || ''}, ${parent.section_name || ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '') || 'N/A',
           phone: parent.father_phone || 'N/A',
@@ -37,7 +46,8 @@ export const useParents = (options = {}) => {
           father_occupation: parent.father_occupation,
           mother_occupation: parent.mother_occupation,
           student_id: parent.student_id
-        }));
+        };
+        }).filter(Boolean);
         setParents(transformedData);
       } else {
         setError('Failed to fetch parents data');

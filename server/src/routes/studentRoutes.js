@@ -12,13 +12,6 @@ const { createStudentSchema, updateStudentSchema } = require('../validations/stu
 
 const router = express.Router();
 
-// Debug middleware - only in development
-if (process.env.NODE_ENV === 'development') {
-  router.use((req, res, next) => {
-    console.log(`[DEBUG] ${req.method} ${req.path} - ${new Date().toISOString()}`);
-    next();
-  });
-}
 
 // Get all students
 router.get('/', getAllStudents);

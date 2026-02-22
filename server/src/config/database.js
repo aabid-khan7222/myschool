@@ -28,7 +28,8 @@ const pool = process.env.DATABASE_URL
     });
 
 pool.on('connect', () => {
-  console.log('✅ Connected to PostgreSQL');
+  if (process.env.NODE_ENV !== 'development') return;
+  // Log only once per pool init to reduce terminal noise
 });
 
 pool.on('error', (err) => {
