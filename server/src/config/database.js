@@ -1,16 +1,13 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-const isProduction = process.env.NODE_ENV === 'production';
-
 // Use DATABASE_URL in production (Render)
 // Fallback to local config only if DATABASE_URL not present
+// Cloud DBs (Render, Heroku, etc.) often use self-signed certs - rejectUnauthorized: false allows connection
 const pool = process.env.DATABASE_URL
   ? new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: isProduction
-        ? { rejectUnauthorized: true }
-        : { rejectUnauthorized: false },
+      ssl: { rejectUnauthorized: false },
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
