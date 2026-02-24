@@ -26,7 +26,7 @@ function getBadgeClass(leaveTypeName) {
 }
 
 export const useLeaveApplications = (options = {}) => {
-  const { limit = 20, studentOnly = false, parentChildren = false, studentId = null, staffId = null } = options;
+  const { limit = 20, studentOnly = false, parentChildren = false, studentId = null, staffId = null, canUseAdminList = false } = options;
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -41,11 +41,27 @@ export const useLeaveApplications = (options = {}) => {
       } else if (studentOnly) {
         response = await apiService.getMyLeaveApplications({ limit });
       } else if (studentId != null) {
+        // Admin-only endpoint - only call when role is confirmed (avoids 403 when role loading)
+        if (!canUseAdminList) {
+          setList([]);
+          setLoading(false);
+          return;
+        }
         response = await apiService.getLeaveApplications({ limit, student_id: studentId });
       } else if (staffId != null) {
+        if (!canUseAdminList) {
+          setList([]);
+          setLoading(false);
+          return;
+        }
         response = await apiService.getLeaveApplications({ limit, staff_id: staffId });
-      } else {
+      } else if (canUseAdminList) {
         response = await apiService.getLeaveApplications({ limit });
+      } else {
+        // Role loading or non-admin - skip admin API to avoid 403
+        setList([]);
+        setLoading(false);
+        return;
       }
 
       const rawData = response?.data;

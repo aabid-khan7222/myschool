@@ -101,78 +101,6 @@ const TeacherDashboard = () => {
   const noticeText = calendarEvents?.[0]?.title
     ? String(calendarEvents[0].title).trim()
     : null;
-  function SampleNextArrow(props: any) {
-    const { style, onClick } = props;
-    return (
-      <div
-        className="slick-nav slick-nav-next class-slides"
-        style={{ ...style, display: "flex", top: "-72%", left: "22%" }}
-        onClick={onClick}
-      >
-        <i className="fas fa-chevron-right" style={{ fontSize: "12px" }}></i>
-      </div>
-    );
-  }
-
-  function SamplePrevArrow(props: any) {
-    const { style, onClick } = props;
-    return (
-      <div
-        className="slick-nav slick-nav-prev class-slides"
-        style={{ ...style, display: "flex", top: "-72%", left: "17%" }}
-        onClick={onClick}
-      >
-        <i className="fas fa-chevron-left" style={{ fontSize: "12px" }}></i>
-      </div>
-    );
-  }
-  const settings = {
-    dots: false,
-    autoplay: false,
-    slidesToShow: 4,
-    margin: 24,
-    speed: 500,
-    nextArrow: <SampleNextArrow />,
-    prevArrow: <SamplePrevArrow />,
-    responsive: [
-      {
-        breakpoint: 1500,
-        settings: {
-          slidesToShow: 4,
-        },
-      },
-      {
-        breakpoint: 1400,
-        settings: {
-          slidesToShow: 4,
-        },
-      },
-      {
-        breakpoint: 992,
-        settings: {
-          slidesToShow: 4,
-        },
-      },
-      {
-        breakpoint: 800,
-        settings: {
-          slidesToShow: 2,
-        },
-      },
-      {
-        breakpoint: 776,
-        settings: {
-          slidesToShow: 2,
-        },
-      },
-      {
-        breakpoint: 567,
-        settings: {
-          slidesToShow: 1,
-        },
-      },
-    ],
-  };
   const Syllabus = {
     dots: false,
     autoplay: false,
@@ -450,24 +378,33 @@ const TeacherDashboard = () => {
                     <p className="text-muted mb-0">No classes scheduled for this day.</p>
                   )}
                   {!routineLoading && todaysClasses.length > 0 && (
-                    <Slider
-                      {...settings}
-                      className="owl-carousel owl-theme task-slider"
-                    >
-                      {todaysClasses.map((cls: { id?: number; class?: string; section?: string; startTime?: string; endTime?: string }, idx: number) => (
-                        <div key={cls.id ?? idx} className="item">
-                          <div className="bg-light-400 rounded p-3">
-                            <span className="badge badge-primary badge-lg mb-2">
-                              <i className="ti ti-clock me-1" />
-                              {cls.startTime} - {cls.endTime}
-                            </span>
-                            <p className="text-dark">
-                              Class {cls.class}{cls.section ? `, ${cls.section}` : ""}
-                            </p>
+                    <div className="row g-3">
+                      {todaysClasses.map(
+                        (
+                          cls: {
+                            id?: number;
+                            class?: string;
+                            section?: string;
+                            startTime?: string;
+                            endTime?: string;
+                          },
+                          idx: number
+                        ) => (
+                          <div key={cls.id ?? idx} className="col-md-4 col-sm-6">
+                            <div className="bg-light-400 rounded p-3 h-100 d-flex flex-column">
+                              <span className="badge badge-primary badge-lg mb-2">
+                                <i className="ti ti-clock me-1" />
+                                {cls.startTime} - {cls.endTime}
+                              </span>
+                              <p className="text-dark mb-0">
+                                Class {cls.class}
+                                {cls.section ? `, ${cls.section}` : ""}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </Slider>
+                        )
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

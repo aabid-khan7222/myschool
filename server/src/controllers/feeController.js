@@ -82,22 +82,59 @@ const getStudentFees = async (req, res) => {
     }
     const userId = req.user?.id;
     const roleId = req.user?.role_id != null ? parseInt(req.user.role_id, 10) : null;
-    if (roleId !== ROLES.ADMIN) {
+    const roleName = (req.user?.role_name || '').toString().trim().toLowerCase();
+    // Use role_name fallback when DB role_id differs from config (e.g. Student=6 vs ROLES.STUDENT=2)
+    const isAdmin = roleId === ROLES.ADMIN || roleName === 'admin';
+    const isStudent = roleId === ROLES.STUDENT || roleName === 'student';
+    const isParent = roleId === ROLES.PARENT || roleName === 'parent';
+    const isGuardian = roleId === ROLES.GUARDIAN || roleName === 'guardian';
+
+    if (!isAdmin) {
       const studCheck = await query('SELECT user_id FROM students WHERE id = $1', [studentId]);
       if (studCheck.rows.length === 0) {
         return res.status(404).json({ status: 'ERROR', message: 'Student not found' });
       }
       const studentUserId = studCheck.rows[0].user_id;
-      if (roleId === ROLES.STUDENT) {
-        if (!userId || parseInt(userId, 10) !== parseInt(studentUserId, 10)) {
-          return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+      if (isStudent) {
+        const userMatches = userId && (parseInt(userId, 10) === parseInt(studentUserId, 10));
+        if (!userMatches) {
+          if (!studentUserId) {
+            const userRow = await query('SELECT email, phone FROM users WHERE id = $1 AND is_active = true', [userId]);
+            if (userRow.rows.length > 0) {
+              const u = userRow.rows[0];
+              const userEmail = (u.email || '').toString().trim().toLowerCase();
+              const userPhone = (u.phone || '').toString().trim();
+              const matchCheck = await query(
+                `SELECT 1 FROM students s
+                 LEFT JOIN parents p ON s.parent_id = p.id
+                 WHERE s.id = $1 AND s.is_active = true
+                   AND (
+                     (LOWER(TRIM(COALESCE(s.email, ''))) = $2 AND $2 != '')
+                     OR (TRIM(COALESCE(s.phone, '')) = $3 AND $3 != '')
+                     OR (LOWER(TRIM(COALESCE(p.father_email, ''))) = $2 AND $2 != '')
+                     OR (LOWER(TRIM(COALESCE(p.mother_email, ''))) = $2 AND $2 != '')
+                     OR (TRIM(COALESCE(p.father_phone, '')) = $3 AND $3 != '')
+                     OR (TRIM(COALESCE(p.mother_phone, '')) = $3 AND $3 != '')
+                   )
+                 LIMIT 1`,
+                [studentId, userEmail, userPhone]
+              );
+              if (matchCheck.rows.length === 0) {
+                return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+              }
+            } else {
+              return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+            }
+          } else {
+            return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+          }
         }
-      } else if (roleId === ROLES.PARENT) {
+      } else if (isParent) {
         const { studentIds } = await getParentsForUser(userId).catch(() => ({ studentIds: [] }));
         if (!studentIds || !studentIds.includes(studentId)) {
           return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
         }
-      } else if (roleId === ROLES.GUARDIAN) {
+      } else if (isGuardian) {
         const guardianCheck = await query(
           'SELECT id FROM guardians g INNER JOIN users u ON (LOWER(TRIM(g.email)) = LOWER(TRIM(u.email)) OR (g.phone = u.phone AND g.phone != \'\')) WHERE u.id = $1 AND g.student_id = $2',
           [userId, studentId]

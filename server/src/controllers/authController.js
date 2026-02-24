@@ -125,15 +125,58 @@ const login = async (req, res) => {
 };
 
 /**
- * Get current user from token
+ * Get current user from token - returns full user details from DB (like getUserById)
+ * so students/parents can get their profile without needing Admin permission
  */
 const getMe = async (req, res) => {
   try {
-    const user = req.user;
-    if (!user) {
+    const tokenUser = req.user;
+    if (!tokenUser || !tokenUser.id) {
       return errorResponse(res, 401, 'Not authenticated');
     }
-    success(res, 200, 'User fetched', { user });
+    const result = await query(
+      `SELECT 
+        u.*,
+        s.first_name AS student_first_name,
+        s.last_name AS student_last_name,
+        c.class_name,
+        sec.section_name,
+        st.first_name AS staff_first_name,
+        st.last_name AS staff_last_name,
+        d.designation_name,
+        ur.role_name
+      FROM users u
+      LEFT JOIN students s ON u.id = s.user_id AND s.is_active = true
+      LEFT JOIN classes c ON s.class_id = c.id
+      LEFT JOIN sections sec ON s.section_id = sec.id
+      LEFT JOIN staff st ON u.id = st.user_id AND st.is_active = true
+      LEFT JOIN designations d ON st.designation_id = d.id
+      LEFT JOIN user_roles ur ON u.role_id = ur.id
+      WHERE u.id = $1 AND u.is_active = true`,
+      [tokenUser.id]
+    );
+    if (result.rows.length === 0) {
+      return errorResponse(res, 404, 'User not found');
+    }
+    const user = result.rows[0];
+    let displayName = '';
+    let displayRole = '';
+    if (user.student_first_name || user.student_last_name) {
+      displayName = `${user.student_first_name || ''} ${user.student_last_name || ''}`.trim();
+      displayRole = user.role_name || 'Student';
+    } else if (user.staff_first_name || user.staff_last_name) {
+      displayName = `${user.staff_first_name || ''} ${user.staff_last_name || ''}`.trim();
+      displayRole = user.designation_name || user.role_name || 'Teacher';
+    } else {
+      displayName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || 'User';
+      displayRole = user.role_name || 'User';
+    }
+    const userData = {
+      ...user,
+      display_name: displayName,
+      display_role: displayRole,
+    };
+    success(res, 200, 'User fetched', userData);
   } catch (err) {
     console.error('GetMe error:', err);
     errorResponse(res, 500, 'Failed to fetch user');

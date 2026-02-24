@@ -9,6 +9,7 @@ const {
   createStudent,
   updateStudent,
   getStudentAttendance,
+  getStudentLoginDetails,
 } = require('../controllers/studentController');
 const { validate } = require('../utils/validate');
 const { createStudentSchema, updateStudentSchema } = require('../validations/studentValidation');
@@ -23,6 +24,10 @@ router.get('/me', getCurrentStudent);
 
 // Get students by class - Admin or Teacher
 router.get('/class/:classId', getStudentsByClass);
+
+// Get login details (usernames) for a student
+// Auth is handled by protectApi globally; controller enforces ownership (admin / student / parent / guardian)
+router.get('/:id/login-details', getStudentLoginDetails);
 
 // Get student attendance
 router.get('/:studentId/attendance', getStudentAttendance);

@@ -207,7 +207,7 @@ const getMyLeaveApplications = async (req, res) => {
     }
     const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
 
-    // First try student leaves
+    // First try student leaves (by students.user_id)
     let result = await query(
       `
       SELECT
@@ -226,6 +226,43 @@ const getMyLeaveApplications = async (req, res) => {
       `,
       [userId, limit]
     );
+
+    // Fallback: if no student by user_id, try matching user email/phone to student (when user_id not set)
+    if (result.rows.length === 0) {
+      const userRow = await query(
+        'SELECT email, phone FROM users WHERE id = $1 AND is_active = true',
+        [userId]
+      );
+      if (userRow.rows.length > 0) {
+        const u = userRow.rows[0];
+        const userEmail = (u.email || '').toString().trim().toLowerCase();
+        const userPhone = (u.phone || '').toString().trim();
+        if (userEmail || userPhone) {
+          result = await query(
+            `SELECT la.*, lt.leave_type AS leave_type_name,
+              st.first_name AS applicant_first_name, st.last_name AS applicant_last_name,
+              st.photo_url AS applicant_photo_url, 'Student' AS applicant_role
+             FROM leave_applications la
+             INNER JOIN students st ON la.student_id = st.id AND st.is_active = true
+             LEFT JOIN leave_types lt ON la.leave_type_id = lt.id
+             LEFT JOIN parents p ON st.parent_id = p.id
+             WHERE la.student_id IS NOT NULL
+               AND (st.user_id IS NULL OR st.user_id != $1)
+               AND (
+                 (LOWER(TRIM(COALESCE(st.email, ''))) = $2 AND $2 != '')
+                 OR (TRIM(COALESCE(st.phone, '')) = $3 AND $3 != '')
+                 OR (LOWER(TRIM(COALESCE(p.father_email, ''))) = $2 AND $2 != '')
+                 OR (LOWER(TRIM(COALESCE(p.mother_email, ''))) = $2 AND $2 != '')
+                 OR (TRIM(COALESCE(p.father_phone, '')) = $3 AND $3 != '')
+                 OR (TRIM(COALESCE(p.mother_phone, '')) = $3 AND $3 != '')
+               )
+             ORDER BY la.start_date DESC NULLS LAST
+             LIMIT $4`,
+            [userId, userEmail, userPhone, limit]
+          );
+        }
+      }
+    }
 
     // If no student leaves, try staff/teacher leaves
     if (result.rows.length === 0) {

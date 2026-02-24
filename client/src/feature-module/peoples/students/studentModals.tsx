@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import ImageWithBasePath from '../../../core/common/imageWithBasePath'
 import { Link } from 'react-router-dom'
 import { all_routes } from '../../router/all_routes'
@@ -61,6 +61,89 @@ const StudentModals = ({ studentId, onLeaveApplied, student, feeData, onFeeColle
      label: `${fs.feeName} (${fs.feeType}) - $${fs.amount?.toFixed(2) ?? '0'}`,
    }))
    const paymentOptions = paymentType.map((p) => ({ value: p.value, label: p.label }))
+
+  // Login details (usernames) for parent & student
+  const [loginRows, setLoginRows] = useState<Array<{ userType: string; username: string | null; phone?: string | null; email?: string | null }>>([])
+  const [loginLoading, setLoginLoading] = useState(false)
+  const [loginError, setLoginError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!student?.id) {
+      setLoginRows([])
+      setLoginError(null)
+      setLoginLoading(false)
+      return
+    }
+    let mounted = true
+    setLoginLoading(true)
+    setLoginError(null)
+    apiService
+      .getStudentLoginDetails(student.id)
+      .then((res: any) => {
+        if (!mounted) return
+        if (res?.status === 'SUCCESS' && res.data) {
+          const d = res.data
+          const rows: Array<{ userType: string; username: string | null; phone?: string | null; email?: string | null }> = []
+          if (Array.isArray(d.parents)) {
+            d.parents.forEach((p: any) => {
+              rows.push({
+                userType: p.userType || 'Parent',
+                username: p.username ?? null,
+                phone: p.phone ?? null,
+                email: p.email ?? null,
+              })
+            })
+          }
+          if (d.student) {
+            rows.push({
+              userType: d.student.userType || 'Student',
+              username: d.student.username ?? null,
+              phone: d.student.phone ?? null,
+              email: d.student.email ?? null,
+            })
+          }
+          setLoginRows(rows)
+        } else {
+          setLoginRows([])
+        }
+      })
+      .catch((err: any) => {
+        if (!mounted) return
+        setLoginError(err?.message || 'Failed to fetch login details')
+        setLoginRows([])
+      })
+      .finally(() => {
+        if (mounted) setLoginLoading(false)
+      })
+    return () => {
+      mounted = false
+    }
+  }, [student?.id])
+
+  const maskedLoginRows = useMemo(
+    () =>
+      loginRows.map((row) => {
+        const maskValue = (val?: string | null) => {
+          const v = (val || '').toString().trim()
+          if (!v) return ''
+          if (/^\d{6,}$/.test(v)) {
+            // phone-like: show last 3 digits only
+            return `Phone ending ${v.slice(-3)}`
+          }
+          const atIdx = v.indexOf('@')
+          if (atIdx > 1) {
+            return `${v[0]}***${v.slice(atIdx)}`
+          }
+          return 'Configured by admin'
+        }
+        const hint = row.phone || row.email || null
+        return {
+          ...row,
+          passwordHint: hint ? maskValue(hint) : 'Use existing password',
+        }
+      }),
+    [loginRows]
+  )
 
    useEffect(() => {
      if (student && feeStructureOptions.length > 0 && !feeStructureId) {
@@ -421,41 +504,63 @@ const StudentModals = ({ studentId, onLeaveApplied, student, feeData, onFeeColle
             <i className="ti ti-x" />
           </button>
         </div>
-        <div className="modal-body">
-          <div className="student-detail-info">
-            <span className="student-img">
-              <ImageWithBasePath src="assets/img/students/student-01.jpg" alt="Img" />
-            </span>
-            <div className="name-info">
-              <h6>
-                Janet <span>III, A</span>
-              </h6>
+          <div className="modal-body">
+            <div className="student-detail-info">
+              <span className="student-img">
+                <ImageWithBasePath src={student?.photo_url || 'assets/img/students/student-01.jpg'} alt="Img" />
+              </span>
+              <div className="name-info">
+                <h6>
+                  {[student?.first_name, student?.last_name].filter(Boolean).join(' ') || 'Student'}
+                  {(student?.class_name || student?.section_name) && (
+                    <span>
+                      {' '}
+                      {(student?.class_name && student?.section_name)
+                        ? `${student.class_name}, ${student.section_name}`
+                        : (student?.class_name || student?.section_name)}
+                    </span>
+                  )}
+                </h6>
+              </div>
+            </div>
+            <div className="table-responsive custom-table no-datatable_length">
+              <table className="table datanew">
+                <thead className="thead-light">
+                  <tr>
+                    <th>User Type</th>
+                    <th>User Name</th>
+                    <th>Password</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loginLoading && (
+                    <tr>
+                      <td colSpan={3}>Loading login details...</td>
+                    </tr>
+                  )}
+                  {!loginLoading && loginError && (
+                    <tr>
+                      <td colSpan={3}>{loginError}</td>
+                    </tr>
+                  )}
+                  {!loginLoading && !loginError && maskedLoginRows.length === 0 && (
+                    <tr>
+                      <td colSpan={3}>No login accounts found for this student.</td>
+                    </tr>
+                  )}
+                  {!loginLoading &&
+                    !loginError &&
+                    maskedLoginRows.map((row, idx) => (
+                      <tr key={`${row.userType}-${row.username || idx}`}>
+                        <td>{row.userType}</td>
+                        <td>{row.username || 'N/A'}</td>
+                        <td>{row.passwordHint}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
             </div>
           </div>
-          <div className="table-responsive custom-table no-datatable_length">
-            <table className="table datanew">
-              <thead className="thead-light">
-                <tr>
-                  <th>User Type</th>
-                  <th>User Name</th>
-                  <th>Password </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Parent</td>
-                  <td>parent53</td>
-                  <td>parent@53</td>
-                </tr>
-                <tr>
-                  <td>Student</td>
-                  <td>student20</td>
-                  <td>stdt@53</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
         <div className="modal-footer">
           <Link to="#" className="btn btn-light me-2" data-bs-dismiss="modal">
             Cancel

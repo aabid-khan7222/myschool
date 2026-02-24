@@ -40,6 +40,7 @@ const TeacherLeave = () => {
   const { leaveApplications, loading: leaveDataLoading, refetch: refetchLeaves } = useLeaveApplications({
     limit: 50,
     staffId: staffId ?? undefined,
+    canUseAdminList: true, // Teacher leave page is admin-only
   });
   const data = useMemo(() => {
     return leaveApplications.map((l) => ({

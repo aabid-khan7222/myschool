@@ -53,7 +53,7 @@ const AdminDashboard = () => {
   };
   const [date, setDate] = useState<Nullable<Date>>(null);
   const { stats } = useDashboardStats();
-  const { leaveApplications, loading: leaveLoading, error: leaveError, refetch: refetchLeaves } = useLeaveApplications({ limit: 10 });
+  const { leaveApplications, loading: leaveLoading, error: leaveError, refetch: refetchLeaves } = useLeaveApplications({ limit: 10, canUseAdminList: true });
   const { user: currentUser, loading: userLoading } = useCurrentUser();
   const { events: upcomingEvents, loading: eventsLoading, refetch: refetchEvents } = useDashboardUpcomingEvents({ limit: 10 });
   const { routine: classRoutine, loading: routineLoading, refetch: refetchRoutine } = useDashboardClassRoutine({ limit: 5 });
@@ -392,7 +392,7 @@ const AdminDashboard = () => {
               {/* Page Header */}
               <div className="d-md-flex d-block align-items-center justify-content-between mb-3">
                 <div className="my-auto mb-2">
-                  <h3 className="page-title mb-1">Admin Dashboard</h3>
+                  <h3 className="page-title mb-1">Headmaster Dashboard</h3>
                   <nav>
                     <ol className="breadcrumb mb-0">
                       <li className="breadcrumb-item">
@@ -402,7 +402,7 @@ const AdminDashboard = () => {
                         className="breadcrumb-item active"
                         aria-current="page"
                       >
-                        Admin Dashboard
+                        Headmaster Dashboard
                       </li>
                     </ol>
                   </nav>

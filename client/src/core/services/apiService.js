@@ -259,6 +259,10 @@ class ApiService {
     return this.makeRequest(`/students/${id}`);
   }
 
+  async getStudentLoginDetails(studentId) {
+    return this.makeRequest(`/students/${studentId}/login-details`);
+  }
+
   async getStudentAttendance(studentId) {
     return this.makeRequest(`/students/${studentId}/attendance`);
   }

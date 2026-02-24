@@ -1,5 +1,7 @@
 const { query, executeTransaction } = require('../config/database');
 const { parsePagination } = require('../utils/pagination');
+const { ROLES } = require('../config/roles');
+const { getParentsForUser } = require('../utils/parentUserMatch');
 
 // Create new student
 const createStudent = async (req, res) => {
@@ -575,6 +577,36 @@ const getStudentById = async (req, res) => {
     }
 
     const studentData = result.rows[0];
+    const studentId = parseInt(id, 10);
+
+    // Ownership check: non-Admin/Teacher can only view own/children/wards
+    const userId = req.user?.id;
+    const roleId = req.user?.role_id != null ? parseInt(req.user.role_id, 10) : null;
+    if (roleId !== ROLES.ADMIN && roleId !== ROLES.TEACHER) {
+      if (roleId === ROLES.STUDENT) {
+        const studentUserId = studentData.user_id ? parseInt(studentData.user_id, 10) : null;
+        if (!userId || parseInt(userId, 10) !== studentUserId) {
+          return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+        }
+      } else if (roleId === ROLES.PARENT) {
+        const { studentIds } = await getParentsForUser(userId).catch(() => ({ studentIds: [] }));
+        if (!studentIds || !studentIds.includes(studentId)) {
+          return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+        }
+      } else if (roleId === ROLES.GUARDIAN) {
+        const gCheck = await query(
+          `SELECT 1 FROM guardians g
+           INNER JOIN users u ON (LOWER(TRIM(g.email)) = LOWER(TRIM(u.email)) OR (g.phone = u.phone AND g.phone != ''))
+           WHERE u.id = $1 AND g.student_id = $2`,
+          [userId, studentId]
+        );
+        if (gCheck.rows.length === 0) {
+          return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+        }
+      } else {
+        return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+      }
+    }
     try {
       const extra = await query(
         'SELECT bank_name, branch, ifsc, known_allergies, medications FROM students WHERE id = $1',
@@ -696,6 +728,211 @@ const getStudentById = async (req, res) => {
   }
 };
 
+// Get login details (usernames) for a specific student's accounts (student + parent users)
+// Note: passwords are stored as hashes and cannot be returned for security reasons.
+// Access:
+//   - Admin: any student
+//   - Student: only own record
+//   - Parent: only for their children (via parentUserMatch)
+//   - Guardian: only for their wards
+const getStudentLoginDetails = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id || Number.isNaN(id)) {
+      return res.status(400).json({ status: 'ERROR', message: 'Invalid student ID' });
+    }
+
+    const stuResult = await query(
+      `SELECT
+         s.id,
+         s.first_name,
+         s.last_name,
+         s.class_id,
+         s.section_id,
+         s.parent_id,
+         s.user_id,
+         c.class_name,
+         sec.section_name,
+         u.username    AS student_username,
+         u.phone       AS student_phone,
+         u.email       AS student_email
+       FROM students s
+       LEFT JOIN classes c ON s.class_id = c.id
+       LEFT JOIN sections sec ON s.section_id = sec.id
+       LEFT JOIN users u ON s.user_id = u.id AND u.is_active = true
+       WHERE s.id = $1 AND s.is_active = true
+       LIMIT 1`,
+      [id]
+    );
+
+    if (stuResult.rows.length === 0) {
+      return res.status(404).json({ status: 'ERROR', message: 'Student not found' });
+    }
+
+    const stu = stuResult.rows[0];
+
+    // Authorization / ownership check
+    const userId = req.user?.id;
+    const roleId = req.user?.role_id != null ? parseInt(req.user.role_id, 10) : null;
+    const roleName = (req.user?.role_name || '').toString().trim().toLowerCase();
+    const isAdmin = roleId === ROLES.ADMIN || roleName === 'admin';
+    const isStudent = roleId === ROLES.STUDENT || roleName === 'student';
+    const isParent = roleId === ROLES.PARENT || roleName === 'parent';
+    const isGuardian = roleId === ROLES.GUARDIAN || roleName === 'guardian';
+
+    if (!isAdmin) {
+      if (!userId) {
+        return res.status(401).json({ status: 'ERROR', message: 'Not authenticated' });
+      }
+
+      if (isStudent) {
+        const studentUserId = stu.user_id ? parseInt(stu.user_id, 10) : null;
+        if (!studentUserId || parseInt(userId, 10) !== studentUserId) {
+          return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+        }
+      } else if (isParent) {
+        const { studentIds } = await getParentsForUser(userId).catch(() => ({ studentIds: [] }));
+        if (!studentIds || !studentIds.includes(id)) {
+          return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+        }
+      } else if (isGuardian) {
+        const gCheck = await query(
+          `SELECT 1
+           FROM guardians g
+           INNER JOIN users u
+             ON (LOWER(TRIM(g.email)) = LOWER(TRIM(u.email))
+                 OR (g.phone = u.phone AND g.phone != ''))
+           WHERE u.id = $1 AND g.student_id = $2`,
+          [userId, id]
+        );
+        if (gCheck.rows.length === 0) {
+          return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+        }
+      } else {
+        // Other roles (e.g. teacher) are not allowed by default
+        return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+      }
+    }
+
+    // Collect parent contact info for matching parent user accounts
+    const parentContacts = {
+      emails: [],
+      phones: [],
+    };
+
+    if (stu.parent_id) {
+      try {
+        const pRes = await query(
+          `SELECT
+             father_email,
+             father_phone,
+             mother_email,
+             mother_phone
+           FROM parents
+           WHERE id = $1 OR student_id = $2
+           LIMIT 1`,
+          [stu.parent_id, id]
+        );
+        if (pRes.rows.length > 0) {
+          const p = pRes.rows[0];
+          const emails = [
+            p.father_email,
+            p.mother_email,
+          ].filter((e) => e && e.toString().trim() !== '');
+          const phones = [
+            p.father_phone,
+            p.mother_phone,
+          ].filter((ph) => ph && ph.toString().trim() !== '');
+          parentContacts.emails = Array.from(new Set(emails.map((e) => e.toString().trim().toLowerCase())));
+          parentContacts.phones = Array.from(new Set(phones.map((ph) => ph.toString().trim())));
+        }
+      } catch (e) {
+        // If parents table lookup fails, we still return student user if available.
+      }
+    }
+
+    let parentUsers = [];
+    if (parentContacts.emails.length > 0 || parentContacts.phones.length > 0) {
+      try {
+        const parRes = await query(
+          `SELECT id, username, email, phone
+           FROM users
+           WHERE is_active = true
+             AND role_id = $1
+             AND (
+               (COALESCE(LOWER(TRIM(email)), '') <> '' AND LOWER(TRIM(email)) = ANY($2))
+               OR (COALESCE(TRIM(phone), '') <> '' AND TRIM(phone) = ANY($3))
+             )`,
+          [ROLES.PARENT, parentContacts.emails, parentContacts.phones]
+        );
+        parentUsers = parRes.rows;
+      } catch (e) {
+        // If parent users lookup fails, we still return student user if available.
+      }
+    }
+
+    // If requester is a Parent, show only their own account (not all matched parents)
+    if (parentUsers.length > 0) {
+      if (isParent && userId) {
+        parentUsers = parentUsers.filter((u) => {
+          try {
+            return parseInt(u.id, 10) === parseInt(userId, 10);
+          } catch {
+            return false;
+          }
+        });
+      } else {
+        // For Admin/Student/Guardian: de-duplicate by contact (email/phone) so that
+        // shared phone/email across multiple accounts does not show multiple rows.
+        const seen = new Set();
+        const deduped = [];
+        for (const u of parentUsers) {
+          const emailKey = (u.email || '').toString().trim().toLowerCase();
+          const phoneKey = (u.phone || '').toString().trim();
+          const key = emailKey || phoneKey;
+          if (!key || seen.has(key)) continue;
+          seen.add(key);
+          deduped.push(u);
+        }
+        parentUsers = deduped;
+      }
+      // For non-parent roles (Student/Admin/Guardian), show at most one parent account
+      if (!isParent && parentUsers.length > 1) {
+        parentUsers = [parentUsers[0]];
+      }
+    }
+
+    const loginDetails = {
+      student: stu.user_id
+        ? {
+            userType: 'Student',
+            username: stu.student_username || null,
+            phone: stu.student_phone || null,
+            email: stu.student_email || null,
+          }
+        : null,
+      parents: parentUsers.map((u) => ({
+        userType: 'Parent',
+        username: u.username || null,
+        phone: u.phone || null,
+        email: u.email || null,
+      })),
+    };
+
+    return res.status(200).json({
+      status: 'SUCCESS',
+      message: 'Login details fetched successfully',
+      data: loginDetails,
+    });
+  } catch (error) {
+    console.error('Error fetching student login details:', error);
+    return res.status(500).json({
+      status: 'ERROR',
+      message: 'Failed to fetch login details',
+    });
+  }
+};
+
 // Get current logged-in student (by user_id from JWT)
 const getCurrentStudent = async (req, res) => {
   try {
@@ -763,6 +1000,35 @@ const getCurrentStudent = async (req, res) => {
       }
     }
 
+    if (result.rows.length === 0) {
+      const userRow = await query(
+        'SELECT email, phone FROM users WHERE id = $1 AND is_active = true',
+        [userId]
+      );
+      if (userRow.rows.length > 0) {
+        const u = userRow.rows[0];
+        const userEmail = (u.email || '').toString().trim().toLowerCase();
+        const userPhone = (u.phone || '').toString().trim();
+        if (userEmail || userPhone) {
+          result = await query(
+            `SELECT ${baseSelect}, s.religion_id, r.religion_name as religion_name
+             ${fromAndJoins}
+             LEFT JOIN religions r ON s.religion_id = r.id
+             WHERE s.is_active = true AND (s.user_id IS NULL OR s.user_id != $1)
+               AND (
+                 (LOWER(TRIM(COALESCE(s.email, ''))) = $2 AND $2 != '')
+                 OR (TRIM(COALESCE(s.phone, '')) = $3 AND $3 != '')
+                 OR (LOWER(TRIM(COALESCE(p.father_email, ''))) = $2 AND $2 != '')
+                 OR (LOWER(TRIM(COALESCE(p.mother_email, ''))) = $2 AND $2 != '')
+                 OR (TRIM(COALESCE(p.father_phone, '')) = $3 AND $3 != '')
+                 OR (TRIM(COALESCE(p.mother_phone, '')) = $3 AND $3 != '')
+               )
+             LIMIT 1`,
+            [userId, userEmail, userPhone]
+          );
+        }
+      }
+    }
     if (result.rows.length === 0) {
       return res.status(404).json({
         status: 'ERROR',
@@ -957,6 +1223,39 @@ const getStudentAttendance = async (req, res) => {
       return res.status(400).json({ status: 'ERROR', message: 'Invalid student ID' });
     }
 
+    // Ownership check: non-Admin/Teacher can only access own/children/wards
+    const userId = req.user?.id;
+    const roleId = req.user?.role_id != null ? parseInt(req.user.role_id, 10) : null;
+    if (roleId !== ROLES.ADMIN && roleId !== ROLES.TEACHER) {
+      const studRow = await query('SELECT user_id, guardian_id FROM students WHERE id = $1', [studentId]);
+      if (studRow.rows.length === 0) {
+        return res.status(404).json({ status: 'ERROR', message: 'Student not found' });
+      }
+      const studentUserId = studRow.rows[0].user_id ? parseInt(studRow.rows[0].user_id, 10) : null;
+      if (roleId === ROLES.STUDENT) {
+        if (!userId || parseInt(userId, 10) !== studentUserId) {
+          return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+        }
+      } else if (roleId === ROLES.PARENT) {
+        const { studentIds } = await getParentsForUser(userId).catch(() => ({ studentIds: [] }));
+        if (!studentIds || !studentIds.includes(studentId)) {
+          return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+        }
+      } else if (roleId === ROLES.GUARDIAN) {
+        const gCheck = await query(
+          `SELECT 1 FROM guardians g
+           INNER JOIN users u ON (LOWER(TRIM(g.email)) = LOWER(TRIM(u.email)) OR (g.phone = u.phone AND g.phone != ''))
+           WHERE u.id = $1 AND g.student_id = $2`,
+          [userId, studentId]
+        );
+        if (gCheck.rows.length === 0) {
+          return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+        }
+      } else {
+        return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+      }
+    }
+
     const result = await query(
       `SELECT id, student_id, class_id, section_id, attendance_date, status, 
               check_in_time, check_out_time, marked_by, remarks
@@ -1018,6 +1317,7 @@ module.exports = {
   updateStudent,
   getAllStudents,
   getStudentById,
+  getStudentLoginDetails,
   getCurrentStudent,
   getStudentsByClass,
   getStudentAttendance,

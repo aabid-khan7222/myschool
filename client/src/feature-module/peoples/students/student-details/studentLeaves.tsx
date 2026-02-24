@@ -76,14 +76,15 @@ const StudentLeaves = () => {
     (isStudentRole && !studentId && currentStudentLoading)
   );
 
-  // studentOnly = for current logged-in student (uses JWT)
-  // parentChildren = for parent's children (API returns all children, we filter by studentId)
-  // studentId = for admin/teacher/any role viewing a SPECIFIC student's leave page - MUST pass to filter by student_id
+  // studentOnly = student; parentChildren = parent; studentId+canUseAdminList = admin/teacher
+  // canUseAdminList: avoid 403 when role loading - never call admin endpoint until role is confirmed
+  const canUseAdminList = role === "admin" || role === "teacher";
   const { leaveApplications: leaveList, loading: leaveLoading, refetch: refetchLeaves } = useLeaveApplications({
     limit: 50,
     parentChildren: role === "parent",
     studentOnly: role === "student",
-    studentId: studentId != null ? studentId : null,
+    studentId: (role === "parent" || canUseAdminList) && studentId != null ? studentId : null,
+    canUseAdminList,
   });
 
   const { leaveApplications: guardianLeaves, loading: guardianLoading, refetch: refetchGuardianLeaves } = useGuardianWardLeaves({

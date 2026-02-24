@@ -60,7 +60,7 @@ const StudentFees = () => {
       .finally(() => setLoading(false));
   }, [studentId, state?.student, isStudentRole, currentStudent]);
 
-  const { data: feeData, loading: feeLoading, refetch: refetchFees } = useStudentFees(student?.id ?? null);
+  const { data: feeData, loading: feeLoading, refetch: refetchFees } = useStudentFees(studentId ?? student?.id ?? null);
   const showLoading = loading || (isStudentRole && !student && !state?.student && currentStudentLoading);
   if (showLoading) {
     return (

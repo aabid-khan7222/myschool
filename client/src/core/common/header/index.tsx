@@ -420,7 +420,9 @@ const Header = () => {
                       </span>
                       <div>
                         <h6>{user?.displayName || "User"}</h6>
-                        <p className="text-primary mb-0">{user?.role || "Administrator"}</p>
+                        <p className="text-primary mb-0">
+                          {user?.role === "Admin" ? "Headmaster" : (user?.role || "Headmaster")}
+                        </p>
                       </div>
                     </div>
                     <hr className="m-0" />

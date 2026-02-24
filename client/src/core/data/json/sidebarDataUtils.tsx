@@ -7,7 +7,7 @@ const routes = all_routes;
  * Role-specific dashboard labels and links for non-admin users
  */
 const ROLE_DASHBOARD_MAP: Record<string, { label: string; link: string }> = {
-  Admin: { label: "Admin Dashboard", link: routes.adminDashboard },
+  Admin: { label: "Headmaster Dashboard", link: routes.adminDashboard },
   Teacher: { label: "Teacher Dashboard", link: routes.teacherDashboard },
   Student: { label: "Student Dashboard", link: routes.studentDashboard },
   Parent: { label: "Parent Dashboard", link: routes.parentDashboard },

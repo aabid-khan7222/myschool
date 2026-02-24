@@ -11,30 +11,16 @@ export const useCurrentUser = () => {
       setLoading(true);
       setError(null);
 
-      // Get user ID from preskool_user (set by authSlice on login)
-      let userId = null;
-      try {
-        const u = localStorage.getItem('preskool_user');
-        if (u) {
-          const user = JSON.parse(u);
-          userId = user?.id?.toString() || user?.user_id?.toString();
-        }
-      } catch (_) {}
-      if (!userId) {
-        userId = localStorage.getItem('user_id') ||
-          localStorage.getItem('userId') ||
-          localStorage.getItem('current_user_id') ||
-          localStorage.getItem('loggedInUserId');
-      }
-
-      if (!userId) {
-        console.warn('No user ID found in localStorage');
+      // Use /auth/me - works for all roles (students, parents, etc.)
+      // getUserById requires Admin and returns 403 for non-admins
+      const token = localStorage.getItem('preskool_token');
+      if (!token) {
         setUser(null);
         setLoading(false);
         return;
       }
 
-      const response = await apiService.getUserById(userId);
+      const response = await apiService.getMe();
 
       if (response.status === 'SUCCESS' && response.data) {
         const userData = response.data;
