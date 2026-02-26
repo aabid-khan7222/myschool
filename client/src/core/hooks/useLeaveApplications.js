@@ -117,6 +117,8 @@ export const useLeaveApplications = (options = {}) => {
             role,
             leaveRange,
             leaveDate: leaveRange,
+            startDate,
+            endDate,
             noOfDays: String(noOfDays),
             applyOn,
             photoUrl,

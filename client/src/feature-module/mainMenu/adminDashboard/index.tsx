@@ -15,8 +15,8 @@ import { apiService } from "../../../core/services/apiService";
 import { useDashboardStats } from "../../../core/hooks/useDashboardStats";
 import { useLeaveApplications } from "../../../core/hooks/useLeaveApplications";
 import { useCurrentUser } from "../../../core/hooks/useCurrentUser";
+import { useEvents } from "../../../core/hooks/useEvents";
 import {
-  useDashboardUpcomingEvents,
   useDashboardClassRoutine,
   useDashboardBestPerformers,
   useDashboardStarStudents,
@@ -55,7 +55,7 @@ const AdminDashboard = () => {
   const { stats } = useDashboardStats();
   const { leaveApplications, loading: leaveLoading, error: leaveError, refetch: refetchLeaves } = useLeaveApplications({ limit: 10, canUseAdminList: true });
   const { user: currentUser, loading: userLoading } = useCurrentUser();
-  const { events: upcomingEvents, loading: eventsLoading, refetch: refetchEvents } = useDashboardUpcomingEvents({ limit: 10 });
+  const { upcomingEvents, loading: eventsLoading, refetch: refetchEvents } = useEvents({ forDashboard: true, limit: 10 });
   const { routine: classRoutine, loading: routineLoading, refetch: refetchRoutine } = useDashboardClassRoutine({ limit: 5 });
   const { performers: bestPerformers } = useDashboardBestPerformers({ limit: 3 });
   const { students: starStudents } = useDashboardStarStudents({ limit: 3 });
@@ -688,28 +688,34 @@ const AdminDashboard = () => {
                         {!eventsLoading && upcomingEvents.length === 0 && (
                           <p className="mb-0 text-muted small">No upcoming events.</p>
                         )}
-                        {!eventsLoading && upcomingEvents.length > 0 && upcomingEvents.map((ev) => (
-                          <div key={ev.id} className={`border-start border-3 shadow-sm p-3 mb-3 ${ev.eventColor === 'bg-danger' ? 'border-danger' : ev.eventColor === 'bg-success' ? 'border-success' : ev.eventColor === 'bg-warning' ? 'border-warning' : 'border-skyblue'}`}>
-                            <div className="d-flex align-items-center mb-3 pb-3 border-bottom">
-                              <span className="avatar p-1 me-2 bg-teal-transparent flex-shrink-0">
-                                <i className="ti ti-calendar-event text-info fs-20" />
-                              </span>
-                              <div className="flex-fill">
-                                <h6 className="mb-1">{ev.title}</h6>
-                                <p className="d-flex align-items-center mb-0">
-                                  <i className="ti ti-calendar me-1" />
-                                  {ev.startDateFormatted}{ev.endDateFormatted && ev.endDateFormatted !== ev.startDateFormatted ? ` - ${ev.endDateFormatted}` : ''}
+                        {!eventsLoading && upcomingEvents.length > 0 && upcomingEvents.map((ev: { id?: number; title?: string; start_date?: string; end_date?: string; is_all_day?: boolean; event_color?: string }) => {
+                          const startDateFormatted = ev.start_date ? new Date(ev.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
+                          const endDateFormatted = ev.end_date ? new Date(ev.end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+                          const timeRange = ev.is_all_day ? 'All day' : ev.start_date ? `${new Date(ev.start_date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true })}${ev.end_date ? ` - ${new Date(ev.end_date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true })}` : ''}` : '';
+                          const borderCls = ev.event_color === 'bg-danger' ? 'border-danger' : ev.event_color === 'bg-success' ? 'border-success' : ev.event_color === 'bg-warning' ? 'border-warning' : 'border-skyblue';
+                          return (
+                            <div key={ev.id} className={`border-start border-3 shadow-sm p-3 mb-3 ${borderCls}`}>
+                              <div className="d-flex align-items-center mb-3 pb-3 border-bottom">
+                                <span className="avatar p-1 me-2 bg-teal-transparent flex-shrink-0">
+                                  <i className="ti ti-calendar-event text-info fs-20" />
+                                </span>
+                                <div className="flex-fill">
+                                  <h6 className="mb-1">{ev.title}</h6>
+                                  <p className="d-flex align-items-center mb-0">
+                                    <i className="ti ti-calendar me-1" />
+                                    {startDateFormatted}{endDateFormatted && endDateFormatted !== startDateFormatted ? ` - ${endDateFormatted}` : ''}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="d-flex align-items-center justify-content-between">
+                                <p className="mb-0">
+                                  <i className="ti ti-clock me-1" />
+                                  {timeRange}
                                 </p>
                               </div>
                             </div>
-                            <div className="d-flex align-items-center justify-content-between">
-                              <p className="mb-0">
-                                <i className="ti ti-clock me-1" />
-                                {ev.timeRange}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   </div>

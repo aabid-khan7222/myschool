@@ -10,6 +10,7 @@ const {
   updateStudent,
   getStudentAttendance,
   getStudentLoginDetails,
+  getStudentExamResults,
 } = require('../controllers/studentController');
 const { validate } = require('../utils/validate');
 const { createStudentSchema, updateStudentSchema } = require('../validations/studentValidation');
@@ -31,6 +32,9 @@ router.get('/:id/login-details', getStudentLoginDetails);
 
 // Get student attendance
 router.get('/:studentId/attendance', getStudentAttendance);
+
+// Get student exam results (read-only, DB-backed)
+router.get('/:studentId/exam-results', getStudentExamResults);
 
 // Get student by ID
 router.get('/:id', getStudentById);

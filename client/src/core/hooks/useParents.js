@@ -34,6 +34,8 @@ export const useParents = (options = {}) => {
           Addedon: addedon,
           Child: `${parent.student_first_name || ''} ${parent.student_last_name || ''}`.trim() || 'N/A',
           class: `${parent.class_name || ''}, ${parent.section_name || ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '') || 'N/A',
+          class_name: parent.class_name || null,
+          section_name: parent.section_name || null,
           phone: parent.father_phone || 'N/A',
           email: parent.father_email || 'N/A',
           ParentImage: "assets/img/parents/parent-01.jpg",

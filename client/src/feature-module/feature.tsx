@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { all_routes } from "./router/all_routes";
 import { useCurrentUser } from "../core/hooks/useCurrentUser";
 import { selectUser } from "../core/data/redux/authSlice";
+import { getPageTitleForRole } from "../core/utils/roleUtils";
 
 const Feature = () => {
   const routes = all_routes;
@@ -174,6 +175,15 @@ const Feature = () => {
   //   ${dataColor === "green_data_color" ? "green-data-color" : ""}
   //   ${dataColor === "red_data_color" ? "red-data-color" : ""}
   // `.replace(/\s+/g, ' ').trim();
+
+  // Set browser tab title by role (headmaster/teacher/student/parent/guardian)
+  const roleForTitle =
+    (currentUser as { role?: string } | null)?.role ??
+    reduxUser?.role ??
+    '';
+  useEffect(() => {
+    document.title = getPageTitleForRole(roleForTitle);
+  }, [roleForTitle]);
 
   useEffect(() => {
     // Remove any lingering unwanted classes

@@ -31,6 +31,32 @@ export function getDashboardForRole(role: string | undefined | null): string {
 }
 
 /**
+ * Get browser tab title for the given role (for document.title).
+ * Used in main layout so tab shows role-specific title instead of generic "Preskool Admin Template".
+ */
+export function getPageTitleForRole(role: string | undefined | null): string {
+  if (!role || typeof role !== 'string') return 'Preskool';
+  const normalized = role.trim().toLowerCase();
+  switch (normalized) {
+    case 'admin':
+    case 'headmaster':
+      return "Preskool Headmaster";
+    case 'teacher':
+      return "Preskool Teacher";
+    case 'student':
+      return "Preskool Student";
+    case 'parent':
+      return "Preskool's Child Parent";
+    case 'guardian':
+      return "Preskool's Child Guardian";
+    default:
+      // Backend may send designation e.g. "Class Teacher", "Science Teacher" as display_role
+      if (normalized.includes('teacher')) return "Preskool Teacher";
+      return 'Preskool';
+  }
+}
+
+/**
  * Check if user with given role can access the given path
  */
 export function canAccessPath(path: string, role: string | undefined | null): boolean {

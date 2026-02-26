@@ -180,13 +180,22 @@ const AdminDashboardModal = ({ refetchRoutine, refetchEvents }: AdminDashboardMo
                 startDate = startDt.toISOString();
                 endDate = endDt.toISOString();
             }
-            const res = await apiService.createCalendarEvent({
+            const categoryToColor: Record<string, string> = {
+                Celebration: 'bg-warning',
+                Training: 'bg-info',
+                Meeting: 'bg-primary',
+                Holidays: 'bg-danger',
+            };
+            const eventColor = eventCategory?.value ? (categoryToColor[eventCategory.value] || 'bg-primary') : 'bg-primary';
+            const res = await apiService.createEvent({
                 title: eventTitle.trim(),
                 description: eventMessage.trim() || null,
                 start_date: startDate,
                 end_date: endDate,
-                event_color: eventCategory?.value ? 'bg-primary' : 'bg-primary',
+                event_color: eventColor,
                 is_all_day: isAllDay,
+                event_category: eventCategory?.value || null,
+                event_for: 'all',
             });
             if (res?.status === 'SUCCESS') {
                 refetchEvents?.();

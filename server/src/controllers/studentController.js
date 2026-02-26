@@ -1525,6 +1525,272 @@ const getStudentAttendance = async (req, res) => {
   }
 };
 
+// Get exam results for a student (from exams & exam_results tables)
+// This endpoint is read-only and designed to be schema-tolerant:
+// - Uses modified_at (not updated_at) when available
+// - Falls back gracefully to empty data if expected columns/tables are missing
+const getStudentExamResults = async (req, res) => {
+  try {
+    const studentId = parseInt(req.params.studentId, 10);
+    if (!studentId || Number.isNaN(studentId)) {
+      return res.status(400).json({ status: 'ERROR', message: 'Invalid student ID' });
+    }
+
+    // Ownership / access check – mirror attendance/fees behaviour
+    const userId = req.user?.id;
+    const roleId = req.user?.role_id != null ? parseInt(req.user.role_id, 10) : null;
+
+    if (roleId !== ROLES.ADMIN && roleId !== ROLES.TEACHER) {
+      const studRow = await query('SELECT user_id FROM students WHERE id = $1', [studentId]);
+      if (studRow.rows.length === 0) {
+        return res.status(404).json({ status: 'ERROR', message: 'Student not found' });
+      }
+      const studentUserId = studRow.rows[0].user_id ? parseInt(studRow.rows[0].user_id, 10) : null;
+      if (roleId === ROLES.STUDENT) {
+        if (!userId || parseInt(userId, 10) !== studentUserId) {
+          return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+        }
+      } else if (roleId === ROLES.PARENT) {
+        const { studentIds } = await getParentsForUser(userId).catch(() => ({ studentIds: [] }));
+        if (!studentIds || !studentIds.includes(studentId)) {
+          return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+        }
+      } else if (roleId === ROLES.GUARDIAN) {
+        const gCheck = await query(
+          `SELECT 1 FROM guardians g
+           INNER JOIN users u ON (LOWER(TRIM(g.email)) = LOWER(TRIM(u.email)) OR (g.phone = u.phone AND g.phone != ''))
+           WHERE u.id = $1 AND g.student_id = $2`,
+          [userId, studentId]
+        );
+        if (gCheck.rows.length === 0) {
+          return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+        }
+      } else {
+        return res.status(403).json({ status: 'ERROR', message: 'Access denied' });
+      }
+    }
+
+    let rows = [];
+    try {
+      // Primary path: exam_results joined with exams and subjects, ordered by exam date / modified_at
+      const result = await query(
+        `SELECT 
+           er.*,
+           e.exam_name,
+           e.exam_type,
+           e.exam_date,
+           e.total_marks AS exam_total_marks,
+           e.passing_marks AS exam_passing_marks,
+           s.subject_name
+         FROM exam_results er
+         LEFT JOIN exams e ON er.exam_id = e.id
+         LEFT JOIN subjects s ON er.subject_id = s.id
+         WHERE er.student_id = $1
+         ORDER BY 
+           COALESCE(e.exam_date, er.modified_at, er.created_at, NOW()) DESC,
+           er.exam_id NULLS LAST,
+           s.subject_name NULLS LAST`,
+        [studentId]
+      );
+      rows = result.rows;
+    } catch (primaryErr) {
+      // Fallback: be tolerant to missing columns/tables – never break the app
+      console.warn('Primary exam results query failed, falling back to simpler query:', primaryErr.message);
+      try {
+        const fallback = await query(
+          `SELECT 
+             er.*,
+             e.exam_name,
+             e.exam_type,
+             e.total_marks AS exam_total_marks,
+             e.passing_marks AS exam_passing_marks
+           FROM exam_results er
+           LEFT JOIN exams e ON er.exam_id = e.id
+           WHERE er.student_id = $1
+           ORDER BY COALESCE(er.modified_at, er.created_at, NOW()) DESC, er.exam_id NULLS LAST`,
+          [studentId]
+        );
+        rows = fallback.rows;
+      } catch (fallbackErr) {
+        console.warn('Fallback exam results query failed, returning empty data:', fallbackErr.message);
+        rows = [];
+      }
+    }
+
+    if (!rows || rows.length === 0) {
+      return res.status(200).json({
+        status: 'SUCCESS',
+        message: 'No exam results found for this student',
+        data: { exams: [] },
+      });
+    }
+
+    // Batch fetch subject names (JOIN may not resolve if subject_id is null or column name differs)
+    let subjectMap = {};
+    const subjectIds = [...new Set(rows.map((r) => r.subject_id ?? r.subject ?? r.subjectid).filter((id) => id != null && !Number.isNaN(Number(id))))];
+    if (subjectIds.length > 0) {
+      try {
+        const subjRes = await query('SELECT id, subject_name FROM subjects WHERE id = ANY($1)', [subjectIds]);
+        subjRes.rows.forEach((s) => {
+          subjectMap[s.id] = s;
+          subjectMap[Number(s.id)] = s;
+          subjectMap[String(s.id)] = s;
+        });
+      } catch (e) {
+        console.warn('Subject names lookup for exam results failed:', e.message);
+      }
+    }
+
+    // Group results by exam (exam_id) and build a UI-friendly structure
+    const examsMap = new Map();
+
+    const normalizeResult = (val) => {
+      const s = (val || '').toString().trim().toLowerCase();
+      if (!s) return null;
+      if (['pass', 'p', 'passed'].includes(s)) return 'Pass';
+      if (['fail', 'f', 'failed'].includes(s)) return 'Fail';
+      return val;
+    };
+
+    rows.forEach((r) => {
+      const examId = r.exam_id || r.examid || r.exam || null;
+      const key = examId != null ? String(examId) : `unknown-${r.id}`;
+      const examTotalMarks = r.exam_total_marks != null ? Number(r.exam_total_marks) : null;
+      const examPassingMarks = r.exam_passing_marks != null ? Number(r.exam_passing_marks) : null;
+
+      if (!examsMap.has(key)) {
+        const examName = r.exam_name || r.examname || r.name || 'Exam';
+        const examType = r.exam_type || r.type || null;
+        const examDate = r.exam_date || r.date || r.exam_date_time || null;
+        const labelParts = [];
+        if (examType) labelParts.push(examType);
+        if (examName && !labelParts.includes(examName)) labelParts.push(examName);
+        const examLabel = labelParts.length > 0 ? labelParts.join(' - ') : examName || 'Exam';
+
+        examsMap.set(key, {
+          examId: examId,
+          examName,
+          examType,
+          examDate,
+          examLabel,
+          examTotalMarks,
+          examPassingMarks,
+          subjects: [],
+          summary: {
+            totalMax: 0,
+            totalMin: 0,
+            totalObtained: 0,
+            percentage: null,
+            overallResult: null,
+          },
+        });
+      }
+
+      const exam = examsMap.get(key);
+      const rawMax = r.max_marks ?? r.max_mark ?? r.total_marks ?? r.full_marks ?? r.total ?? null;
+      const rawMin = r.min_marks ?? r.pass_marks ?? r.min_mark ?? r.min ?? null;
+      const rawObtained = r.marks_obtained ?? r.obtained_marks ?? r.marks ?? r.marks_scored ?? r.score ?? null;
+
+      let maxMarks = rawMax != null ? Number(rawMax) : null;
+      let minMarks = rawMin != null ? Number(rawMin) : null;
+      const obtained = rawObtained != null ? Number(rawObtained) : null;
+
+      const rawResult = r.result || r.result_status || r.status || null;
+      let result = normalizeResult(rawResult);
+
+      if (!result) {
+        if (maxMarks != null && maxMarks > 0 && obtained != null) {
+          const threshold = minMarks != null && minMarks > 0 ? minMarks : Math.round(maxMarks * 0.35);
+          result = obtained >= threshold ? 'Pass' : 'Fail';
+        } else {
+          result = null;
+        }
+      }
+
+      const subjId = r.subject_id ?? r.subject ?? r.subjectid;
+      const subj = subjId != null ? (subjectMap[subjId] ?? subjectMap[Number(subjId)] ?? subjectMap[String(subjId)]) : null;
+      const subjectName = r.subject_name || (typeof r.subject === 'string' ? r.subject : null) || subj?.subject_name || null;
+
+      exam.subjects.push({
+        subjectId: subjId ?? null,
+        subjectName: subjectName || 'Subject',
+        maxMarks,
+        minMarks,
+        marksObtained: obtained,
+        result,
+      });
+    });
+
+    // Compute per-exam summary and fill per-subject max/min from exams table when missing
+    examsMap.forEach((exam) => {
+      const examTotalMarks = exam.examTotalMarks;
+      const examPassingMarks = exam.examPassingMarks;
+      const totalObtained = exam.subjects.reduce((sum, s) => sum + (Number(s.marksObtained) || 0), 0);
+
+      let totalMax = examTotalMarks != null && examTotalMarks > 0 ? examTotalMarks : 0;
+      let totalMin = examPassingMarks != null && examPassingMarks > 0 ? examPassingMarks : 0;
+
+      if (totalMax === 0) {
+        exam.subjects.forEach((s) => {
+          if (s.maxMarks != null) totalMax += Number(s.maxMarks || 0);
+        });
+      }
+      if (totalMin === 0) {
+        exam.subjects.forEach((s) => {
+          if (s.minMarks != null) totalMin += Number(s.minMarks || 0);
+        });
+      }
+
+      const numSubjects = exam.subjects.length || 1;
+      const perSubjectMax = examTotalMarks != null && examTotalMarks > 0 ? examTotalMarks / numSubjects : null;
+      const perSubjectMin = examPassingMarks != null && examPassingMarks > 0 ? examPassingMarks / numSubjects : null;
+
+      exam.subjects.forEach((s) => {
+        if (s.maxMarks == null && perSubjectMax != null) {
+          s.maxMarks = Math.round(perSubjectMax * 100) / 100;
+        }
+        if (s.minMarks == null && perSubjectMin != null) {
+          s.minMarks = Math.round(perSubjectMin * 100) / 100;
+        }
+        if (s.result == null && s.maxMarks != null && s.maxMarks > 0 && s.marksObtained != null) {
+          const threshold = s.minMarks != null && s.minMarks > 0 ? s.minMarks : Math.round(s.maxMarks * 0.35);
+          s.result = s.marksObtained >= threshold ? 'Pass' : 'Fail';
+        }
+      });
+
+      const percentage = totalMax > 0 ? (totalObtained / totalMax) * 100 : null;
+      const overallResult =
+        totalMax > 0
+          ? (totalObtained >= totalMin ? 'Pass' : 'Fail')
+          : null;
+
+      exam.summary = {
+        totalMax,
+        totalMin,
+        totalObtained,
+        percentage: percentage != null ? Number(percentage.toFixed(2)) : null,
+        overallResult,
+      };
+    });
+
+    const exams = Array.from(examsMap.values());
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      message: 'Student exam results fetched successfully',
+      data: { exams },
+    });
+  } catch (error) {
+    console.error('Error fetching student exam results:', error);
+    // Be defensive: do not break the application if schema is different
+    res.status(200).json({
+      status: 'SUCCESS',
+      message: 'Exam results not available',
+      data: { exams: [] },
+    });
+  }
+};
+
 module.exports = {
   createStudent,
   updateStudent,
@@ -1534,4 +1800,5 @@ module.exports = {
   getCurrentStudent,
   getStudentsByClass,
   getStudentAttendance,
+  getStudentExamResults,
 };

@@ -6,13 +6,14 @@ import ReactApexChart from "react-apexcharts";
 import { useGuardians } from "../../../core/hooks/useGuardians";
 import { useGuardianWardLeaves } from "../../../core/hooks/useGuardianWardLeaves";
 import { useStudentFees } from "../../../core/hooks/useStudentFees";
-import { useCalendarEvents } from "../../../core/hooks/useCalendarEvents";
+import { useEvents } from "../../../core/hooks/useEvents";
+import { EventsCard } from "../shared/EventsCard";
 
 const GuardianDashboard = () => {
   const routes = all_routes;
   const { guardians, loading: guardianLoading, error: guardianError } = useGuardians();
   const { leaveApplications: wardLeaves, loading: leaveLoading } = useGuardianWardLeaves({ limit: 20 });
-  const { events: calendarEvents } = useCalendarEvents();
+  const { upcomingEvents, completedEvents, loading: eventsLoading } = useEvents({ forDashboard: true, limit: 5 });
 
   const wards = guardians ?? [];
   const firstWard = wards[0];
@@ -207,51 +208,12 @@ const GuardianDashboard = () => {
 
               <div className="row">
                 <div className="col-xxl-4 col-xl-6 d-flex">
-                  <div className="card flex-fill">
-                    <div className="card-header d-flex align-items-center justify-content-between">
-                      <h4 className="card-title">Events List</h4>
-                      <Link to={routes.events} className="fw-medium">View All</Link>
-                    </div>
-                    <div className="card-body p-0">
-                      {calendarEvents?.length > 0 ? (
-                        <ul className="list-group list-group-flush">
-                          {calendarEvents.slice(0, 5).map((evt: { id?: number; title?: string; start_date?: string; is_all_day?: boolean }) => (
-                            <li key={evt.id} className="list-group-item p-3">
-                              <div className="d-flex align-items-center justify-content-between">
-                                <div className="d-flex align-items-center">
-                                  <span className="avatar avatar-lg flex-shrink-0 me-2 rounded bg-primary-transparent">
-                                    <i className="ti ti-calendar fs-20 text-primary" />
-                                  </span>
-                                  <div className="overflow-hidden">
-                                    <h6 className="mb-1">
-                                      <Link to={routes.events}>{evt.title || "Event"}</Link>
-                                    </h6>
-                                    <p className="mb-0">
-                                      <i className="ti ti-calendar me-1" />
-                                      {evt.start_date
-                                        ? new Date(evt.start_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
-                                        : "—"}
-                                    </p>
-                                  </div>
-                                </div>
-                                <span className={`badge d-inline-flex align-items-center ${evt.is_all_day ? "badge-soft-danger" : "badge-soft-skyblue"}`}>
-                                  <i className="ti ti-circle-filled fs-5 me-1" />
-                                  {evt.is_all_day ? "Full Day" : "Half Day"}
-                                </span>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <div className="p-4">
-                          <div className="alert alert-info d-flex align-items-center mb-0" role="alert">
-                            <i className="ti ti-info-circle me-2 fs-18" />
-                            <span>No events available. Events will appear here once added.</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <EventsCard
+                    upcomingEvents={upcomingEvents}
+                    completedEvents={completedEvents}
+                    loading={eventsLoading}
+                    limit={5}
+                  />
                 </div>
                 <div className="col-xxl-8 col-xl-6 d-flex">
                   <div className="card flex-fill">

@@ -52,6 +52,7 @@ const notesRoutes = require('./src/routes/notesRoutes');
 const fileRoutes = require('./src/routes/fileRoutes');
 const syllabusRoutes = require('./src/routes/syllabusRoutes');
 const noticeBoardRoutes = require('./src/routes/noticeBoardRoutes');
+const eventsRoutes = require('./src/routes/eventsRoutes');
 const feeRoutes = require('./src/routes/feeRoutes');
 const { protectApi } = require('./src/middleware/authMiddleware');
 const { requireActiveAccount } = require('./src/middleware/requireActiveAccount');
@@ -159,6 +160,7 @@ app.use('/api/notes', notesRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/class-syllabus', syllabusRoutes);
 app.use('/api/notice-board', noticeBoardRoutes);
+app.use('/api/events', eventsRoutes);
 app.use('/api/fees', feeRoutes);
 
 // Root endpoint

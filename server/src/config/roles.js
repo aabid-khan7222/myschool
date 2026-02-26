@@ -46,6 +46,9 @@ const PARENT_LIST_ALL_ROLES = [ROLES.ADMIN];
 /** Roles that can list all guardians */
 const GUARDIAN_LIST_ALL_ROLES = [ROLES.ADMIN];
 
+/** Roles that can create/update/delete school events (Headmaster + Teacher) */
+const EVENT_MANAGER_ROLES = [ROLES.ADMIN, ROLES.TEACHER];
+
 /** Roles that can access getLeaveApplications (all/filtered list - admin view) */
 const LEAVE_LIST_ALL_ROLES = [ROLES.ADMIN];
 
@@ -58,6 +61,7 @@ const PEOPLE_MANAGER_ROLES = [ROLES.ADMIN];
 module.exports = {
   ROLES,
   ROLE_NAMES,
+  EVENT_MANAGER_ROLES,
   LEAVE_APPROVER_ROLES,
   FEE_MANAGER_ROLES,
   NOTICE_MANAGER_ROLES,

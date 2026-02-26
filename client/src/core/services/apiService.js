@@ -267,6 +267,10 @@ class ApiService {
     return this.makeRequest(`/students/${studentId}/attendance`);
   }
 
+  async getStudentExamResults(studentId) {
+    return this.makeRequest(`/students/${studentId}/exam-results`);
+  }
+
   async getCurrentStudent() {
     return this.makeRequest('/students/me');
   }
@@ -879,6 +883,42 @@ class ApiService {
 
   async deleteCall(id) {
     return this.makeRequest(`/calls/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // School-wide Events (events table - for all dashboards)
+  async getEvents(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return this.makeRequest(`/events${qs ? `?${qs}` : ''}`);
+  }
+
+  async getUpcomingEvents(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return this.makeRequest(`/events/upcoming${qs ? `?${qs}` : ''}`);
+  }
+
+  async getCompletedEvents(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return this.makeRequest(`/events/completed${qs ? `?${qs}` : ''}`);
+  }
+
+  async createEvent(data) {
+    return this.makeRequest('/events', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateEvent(id, data) {
+    return this.makeRequest(`/events/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteEvent(id) {
+    return this.makeRequest(`/events/${id}`, {
       method: 'DELETE',
     });
   }

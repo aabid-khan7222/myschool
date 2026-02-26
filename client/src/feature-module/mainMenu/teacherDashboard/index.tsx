@@ -16,7 +16,7 @@ import { useTeacherRoutine } from "../../../core/hooks/useTeacherRoutine";
 import { useTeacherClassAttendance } from "../../../core/hooks/useTeacherClassAttendance";
 import { useClassSyllabus } from "../../../core/hooks/useClassSyllabus";
 import { useLeaveApplications } from "../../../core/hooks/useLeaveApplications";
-import { useCalendarEvents } from "../../../core/hooks/useCalendarEvents";
+import { useEvents } from "../../../core/hooks/useEvents";
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -40,7 +40,7 @@ const TeacherDashboard = () => {
   );
   const { data: syllabusData } = useClassSyllabus();
   const { leaveApplications: myLeaves, loading: leaveLoading } = useLeaveApplications({ studentOnly: true, limit: 10 });
-  const { events: calendarEvents } = useCalendarEvents();
+  const { upcomingEvents, completedEvents, loading: eventsLoading, refetch: refetchEvents } = useEvents({ forDashboard: true, limit: 5 });
 
   // Teacher's class IDs from routine (unique class+section combos they teach)
   const teacherClassSectionKeys = useMemo(() => {
@@ -98,8 +98,8 @@ const TeacherDashboard = () => {
   const teacherDisplayName = teacher
     ? [teacher.first_name, teacher.last_name].filter(Boolean).join(" ") || "Teacher"
     : "Teacher";
-  const noticeText = calendarEvents?.[0]?.title
-    ? String(calendarEvents[0].title).trim()
+  const noticeText = upcomingEvents?.[0]?.title
+    ? String(upcomingEvents[0].title).trim()
     : null;
   const Syllabus = {
     dots: false,
@@ -581,17 +581,8 @@ const TeacherDashboard = () => {
             {/* Schedules */}
             <div className="col-xxl-4 col-xl-12 d-flex">
               <div className="card flex-fill">
-                <div className="card-header d-flex align-items-center justify-content-between">
+                <div className="card-header">
                   <h4 className="card-title">Schedules</h4>
-                  <Link
-                    to="#"
-                    className="link-primary fw-medium me-2"
-                    data-bs-toggle="modal"
-                    data-bs-target="#add_event"
-                  >
-                    <i className="ti ti-square-plus me-1" />
-                    Add New
-                  </Link>
                 </div>
                 <div className="card-body">
                   {/* <div className="datepic mb-4" /> */}
@@ -606,46 +597,96 @@ const TeacherDashboard = () => {
                         onChange={(date:any) => setStartDate(date)}
                         inline
                         /> */}
-                  <h4 className="mb-3">Upcoming Events</h4>
+                  <div className="d-flex align-items-center justify-content-between mb-3">
+                    <h4 className="mb-0">Upcoming Events</h4>
+                    <div className="d-flex align-items-center gap-2">
+                      <Link to={routes.events} className="link-primary fw-medium">
+                        View All
+                      </Link>
+                      <Link
+                        to="#"
+                        className="link-primary fw-medium"
+                        data-bs-toggle="modal"
+                        data-bs-target="#add_event"
+                      >
+                        <i className="ti ti-square-plus me-1" />
+                        Add New
+                      </Link>
+                    </div>
+                  </div>
                   <div className="event-scroll">
-                    {!calendarEvents?.length ? (
+                    {eventsLoading && (
+                      <div className="text-center py-2">
+                        <div className="spinner-border spinner-border-sm text-primary" role="status" />
+                        <span className="ms-2">Loading...</span>
+                      </div>
+                    )}
+                    {!eventsLoading && !upcomingEvents?.length && (
                       <div className="alert alert-info d-flex align-items-center mb-0" role="alert">
                         <i className="ti ti-info-circle me-2 fs-18" />
-                        <span>No upcoming events. Add events from Calendar.</span>
+                        <span>No upcoming events.</span>
                       </div>
-                    ) : (
-                      (calendarEvents || []).slice(0, 10).map((evt: { id?: number; title?: string; start_date?: string; end_date?: string; event_color?: string }, idx: number) => {
-                        const start = evt.start_date ? new Date(evt.start_date) : null;
-                        const end = evt.end_date ? new Date(evt.end_date) : null;
-                        const dateStr = start ? start.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
-                        const endStr = end ? end.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
-                        const timeStr = start && !evt.event_color?.includes("all") ? start.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "";
-                        const borderCls = evt.event_color === "bg-danger" ? "border-danger" : evt.event_color === "bg-success" ? "border-success" : evt.event_color === "bg-info" ? "border-info" : "border-primary";
-                        return (
-                          <div key={evt.id ?? idx} className={`border-start ${borderCls} border-3 shadow-sm p-3 mb-3`}>
-                            <div className="d-flex align-items-center mb-2 pb-2 border-bottom">
-                              <span className="avatar p-1 me-2 bg-primary-transparent flex-shrink-0">
-                                <i className="ti ti-calendar-event fs-20 text-primary" />
-                              </span>
-                              <div className="flex-fill">
-                                <h6 className="mb-1">{evt.title || "Event"}</h6>
-                                <p className="mb-0 d-flex align-items-center">
-                                  <i className="ti ti-calendar me-1" />
-                                  {dateStr}{endStr && endStr !== dateStr ? ` - ${endStr}` : ""}
-                                </p>
+                    )}
+                    {!eventsLoading && (upcomingEvents || []).slice(0, 5).map((evt: { id?: number; title?: string; start_date?: string; end_date?: string; event_color?: string; is_all_day?: boolean }, idx: number) => {
+                      const start = evt.start_date ? new Date(evt.start_date) : null;
+                      const end = evt.end_date ? new Date(evt.end_date) : null;
+                      const dateStr = start ? start.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
+                      const endStr = end ? end.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
+                      const timeStr = evt.is_all_day ? "All day" : start ? start.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true }) : "";
+                      const borderCls = evt.event_color === "bg-danger" ? "border-danger" : evt.event_color === "bg-success" ? "border-success" : evt.event_color === "bg-info" ? "border-info" : "border-primary";
+                      return (
+                        <div key={evt.id ?? idx} className={`border-start ${borderCls} border-3 shadow-sm p-3 mb-3`}>
+                          <div className="d-flex align-items-center mb-2 pb-2 border-bottom">
+                            <span className="avatar p-1 me-2 bg-primary-transparent flex-shrink-0">
+                              <i className="ti ti-calendar-event fs-20 text-primary" />
+                            </span>
+                            <div className="flex-fill">
+                              <h6 className="mb-1">{evt.title || "Event"}</h6>
+                              <p className="mb-0 d-flex align-items-center">
+                                <i className="ti ti-calendar me-1" />
+                                {dateStr}{endStr && endStr !== dateStr ? ` - ${endStr}` : ""}
+                              </p>
+                            </div>
+                          </div>
+                          {timeStr && (
+                            <p className="mb-0">
+                              <i className="ti ti-clock me-1" />
+                              {timeStr}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {!eventsLoading && (completedEvents || []).length > 0 && (
+                    <>
+                      <h4 className="mb-3 mt-4">Completed Events</h4>
+                      <div className="event-scroll">
+                        {(completedEvents || []).slice(0, 3).map((evt: { id?: number; title?: string; start_date?: string; end_date?: string; event_color?: string; is_all_day?: boolean }, idx: number) => {
+                          const start = evt.start_date ? new Date(evt.start_date) : null;
+                          const end = evt.end_date ? new Date(evt.end_date) : null;
+                          const dateStr = start ? start.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
+                          const borderCls = evt.event_color === "bg-danger" ? "border-danger" : evt.event_color === "bg-success" ? "border-success" : "border-secondary";
+                          return (
+                            <div key={evt.id ?? idx} className={`border-start ${borderCls} border-3 shadow-sm p-3 mb-3 opacity-75`}>
+                              <div className="d-flex align-items-center">
+                                <span className="avatar p-1 me-2 bg-secondary-transparent flex-shrink-0">
+                                  <i className="ti ti-calendar-check fs-20 text-secondary" />
+                                </span>
+                                <div className="flex-fill">
+                                  <h6 className="mb-1">{evt.title || "Event"}</h6>
+                                  <p className="mb-0 d-flex align-items-center small">
+                                    <i className="ti ti-calendar me-1" />
+                                    {dateStr}
+                                  </p>
+                                </div>
                               </div>
                             </div>
-                            {timeStr && (
-                              <p className="mb-0">
-                                <i className="ti ti-clock me-1" />
-                                {timeStr}
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -867,7 +908,7 @@ const TeacherDashboard = () => {
           </div>
         </div>
       </div>
-      <AdminDashboardModal />
+      <AdminDashboardModal refetchEvents={refetchEvents} />
       {/* /Page Wrapper */}
     </>
   );

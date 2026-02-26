@@ -9,6 +9,7 @@ import Select from "react-select";
 import { Link } from "react-router-dom";
 import { all_routes } from "../../router/all_routes";
 import { useCalendarEvents } from "../../../core/hooks/useCalendarEvents";
+import { useCurrentUser } from "../../../core/hooks/useCurrentUser";
 
 const Calendar = () => {
   const [, setcalenderevent] = useState(""),
@@ -86,18 +87,20 @@ const Calendar = () => {
                   </ol>
                 </nav>
               </div>
-              <div className="d-flex my-xl-auto right-content align-items-center flex-wrap">
-                <div className="mb-2">
-                  <Link
-                    to="#"
-                    className="btn btn-primary"
-                    data-bs-toggle="modal"
-                    data-bs-target="#add_event"
-                  >
-                    Create Event
-                  </Link>
+              {canAddEvent && (
+                <div className="d-flex my-xl-auto right-content align-items-center flex-wrap">
+                  <div className="mb-2">
+                    <Link
+                      to="#"
+                      className="btn btn-primary"
+                      data-bs-toggle="modal"
+                      data-bs-target="#add_event"
+                    >
+                      Create Event
+                    </Link>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
             {/* /Page Header */}
           </>

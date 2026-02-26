@@ -8,8 +8,11 @@ import { useClassSchedules } from "../../../core/hooks/useClassSchedules";
 import { useClassSyllabus } from "../../../core/hooks/useClassSyllabus";
 import { useLeaveApplications } from "../../../core/hooks/useLeaveApplications";
 import { useStudentFees } from "../../../core/hooks/useStudentFees";
+import { useStudentExamResults } from "../../../core/hooks/useStudentExamResults";
 import { useTodos } from "../../../core/hooks/useTodos";
-import { useCalendarEvents } from "../../../core/hooks/useCalendarEvents";
+import { useEvents } from "../../../core/hooks/useEvents";
+import { useAcademicYears } from "../../../core/hooks/useAcademicYears";
+import { EventsCard } from "../shared/EventsCard";
 import { Calendar } from "primereact/calendar";
 import type { Nullable } from "primereact/ts-helpers";
 import dayjs from "dayjs";
@@ -23,10 +26,12 @@ const StudentDasboard = () => {
   const { data: attendanceData, loading: attendanceLoading, error: attendanceError } = useStudentAttendance(student?.id ?? null);
   const { data: allSchedules, loading: scheduleLoading } = useClassSchedules();
   const { data: syllabusData } = useClassSyllabus();
-  const { leaveApplications: myLeaves, loading: leaveLoading } = useLeaveApplications({ studentOnly: true, limit: 10 });
+  const { leaveApplications: myLeaves, loading: leaveLoading } = useLeaveApplications({ studentOnly: true, limit: 50 });
   const { data: feeData } = useStudentFees(student?.id ?? null);
+  const { data: examResultsData } = useStudentExamResults(student?.id ?? null);
   const { todos } = useTodos();
-  const { events: calendarEvents } = useCalendarEvents();
+  const { upcomingEvents, completedEvents, loading: eventsLoading } = useEvents({ forDashboard: true, limit: 5 });
+  const { academicYears } = useAcademicYears();
 
   const today = new Date();
   const year = today.getFullYear();
@@ -36,6 +41,104 @@ const StudentDasboard = () => {
   const defaultValue = dayjs(formattedDate);
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(defaultValue);
   const [date, setDate] = useState<Nullable<Date>>(null);
+
+  // Filter states for dropdowns
+  type AttendanceRangeKey = "thisWeek" | "lastWeek" | "lastMonth";
+  const [attendanceRange, setAttendanceRange] = useState<AttendanceRangeKey>("thisWeek");
+  type LeaveRangeKey = "thisMonth" | "thisYear" | "lastWeek";
+  const [leaveRange, setLeaveRange] = useState<LeaveRangeKey>("thisMonth");
+  type TodoRangeKey = "today" | "thisWeek" | "thisMonth" | "thisYear";
+  const [todoRange, setTodoRange] = useState<TodoRangeKey>("today");
+  const [homeWorkSubject, setHomeWorkSubject] = useState<string>("all");
+  const [performanceYearId, setPerformanceYearId] = useState<string | null>(null);
+
+  // Date range helpers
+  const getDateRange = (key: AttendanceRangeKey | LeaveRangeKey | TodoRangeKey) => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+
+    if (key === "today") return { start: startOfToday, end: endOfToday };
+    if (key === "thisWeek") return { start: startOfWeek, end: endOfWeek };
+    if (key === "lastWeek") {
+      const lastWeekStart = new Date(startOfWeek);
+      lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+      const lastWeekEnd = new Date(lastWeekStart);
+      lastWeekEnd.setDate(lastWeekStart.getDate() + 6);
+      lastWeekEnd.setHours(23, 59, 59, 999);
+      return { start: lastWeekStart, end: lastWeekEnd };
+    }
+    if (key === "thisMonth") return { start: startOfMonth, end: endOfMonth };
+    if (key === "thisYear") return { start: startOfYear, end: endOfYear };
+    if (key === "lastMonth") {
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+      return { start: lastMonthStart, end: lastMonthEnd };
+    }
+    return { start: startOfToday, end: endOfToday };
+  };
+
+  const isDateInRange = (dateVal: string | Date | null | undefined, rangeKey: AttendanceRangeKey | LeaveRangeKey | TodoRangeKey) => {
+    if (!dateVal) return false;
+    const d = new Date(dateVal);
+    if (Number.isNaN(d.getTime())) return false;
+    const { start, end } = getDateRange(rangeKey);
+    return d >= start && d <= end;
+  };
+
+  // Filtered attendance by date range
+  const filteredAttendanceData = useMemo(() => {
+    if (!attendanceData?.records?.length) return { records: [], summary: { present: 0, absent: 0, halfDay: 0, late: 0 } };
+    const filtered = attendanceData.records.filter((r: { attendanceDate?: string }) =>
+      isDateInRange(r.attendanceDate, attendanceRange)
+    );
+    const present = filtered.filter((r: { status?: string }) => r.status === "present").length;
+    const absent = filtered.filter((r: { status?: string }) => r.status === "absent").length;
+    const halfDay = filtered.filter((r: { status?: string }) => (r.status || "").includes("half")).length;
+    const late = filtered.filter((r: { status?: string }) => r.status === "late").length;
+    return { records: filtered, summary: { present, absent, halfDay, late } };
+  }, [attendanceData, attendanceRange]);
+
+  // Filtered leaves by date range
+  const filteredLeaves = useMemo(() => {
+    if (!myLeaves?.length) return [];
+    return myLeaves.filter((item: { startDate?: string }) =>
+      isDateInRange(item.startDate, leaveRange)
+    );
+  }, [myLeaves, leaveRange]);
+
+  // Filtered todos by date range
+  const filteredTodos = useMemo(() => {
+    if (!todos?.length) return [];
+    return todos.filter((t: { due_date?: string }) =>
+      isDateInRange(t.due_date, todoRange)
+    );
+  }, [todos, todoRange]);
+
+  // Unique subjects from class schedules for Home Works filter
+  const homeWorkSubjects = useMemo(() => {
+    const subs = new Set<string>();
+    classFaculties.forEach((f: { subject?: string }) => {
+      if (f.subject?.trim()) subs.add(f.subject.trim());
+    });
+    return Array.from(subs).sort();
+  }, [classFaculties]);
+
+  // Academic years for Performance dropdown
+  const academicYearsList = (academicYears || []) as Array<{ id?: number; year_name?: string; is_current?: boolean }>;
+  const selectedPerformanceYear = performanceYearId
+    ? academicYearsList.find((y) => String(y.id) === performanceYearId)
+    : academicYearsList.find((y) => y.is_current) || academicYearsList[0];
 
   // Today's classes - filter schedules by student's class/section and selected date's day
   const todaysClasses = useMemo(() => {
@@ -256,30 +359,33 @@ const StudentDasboard = () => {
                   <div className="card flex-fill">
                     <div className="card-header d-flex align-items-center justify-content-between">
                       <h4 className="card-title">Attendance</h4>
-                      <div className="card-dropdown">
-                        <Link
-                          to="#"
-                          className="dropdown-toggle p-2"
+                      <div className="dropdown">
+                        <button
+                          type="button"
+                          className="btn btn-light dropdown-toggle"
                           data-bs-toggle="dropdown"
+                          aria-expanded="false"
                         >
-                          <span>
-                            <i className="ti ti-calendar-due" />
-                          </span>
-                          This Week
-                        </Link>
-                        <div className="dropdown-menu  dropdown-menu-end">
-                          <ul>
-                            <li>
-                              <Link to="#">This Week</Link>
-                            </li>
-                            <li>
-                              <Link to="#">Last Week</Link>
-                            </li>
-                            <li>
-                              <Link to="#">Last Month</Link>
-                            </li>
-                          </ul>
-                        </div>
+                          <i className="ti ti-calendar-due me-2" />
+                          {attendanceRange === "thisWeek" ? "This Week" : attendanceRange === "lastWeek" ? "Last Week" : "Last Month"}
+                        </button>
+                        <ul className="dropdown-menu dropdown-menu-end">
+                          <li>
+                            <button type="button" className="dropdown-item" onClick={() => setAttendanceRange("thisWeek")}>
+                              This Week
+                            </button>
+                          </li>
+                          <li>
+                            <button type="button" className="dropdown-item" onClick={() => setAttendanceRange("lastWeek")}>
+                              Last Week
+                            </button>
+                          </li>
+                          <li>
+                            <button type="button" className="dropdown-item" onClick={() => setAttendanceRange("lastMonth")}>
+                              Last Month
+                            </button>
+                          </li>
+                        </ul>
                       </div>
                     </div>
                     <div className="card-body">
@@ -300,13 +406,13 @@ const StudentDasboard = () => {
                             <span className="ms-2">Loading attendance...</span>
                           </div>
                         )}
-                        {!attendanceLoading && !attendanceError && (!attendanceData?.records?.length || attendanceData.records.length === 0) && (
+                        {!attendanceLoading && !attendanceError && filteredAttendanceData.records.length === 0 && (
                           <div className="alert alert-info mb-0 d-flex align-items-center" role="alert">
                             <i className="ti ti-info-circle me-2 fs-18" />
                             <span>No attendance data available. Attendance records will appear here once available.</span>
                           </div>
                         )}
-                        {!attendanceLoading && !attendanceError && attendanceData?.records?.length > 0 && (
+                        {!attendanceLoading && !attendanceError && filteredAttendanceData.records.length > 0 && (
                           <div className="row g-2">
                             <div className="col-6 col-sm-3">
                               <div className="d-flex align-items-center rounded border p-2">
@@ -315,7 +421,7 @@ const StudentDasboard = () => {
                                 </span>
                                 <div>
                                   <small className="text-muted d-block">Present</small>
-                                  <strong>{attendanceData.summary?.present ?? 0}</strong>
+                                  <strong>{filteredAttendanceData.summary?.present ?? 0}</strong>
                                 </div>
                               </div>
                             </div>
@@ -326,7 +432,7 @@ const StudentDasboard = () => {
                                 </span>
                                 <div>
                                   <small className="text-muted d-block">Absent</small>
-                                  <strong>{attendanceData.summary?.absent ?? 0}</strong>
+                                  <strong>{filteredAttendanceData.summary?.absent ?? 0}</strong>
                                 </div>
                               </div>
                             </div>
@@ -337,7 +443,7 @@ const StudentDasboard = () => {
                                 </span>
                                 <div>
                                   <small className="text-muted d-block">Half Day</small>
-                                  <strong>{attendanceData.summary?.halfDay ?? 0}</strong>
+                                  <strong>{filteredAttendanceData.summary?.halfDay ?? 0}</strong>
                                 </div>
                               </div>
                             </div>
@@ -348,7 +454,7 @@ const StudentDasboard = () => {
                                 </span>
                                 <div>
                                   <small className="text-muted d-block">Late</small>
-                                  <strong>{attendanceData.summary?.late ?? 0}</strong>
+                                  <strong>{filteredAttendanceData.summary?.late ?? 0}</strong>
                                 </div>
                               </div>
                             </div>
@@ -431,9 +537,9 @@ const StudentDasboard = () => {
                 {/* /Fees */}
               </div>
             </div>
-            {/* Schedules */}
-            <div className="col-xxl-4 d-flex">
-              <div className="card flex-fill">
+            {/* Schedules & Events */}
+            <div className="col-xxl-4 d-flex flex-column">
+              <div className="card flex-fill mb-3">
                 <div className="card-header d-flex align-items-center justify-content-between">
                   <h4 className="card-title">Schedules</h4>
                   <Link to={routes.studentTimeTable} className="link-primary fw-medium">
@@ -441,7 +547,6 @@ const StudentDasboard = () => {
                   </Link>
                 </div>
                 <div className="card-body pb-0">
-                  {/* <div className="datepic mb-2" /> */}
                   <Calendar
                     className="datepickers mb-2 custom-cal-react"
                     value={date}
@@ -455,8 +560,14 @@ const StudentDasboard = () => {
                   </div>
                 </div>
               </div>
+              <EventsCard
+                upcomingEvents={upcomingEvents}
+                completedEvents={completedEvents}
+                loading={eventsLoading}
+                limit={5}
+              />
             </div>
-            {/* /Schedules */}
+            {/* /Schedules & Events */}
           </div>
           <div className="row">
             {/* Performance */}
@@ -465,30 +576,32 @@ const StudentDasboard = () => {
                 <div className="card-header d-flex align-items-center justify-content-between">
                   <h4 className="card-title">Performance</h4>
                   <div className="dropdown">
-                    <Link
-                      to="#"
-                      className="bg-white dropdown-toggle"
+                    <button
+                      type="button"
+                      className="btn btn-light dropdown-toggle"
                       data-bs-toggle="dropdown"
+                      aria-expanded="false"
                     >
                       <i className="ti ti-calendar me-2" />
-                      2024 - 2025
-                    </Link>
+                      {selectedPerformanceYear?.year_name ?? "Select Year"}
+                    </button>
                     <ul className="dropdown-menu mt-2 p-3">
-                      <li>
-                        <Link to="#" className="dropdown-item rounded-1">
-                          2024 - 2025
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="#" className="dropdown-item rounded-1">
-                          2023 - 2024
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="#" className="dropdown-item rounded-1">
-                          2022 - 2023
-                        </Link>
-                      </li>
+                      {academicYearsList.map((y) => (
+                        <li key={y.id}>
+                          <button
+                            type="button"
+                            className="dropdown-item rounded-1"
+                            onClick={() => setPerformanceYearId(String(y.id))}
+                          >
+                            {y.year_name}
+                          </button>
+                        </li>
+                      ))}
+                      {academicYearsList.length === 0 && (
+                        <li>
+                          <span className="dropdown-item text-muted">No academic years</span>
+                        </li>
+                      )}
                     </ul>
                   </div>
                 </div>
@@ -505,32 +618,39 @@ const StudentDasboard = () => {
             <div className="col-xxl-5 d-flex">
               <div className="card flex-fill">
                 <div className="card-header d-flex align-items-center justify-content-between">
-                  <h4 className="card-titile">Home Works</h4>
+                  <h4 className="card-title">Home Works</h4>
                   <div className="dropdown">
-                    <Link
-                      to="#"
-                      className="bg-white dropdown-toggle"
+                    <button
+                      type="button"
+                      className="btn btn-light dropdown-toggle"
                       data-bs-toggle="dropdown"
+                      aria-expanded="false"
                     >
                       <i className="ti ti-book-2 me-2" />
-                      All Subject
-                    </Link>
+                      {homeWorkSubject === "all" ? "All Subject" : homeWorkSubject}
+                    </button>
                     <ul className="dropdown-menu mt-2 p-3">
                       <li>
-                        <Link to="#" className="dropdown-item rounded-1">
-                          Physics
-                        </Link>
+                        <button type="button" className="dropdown-item rounded-1" onClick={() => setHomeWorkSubject("all")}>
+                          All Subject
+                        </button>
                       </li>
-                      <li>
-                        <Link to="#" className="dropdown-item rounded-1">
-                          Chemistry
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="#" className="dropdown-item rounded-1">
-                          Maths
-                        </Link>
-                      </li>
+                      {homeWorkSubjects.map((subj) => (
+                        <li key={subj}>
+                          <button
+                            type="button"
+                            className="dropdown-item rounded-1"
+                            onClick={() => setHomeWorkSubject(subj)}
+                          >
+                            {subj}
+                          </button>
+                        </li>
+                      ))}
+                      {homeWorkSubjects.length === 0 && (
+                        <li>
+                          <span className="dropdown-item text-muted">No subjects in schedule</span>
+                        </li>
+                      )}
                     </ul>
                   </div>
                 </div>
@@ -611,29 +731,30 @@ const StudentDasboard = () => {
                 <div className="card-header d-flex align-items-center justify-content-between">
                   <h4 className="card-title">Leave Status</h4>
                   <div className="dropdown">
-                    <Link
-                      to="#"
-                      className="bg-white dropdown-toggle"
+                    <button
+                      type="button"
+                      className="btn btn-light dropdown-toggle"
                       data-bs-toggle="dropdown"
+                      aria-expanded="false"
                     >
                       <i className="ti ti-calendar me-2" />
-                      This Month
-                    </Link>
+                      {leaveRange === "thisMonth" ? "This Month" : leaveRange === "thisYear" ? "This Year" : "Last Week"}
+                    </button>
                     <ul className="dropdown-menu mt-2 p-3">
                       <li>
-                        <Link to="#" className="dropdown-item rounded-1">
+                        <button type="button" className="dropdown-item rounded-1" onClick={() => setLeaveRange("thisMonth")}>
                           This Month
-                        </Link>
+                        </button>
                       </li>
                       <li>
-                        <Link to="#" className="dropdown-item rounded-1">
+                        <button type="button" className="dropdown-item rounded-1" onClick={() => setLeaveRange("thisYear")}>
                           This Year
-                        </Link>
+                        </button>
                       </li>
                       <li>
-                        <Link to="#" className="dropdown-item rounded-1">
+                        <button type="button" className="dropdown-item rounded-1" onClick={() => setLeaveRange("lastWeek")}>
                           Last Week
-                        </Link>
+                        </button>
                       </li>
                     </ul>
                   </div>
@@ -644,14 +765,14 @@ const StudentDasboard = () => {
                       <div className="spinner-border spinner-border-sm text-primary" role="status" />
                     </div>
                   )}
-                  {!leaveLoading && myLeaves.length === 0 && (
+                  {!leaveLoading && filteredLeaves.length === 0 && (
                     <div className="alert alert-info d-flex align-items-center mb-0" role="alert">
                       <i className="ti ti-info-circle me-2 fs-18" />
                       <span>No leave applications.</span>
                     </div>
                   )}
-                  {!leaveLoading && myLeaves.length > 0 && myLeaves.map((item: { key?: string; leaveType?: string; leaveRange?: string; statusBadgeClass?: string; status?: string }, idx: number) => (
-                    <div key={item.key} className={`bg-light-300 d-sm-flex align-items-center justify-content-between p-3 ${idx < myLeaves.length - 1 ? "mb-3" : "mb-0"}`}>
+                  {!leaveLoading && filteredLeaves.length > 0 && filteredLeaves.map((item: { key?: string; leaveType?: string; leaveRange?: string; statusBadgeClass?: string; status?: string }, idx: number) => (
+                    <div key={item.key} className={`bg-light-300 d-sm-flex align-items-center justify-content-between p-3 ${idx < filteredLeaves.length - 1 ? "mb-3" : "mb-0"}`}>
                       <div className="d-flex align-items-center mb-2 mb-sm-0">
                         <div className="avatar avatar-lg bg-info-transparent flex-shrink-0 me-2">
                           <i className="ti ti-calendar-off" />
@@ -676,34 +797,44 @@ const StudentDasboard = () => {
               <div className="card flex-fill">
                 <div className="card-header d-flex align-items-center justify-content-between">
                   <h4 className="card-title">Exam Result</h4>
-                  <div className="dropdown">
-                    <Link
-                      to="#"
-                      className="bg-white dropdown-toggle"
-                      data-bs-toggle="dropdown"
-                    >
-                      <i className="ti ti-calendar me-2" />
-                      1st Quarter
-                    </Link>
-                    <ul className="dropdown-menu mt-2 p-3">
-                      <li>
-                        <Link to="#" className="dropdown-item rounded-1">
-                          1st Quarter
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="#" className="dropdown-item rounded-1">
-                          2nd Quarter
-                        </Link>
-                      </li>
-                    </ul>
-                  </div>
+                  <Link to={routes.studentResult} state={student ? { studentId: student.id, student } : undefined} className="link-primary fw-medium">
+                    View All
+                  </Link>
                 </div>
                 <div className="card-body pb-0">
-                  <div className="alert alert-info d-flex align-items-center mb-0" role="alert">
-                    <i className="ti ti-info-circle me-2 fs-18" />
-                    <span>No exam results available. Results will appear here after exams.</span>
-                  </div>
+                  {examResultsData?.exams?.length ? (
+                    <div>
+                      {examResultsData.exams.slice(0, 3).map((exam: { examId?: number; examName?: string; examLabel?: string; subjects?: Array<{ subjectName?: string }>; summary?: { percentage?: number; overallResult?: string } }, idx: number) => {
+                        const subjectNames = (exam.subjects || []).map((s: { subjectName?: string }) => s.subjectName).filter(Boolean).join(", ");
+                        return (
+                          <div key={exam.examId ?? idx} className="d-flex align-items-center justify-content-between mb-3">
+                            <div>
+                              <h6 className="mb-1">{exam.examLabel || exam.examName || `Exam ${idx + 1}`}</h6>
+                              {subjectNames ? (
+                                <p className="mb-0 text-muted small">
+                                  {subjectNames}
+                                </p>
+                              ) : null}
+                              <p className="mb-0 text-muted small">
+                                {exam.summary?.percentage != null ? `${exam.summary.percentage.toFixed(1)}%` : ""} — {exam.summary?.overallResult ?? "—"}
+                              </p>
+                            </div>
+                            <span className={`badge ${(exam.summary?.overallResult || "").toLowerCase() === "pass" ? "badge-soft-success" : "badge-soft-danger"} d-inline-flex align-items-center`}>
+                              {exam.summary?.overallResult ?? "—"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                      {examResultsData.exams.length > 3 && (
+                        <p className="mb-0 small text-muted">+{examResultsData.exams.length - 3} more</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="alert alert-info d-flex align-items-center mb-0" role="alert">
+                      <i className="ti ti-info-circle me-2 fs-18" />
+                      <span>No exam results available. Results will appear here after exams.</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -712,7 +843,7 @@ const StudentDasboard = () => {
             <div className="col-xxl-4 d-flex">
               <div className="card flex-fill">
                 <div className="card-header d-flex align-items-center justify-content-between">
-                  <h4 className="card-titile">Fees Reminder</h4>
+                  <h4 className="card-title">Fees Reminder</h4>
                   <Link to={routes.studentFees} state={student ? { studentId: student.id, student } : undefined} className="link-primary fw-medium">
                     View All
                   </Link>
@@ -761,9 +892,9 @@ const StudentDasboard = () => {
                   </Link>
                 </div>
                 <div className="card-body">
-                  {calendarEvents?.length > 0 ? (
+                  {upcomingEvents?.length > 0 ? (
                     <div className="notice-widget">
-                      {calendarEvents.slice(0, 5).map((evt: { id?: number; title?: string; start_date?: string }) => (
+                      {upcomingEvents.slice(0, 5).map((evt: { id?: number; title?: string; start_date?: string }) => (
                         <div key={evt.id} className="d-flex align-items-center justify-content-between mb-4">
                           <div className="d-flex align-items-center overflow-hidden me-2">
                             <span className="bg-primary-transparent avatar avatar-md me-2 rounded-circle flex-shrink-0">
@@ -777,7 +908,7 @@ const StudentDasboard = () => {
                               </p>
                             </div>
                           </div>
-                          <Link to={routes.studentTimeTable}>
+                          <Link to={routes.events}>
                             <i className="ti ti-chevron-right fs-16" />
                           </Link>
                         </div>
@@ -836,46 +967,52 @@ const StudentDasboard = () => {
             {/* Todo */}
             <div className="col-xxl-4 col-xl-12 d-flex">
               <div className="card flex-fill">
-                <div className="card-header  d-flex align-items-center justify-content-between">
+                <div className="card-header d-flex align-items-center justify-content-between">
                   <h4 className="card-title">Todo</h4>
                   <div className="dropdown">
-                    <Link
-                      to="#"
-                      className="bg-white dropdown-toggle"
+                    <button
+                      type="button"
+                      className="btn btn-light dropdown-toggle"
                       data-bs-toggle="dropdown"
+                      aria-expanded="false"
                     >
                       <i className="ti ti-calendar me-2" />
-                      Today
-                    </Link>
+                      {todoRange === "today" ? "Today" : todoRange === "thisWeek" ? "This Week" : todoRange === "thisMonth" ? "This Month" : "This Year"}
+                    </button>
                     <ul className="dropdown-menu mt-2 p-3">
                       <li>
-                        <Link to="#" className="dropdown-item rounded-1">
+                        <button type="button" className="dropdown-item rounded-1" onClick={() => setTodoRange("today")}>
+                          Today
+                        </button>
+                      </li>
+                      <li>
+                        <button type="button" className="dropdown-item rounded-1" onClick={() => setTodoRange("thisWeek")}>
+                          This Week
+                        </button>
+                      </li>
+                      <li>
+                        <button type="button" className="dropdown-item rounded-1" onClick={() => setTodoRange("thisMonth")}>
                           This Month
-                        </Link>
+                        </button>
                       </li>
                       <li>
-                        <Link to="#" className="dropdown-item rounded-1">
+                        <button type="button" className="dropdown-item rounded-1" onClick={() => setTodoRange("thisYear")}>
                           This Year
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="#" className="dropdown-item rounded-1">
-                          Last Week
-                        </Link>
+                        </button>
                       </li>
                     </ul>
                   </div>
                 </div>
                 <div className="card-body">
-                  {!todos?.length && (
+                  {!filteredTodos?.length && (
                     <div className="alert alert-info d-flex align-items-center mb-0" role="alert">
                       <i className="ti ti-info-circle me-2 fs-18" />
-                      <span>No todo items.</span>
+                      <span>No todo items for selected period.</span>
                     </div>
                   )}
-                  {todos?.length > 0 && (
+                  {filteredTodos?.length > 0 && (
                     <ul className="list-group list-group-flush todo-list">
-                      {todos.slice(0, 8).map((todo: { id?: number; title?: string; due_date?: string; status?: string }) => {
+                      {filteredTodos.slice(0, 8).map((todo: { id?: number; title?: string; due_date?: string; status?: string }) => {
                         const st = String(todo.status || "pending").toLowerCase();
                         const badgeClass =
                           st === "done" || st === "completed" ? "badge-soft-success" :
