@@ -125,21 +125,6 @@ const StudentDasboard = () => {
     );
   }, [todos, todoRange]);
 
-  // Unique subjects from class schedules for Home Works filter
-  const homeWorkSubjects = useMemo(() => {
-    const subs = new Set<string>();
-    classFaculties.forEach((f: { subject?: string }) => {
-      if (f.subject?.trim()) subs.add(f.subject.trim());
-    });
-    return Array.from(subs).sort();
-  }, [classFaculties]);
-
-  // Academic years for Performance dropdown
-  const academicYearsList = (academicYears || []) as Array<{ id?: number; year_name?: string; is_current?: boolean }>;
-  const selectedPerformanceYear = performanceYearId
-    ? academicYearsList.find((y) => String(y.id) === performanceYearId)
-    : academicYearsList.find((y) => y.is_current) || academicYearsList[0];
-
   // Today's classes - filter schedules by student's class/section and selected date's day
   const todaysClasses = useMemo(() => {
     if (!student || !allSchedules?.length) return [];
@@ -185,6 +170,26 @@ const StudentDasboard = () => {
         (String(s.section || "").toLowerCase() === String(sectionMatch || "").toLowerCase() || !sectionMatch)
     );
   }, [student, syllabusData]);
+
+  // Unique subjects from class schedules for Home Works filter
+  const homeWorkSubjects = useMemo(() => {
+    const subs = new Set<string>();
+    classFaculties?.forEach((f: { subject?: string }) => {
+      if (f.subject?.trim()) subs.add(f.subject.trim());
+    });
+    return Array.from(subs).sort();
+  }, [classFaculties]);
+
+  // Academic years for Performance dropdown
+  const academicYearsList = (academicYears || []) as Array<{ id?: number; year_name?: string; is_current?: boolean }>;
+  const currentAcademicYear = academicYearsList?.find((year: any) => year?.is_current) ?? null;
+  const selectedPerformanceYear = performanceYearId
+    ? academicYearsList.find((y) => String(y.id) === performanceYearId)
+    : currentAcademicYear || academicYearsList[0];
+
+  if (!academicYears || academicYears.length === 0) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <>
@@ -328,7 +333,7 @@ const StudentDasboard = () => {
                         {!scheduleLoading && todaysClasses.length === 0 && (
                           <p className="text-muted mb-0">No classes scheduled for this day.</p>
                         )}
-                        {!scheduleLoading && todaysClasses.length > 0 && todaysClasses.map((cls: { id?: string; subject?: string; startTime?: string; endTime?: string; teacher?: string; classRoom?: string }, idx: number) => (
+                        {!scheduleLoading && todaysClasses?.length > 0 && todaysClasses?.map((cls: { id?: string; subject?: string; startTime?: string; endTime?: string; teacher?: string; classRoom?: string }, idx: number) => (
                           <div key={cls.id ?? idx} className={`card ${idx < todaysClasses.length - 1 ? "mb-3" : "mb-0"}`}>
                             <div className="d-flex align-items-center justify-content-between flex-wrap p-3 pb-1">
                               <div className="d-flex align-items-center flex-wrap mb-2">
@@ -672,48 +677,48 @@ const StudentDasboard = () => {
                   <h4 className="card-title">Class Faculties</h4>
                 </div>
                 <div className="card-body">
-                  {classFaculties.length === 0 && (
+                  {(!classFaculties || classFaculties.length === 0) && (
                     <div className="alert alert-info d-flex align-items-center mb-0" role="alert">
                       <i className="ti ti-info-circle me-2 fs-18" />
                       <span>No class faculty data available.</span>
                     </div>
                   )}
-                  {classFaculties.length > 0 && (
+                  {classFaculties?.length > 0 && (
                     <div className="row g-3">
-                      {classFaculties.map((fac: { teacher?: string; subject?: string }, idx: number) => (
+                      {classFaculties?.map((fac: { teacher?: string; subject?: string }, idx: number) => (
                         <div key={idx} className="col-sm-6 col-md-4 col-xl-3">
                           <div className="card bg-light-100 mb-0 h-100">
-                          <div className="card-body">
-                            <div className="d-flex align-items-center mb-3">
-                              <span className="avatar avatar-lg rounded me-2 bg-primary-transparent">
-                                <i className="ti ti-user fs-20 text-primary" />
-                              </span>
-                              <div className="overflow-hidden">
-                                <h6 className="mb-1 text-truncate">{fac.teacher || "—"}</h6>
-                                <p className="mb-0">{fac.subject || "—"}</p>
+                            <div className="card-body">
+                              <div className="d-flex align-items-center mb-3">
+                                <span className="avatar avatar-lg rounded me-2 bg-primary-transparent">
+                                  <i className="ti ti-user fs-20 text-primary" />
+                                </span>
+                                <div className="overflow-hidden">
+                                  <h6 className="mb-1 text-truncate">{fac.teacher || "—"}</h6>
+                                  <p className="mb-0">{fac.subject || "—"}</p>
+                                </div>
+                              </div>
+                              <div className="row gx-2">
+                                <div className="col-6">
+                                  <Link
+                                    to="#"
+                                    className="btn btn-outline-light bg-white d-flex align-items-center justify-content-center fw-semibold fs-12"
+                                  >
+                                    <i className="ti ti-mail me-2" />
+                                    Email
+                                  </Link>
+                                </div>
+                                <div className="col-6">
+                                  <Link
+                                    to="#"
+                                    className="btn btn-outline-light bg-white d-flex align-items-center justify-content-center fw-semibold fs-12"
+                                  >
+                                    <i className="ti ti-message-chatbot me-2" />
+                                    Chat
+                                  </Link>
+                                </div>
                               </div>
                             </div>
-                            <div className="row gx-2">
-                              <div className="col-6">
-                                <Link
-                                  to="#"
-                                  className="btn btn-outline-light bg-white d-flex align-items-center justify-content-center fw-semibold fs-12"
-                                >
-                                  <i className="ti ti-mail me-2" />
-                                  Email
-                                </Link>
-                              </div>
-                              <div className="col-6">
-                                <Link
-                                  to="#"
-                                  className="btn btn-outline-light bg-white d-flex align-items-center justify-content-center fw-semibold fs-12"
-                                >
-                                  <i className="ti ti-message-chatbot me-2" />
-                                  Chat
-                                </Link>
-                              </div>
-                            </div>
-                          </div>
                           </div>
                         </div>
                       ))}
@@ -1016,12 +1021,12 @@ const StudentDasboard = () => {
                         const st = String(todo.status || "pending").toLowerCase();
                         const badgeClass =
                           st === "done" || st === "completed" ? "badge-soft-success" :
-                          st === "in_progress" || st === "inprogress" ? "badge-soft-skyblue" :
-                          "badge-soft-warning";
+                            st === "in_progress" || st === "inprogress" ? "badge-soft-skyblue" :
+                              "badge-soft-warning";
                         const badgeLabel =
                           st === "done" || st === "completed" ? "Completed" :
-                          st === "in_progress" || st === "inprogress" ? "Inprogress" :
-                          "Yet to Start";
+                            st === "in_progress" || st === "inprogress" ? "Inprogress" :
+                              "Yet to Start";
                         const dueTime = todo.due_date ? new Date(todo.due_date).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "";
                         return (
                           <li key={todo.id} className="list-group-item py-3 px-0">
