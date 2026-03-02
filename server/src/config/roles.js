@@ -35,7 +35,7 @@ const ADMIN_DASHBOARD_ROLES = [ROLES.ADMIN];
 const USER_MANAGER_ROLES = [ROLES.ADMIN];
 
 /** Roles that can list all students (not just /me or by class) */
-const STUDENT_LIST_ALL_ROLES = [ROLES.ADMIN];
+const STUDENT_LIST_ALL_ROLES = [ROLES.ADMIN, ROLES.TEACHER];
 
 /** Roles that can list all teachers */
 const TEACHER_LIST_ALL_ROLES = [ROLES.ADMIN];

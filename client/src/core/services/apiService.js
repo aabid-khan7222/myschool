@@ -21,7 +21,7 @@ async function getApiBaseUrl() {
         return cachedBaseUrl;
       }
     }
-  } catch (_) {}
+  } catch (_) { }
   cachedBaseUrl = BUILD_API_URL;
   return cachedBaseUrl;
 }
@@ -35,33 +35,33 @@ class ApiService {
   async makeRequest(endpoint, options = {}) {
     const base = await getApiBaseUrl();
     const url = `${base}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
-    
+
     // Create a unique key for this request (endpoint + method + body hash)
     const method = options.method || 'GET';
     const bodyKey = options.body ? JSON.stringify(options.body).substring(0, 50) : '';
     const requestKey = `${method}:${endpoint}:${bodyKey}`;
-    
+
     // If the same request is already pending, return the existing promise
     if (pendingRequests.has(requestKey)) {
       if (isDev) console.log('Deduplicating request:', url, '- reusing pending request');
       return pendingRequests.get(requestKey);
     }
-    
+
     if (isDev) console.log('Making API request to:', url);
-    
+
     // Create the request promise
     const requestPromise = this._executeRequest(url, options)
       .finally(() => {
         // Remove from pending requests when done (success or error)
         pendingRequests.delete(requestKey);
       });
-    
+
     // Store the pending request
     pendingRequests.set(requestKey, requestPromise);
-    
+
     return requestPromise;
   }
-  
+
   async _executeRequest(url, options = {}) {
 
     const headers = {
@@ -125,7 +125,7 @@ class ApiService {
       throw error;
     }
   }
-  
+
   // Academic Years
   async getAcademicYears() {
     return this.makeRequest('/academic-years');
@@ -239,6 +239,10 @@ class ApiService {
   // Students
   async getStudents() {
     return this.makeRequest('/students');
+  }
+
+  async getTeacherStudents() {
+    return this.makeRequest('/teacher/students');
   }
 
   async createStudent(studentData) {
@@ -744,7 +748,7 @@ class ApiService {
     return this.makeRequest(`/hostel-rooms/${id}`);
   }
 
-   async updateHostelRoom(id, roomData) {
+  async updateHostelRoom(id, roomData) {
     return this.makeRequest(`/hostel-rooms/${id}`, {
       method: 'PUT',
       body: JSON.stringify(roomData),

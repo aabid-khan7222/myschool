@@ -43,11 +43,11 @@ const StudentDasboard = () => {
   const [date, setDate] = useState<Nullable<Date>>(null);
 
   // Filter states for dropdowns
-  type AttendanceRangeKey = "thisWeek" | "lastWeek" | "lastMonth";
+  type AttendanceRangeKey = "thisWeek" | "lastWeek" | "lastMonth" | "allTime";
   const [attendanceRange, setAttendanceRange] = useState<AttendanceRangeKey>("thisWeek");
-  type LeaveRangeKey = "thisMonth" | "thisYear" | "lastWeek";
+  type LeaveRangeKey = "thisMonth" | "thisYear" | "lastWeek" | "allTime";
   const [leaveRange, setLeaveRange] = useState<LeaveRangeKey>("thisMonth");
-  type TodoRangeKey = "today" | "thisWeek" | "thisMonth" | "thisYear";
+  type TodoRangeKey = "today" | "thisWeek" | "thisMonth" | "thisYear" | "allTime";
   const [todoRange, setTodoRange] = useState<TodoRangeKey>("today");
   const [homeWorkSubject, setHomeWorkSubject] = useState<string>("all");
   const [performanceYearId, setPerformanceYearId] = useState<string | null>(null);
@@ -89,6 +89,7 @@ const StudentDasboard = () => {
   };
 
   const isDateInRange = (dateVal: string | Date | null | undefined, rangeKey: AttendanceRangeKey | LeaveRangeKey | TodoRangeKey) => {
+    if (rangeKey === "allTime") return true;
     if (!dateVal) return false;
     const d = new Date(dateVal);
     if (Number.isNaN(d.getTime())) return false;
@@ -372,7 +373,7 @@ const StudentDasboard = () => {
                           aria-expanded="false"
                         >
                           <i className="ti ti-calendar-due me-2" />
-                          {attendanceRange === "thisWeek" ? "This Week" : attendanceRange === "lastWeek" ? "Last Week" : "Last Month"}
+                          {attendanceRange === "thisWeek" ? "This Week" : attendanceRange === "lastWeek" ? "Last Week" : attendanceRange === "allTime" ? "All Time" : "Last Month"}
                         </button>
                         <ul className="dropdown-menu dropdown-menu-end">
                           <li>
@@ -388,6 +389,11 @@ const StudentDasboard = () => {
                           <li>
                             <button type="button" className="dropdown-item" onClick={() => setAttendanceRange("lastMonth")}>
                               Last Month
+                            </button>
+                          </li>
+                          <li>
+                            <button type="button" className="dropdown-item" onClick={() => setAttendanceRange("allTime")}>
+                              All Time
                             </button>
                           </li>
                         </ul>
@@ -588,7 +594,7 @@ const StudentDasboard = () => {
                       aria-expanded="false"
                     >
                       <i className="ti ti-calendar me-2" />
-                      {selectedPerformanceYear?.year_name ?? "Select Year"}
+                      {performanceYearId === "allTime" ? "All Time" : selectedPerformanceYear?.year_name ?? "Select Year"}
                     </button>
                     <ul className="dropdown-menu mt-2 p-3">
                       {academicYearsList.map((y) => (
@@ -602,6 +608,15 @@ const StudentDasboard = () => {
                           </button>
                         </li>
                       ))}
+                      <li>
+                        <button
+                          type="button"
+                          className="dropdown-item rounded-1"
+                          onClick={() => setPerformanceYearId("allTime")}
+                        >
+                          All Time
+                        </button>
+                      </li>
                       {academicYearsList.length === 0 && (
                         <li>
                           <span className="dropdown-item text-muted">No academic years</span>
@@ -632,9 +647,14 @@ const StudentDasboard = () => {
                       aria-expanded="false"
                     >
                       <i className="ti ti-book-2 me-2" />
-                      {homeWorkSubject === "all" ? "All Subject" : homeWorkSubject}
+                      {homeWorkSubject === "allTime" ? "All Time" : homeWorkSubject === "all" ? "All Subject" : homeWorkSubject}
                     </button>
                     <ul className="dropdown-menu mt-2 p-3">
+                      <li>
+                        <button type="button" className="dropdown-item rounded-1" onClick={() => setHomeWorkSubject("allTime")}>
+                          All Time
+                        </button>
+                      </li>
                       <li>
                         <button type="button" className="dropdown-item rounded-1" onClick={() => setHomeWorkSubject("all")}>
                           All Subject
@@ -743,7 +763,7 @@ const StudentDasboard = () => {
                       aria-expanded="false"
                     >
                       <i className="ti ti-calendar me-2" />
-                      {leaveRange === "thisMonth" ? "This Month" : leaveRange === "thisYear" ? "This Year" : "Last Week"}
+                      {leaveRange === "thisMonth" ? "This Month" : leaveRange === "thisYear" ? "This Year" : leaveRange === "allTime" ? "All Time" : "Last Week"}
                     </button>
                     <ul className="dropdown-menu mt-2 p-3">
                       <li>
@@ -759,6 +779,11 @@ const StudentDasboard = () => {
                       <li>
                         <button type="button" className="dropdown-item rounded-1" onClick={() => setLeaveRange("lastWeek")}>
                           Last Week
+                        </button>
+                      </li>
+                      <li>
+                        <button type="button" className="dropdown-item rounded-1" onClick={() => setLeaveRange("allTime")}>
+                          All Time
                         </button>
                       </li>
                     </ul>
@@ -982,7 +1007,7 @@ const StudentDasboard = () => {
                       aria-expanded="false"
                     >
                       <i className="ti ti-calendar me-2" />
-                      {todoRange === "today" ? "Today" : todoRange === "thisWeek" ? "This Week" : todoRange === "thisMonth" ? "This Month" : "This Year"}
+                      {todoRange === "today" ? "Today" : todoRange === "thisWeek" ? "This Week" : todoRange === "thisMonth" ? "This Month" : todoRange === "allTime" ? "All Time" : "This Year"}
                     </button>
                     <ul className="dropdown-menu mt-2 p-3">
                       <li>
@@ -1003,6 +1028,11 @@ const StudentDasboard = () => {
                       <li>
                         <button type="button" className="dropdown-item rounded-1" onClick={() => setTodoRange("thisYear")}>
                           This Year
+                        </button>
+                      </li>
+                      <li>
+                        <button type="button" className="dropdown-item rounded-1" onClick={() => setTodoRange("allTime")}>
+                          All Time
                         </button>
                       </li>
                     </ul>

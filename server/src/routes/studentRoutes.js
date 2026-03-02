@@ -1,8 +1,9 @@
 const express = require('express');
 const { requireRole } = require('../middleware/rbacMiddleware');
-const { STUDENT_LIST_ALL_ROLES, PEOPLE_MANAGER_ROLES } = require('../config/roles');
+const { ROLES, STUDENT_LIST_ALL_ROLES, PEOPLE_MANAGER_ROLES } = require('../config/roles');
 const {
   getAllStudents,
+  getTeacherStudents,
   getStudentById,
   getCurrentStudent,
   getStudentsByClass,
@@ -18,7 +19,10 @@ const { createStudentSchema, updateStudentSchema } = require('../validations/stu
 const router = express.Router();
 
 // Get all students - Admin only
-router.get('/', requireRole(STUDENT_LIST_ALL_ROLES), getAllStudents);
+router.get('/', requireRole([ROLES.ADMIN]), getAllStudents);
+
+// Get students for current teacher - Teacher only
+router.get('/teacher/students', requireRole([ROLES.TEACHER]), getTeacherStudents);
 
 // Get current logged-in student (must be before /:id)
 router.get('/me', getCurrentStudent);

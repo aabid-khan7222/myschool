@@ -24,6 +24,11 @@ const TeacherDashboard = () => {
   const routes = all_routes;
   const [date, setDate] = useState<Nullable<Date>>(null);
 
+  const [selectedClass, setSelectedClass] = useState<string>("All Classes");
+  const [selectedSection, setSelectedSection] = useState<string>("All Sections");
+  const [marksTimeRange, setMarksTimeRange] = useState<string>("All Time");
+  const [leaveTimeRange, setLeaveTimeRange] = useState<string>("This Month");
+
   const [attendanceRange, setAttendanceRange] = useState<"thisWeek" | "lastWeek" | "lastMonth" | "allTime">("thisWeek");
   const attendanceOptions = {
     thisWeek: { days: 7, offset: 0, label: "This Week" },
@@ -41,6 +46,43 @@ const TeacherDashboard = () => {
   const { data: syllabusData } = useClassSyllabus();
   const { leaveApplications: myLeaves, loading: leaveLoading } = useLeaveApplications({ studentOnly: true, limit: 10 });
   const { upcomingEvents, completedEvents, loading: eventsLoading, refetch: refetchEvents } = useEvents({ forDashboard: true, limit: 5 });
+
+  const uniqueClasses = useMemo(() => {
+    if (!routine?.length) return [];
+    return [...new Set(routine.map((r: any) => r.class?.trim()).filter(Boolean))];
+  }, [routine]);
+
+  const uniqueSections = useMemo(() => {
+    if (!routine?.length) return [];
+    let filtered = routine;
+    if (selectedClass !== "All Classes") {
+      filtered = routine.filter((r: any) => r.class?.trim() === selectedClass);
+    }
+    return [...new Set(filtered.map((r: any) => r.section?.trim()).filter(Boolean))];
+  }, [routine, selectedClass]);
+
+  const filteredLeaves = useMemo(() => {
+    if (!myLeaves?.length) return [];
+    if (leaveTimeRange === "All Time") return myLeaves;
+
+    const now = new Date();
+    return myLeaves.filter((leave: any) => {
+      const d = leave.startDate ? new Date(leave.startDate) : (leave.applyOn ? new Date(leave.applyOn) : null);
+      if (!d || isNaN(d.getTime())) return true;
+
+      if (leaveTimeRange === "This Month") {
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      }
+      if (leaveTimeRange === "This Year") {
+        return d.getFullYear() === now.getFullYear();
+      }
+      if (leaveTimeRange === "Last Week") {
+        const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return d >= lastWeek && d <= now;
+      }
+      return true;
+    });
+  }, [myLeaves, leaveTimeRange]);
 
   // Teacher's class IDs from routine (unique class+section combos they teach)
   const teacherClassSectionKeys = useMemo(() => {
@@ -780,24 +822,45 @@ const TeacherDashboard = () => {
                         data-bs-toggle="dropdown"
                       >
                         <i className="ti ti-calendar me-2" />
-                        All Classes
+                        {selectedClass}
                       </Link>
                       <ul className="dropdown-menu mt-2 p-3">
                         <li>
-                          <Link to="#" className="dropdown-item rounded-1">
-                            I
+                          <Link to="#" className="dropdown-item rounded-1" onClick={(e) => { e.preventDefault(); setSelectedClass("All Classes"); }}>
+                            All Classes
                           </Link>
                         </li>
+                        {uniqueClasses.map((cls, idx) => (
+                          <li key={idx}>
+                            <Link to="#" className="dropdown-item rounded-1" onClick={(e) => { e.preventDefault(); setSelectedClass(String(cls)); }}>
+                              {String(cls)}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="dropdown me-2">
+                      <Link
+                        to="#"
+                        className="bg-white dropdown-toggle"
+                        data-bs-toggle="dropdown"
+                      >
+                        <i className="ti ti-calendar me-2" />
+                        {selectedSection}
+                      </Link>
+                      <ul className="dropdown-menu mt-2 p-3">
                         <li>
-                          <Link to="#" className="dropdown-item rounded-1">
-                            II
+                          <Link to="#" className="dropdown-item rounded-1" onClick={(e) => { e.preventDefault(); setSelectedSection("All Sections"); }}>
+                            All Sections
                           </Link>
                         </li>
-                        <li>
-                          <Link to="#" className="dropdown-item rounded-1">
-                            III
-                          </Link>
-                        </li>
+                        {uniqueSections.map((sec, idx) => (
+                          <li key={idx}>
+                            <Link to="#" className="dropdown-item rounded-1" onClick={(e) => { e.preventDefault(); setSelectedSection(String(sec)); }}>
+                              {String(sec)}
+                            </Link>
+                          </li>
+                        ))}
                       </ul>
                     </div>
                     <div className="dropdown ">
@@ -807,22 +870,27 @@ const TeacherDashboard = () => {
                         data-bs-toggle="dropdown"
                       >
                         <i className="ti ti-calendar me-2" />
-                        All Sections
+                        {marksTimeRange}
                       </Link>
                       <ul className="dropdown-menu mt-2 p-3">
                         <li>
-                          <Link to="#" className="dropdown-item rounded-1">
-                            A
+                          <Link to="#" className="dropdown-item rounded-1" onClick={(e) => { e.preventDefault(); setMarksTimeRange("This Month"); }}>
+                            This Month
                           </Link>
                         </li>
                         <li>
-                          <Link to="#" className="dropdown-item rounded-1">
-                            B
+                          <Link to="#" className="dropdown-item rounded-1" onClick={(e) => { e.preventDefault(); setMarksTimeRange("This Year"); }}>
+                            This Year
                           </Link>
                         </li>
                         <li>
-                          <Link to="#" className="dropdown-item rounded-1">
-                            C
+                          <Link to="#" className="dropdown-item rounded-1" onClick={(e) => { e.preventDefault(); setMarksTimeRange("Last Week"); }}>
+                            Last Week
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="#" className="dropdown-item rounded-1" onClick={(e) => { e.preventDefault(); setMarksTimeRange("All Time"); }}>
+                            All Time
                           </Link>
                         </li>
                       </ul>
@@ -850,22 +918,27 @@ const TeacherDashboard = () => {
                       data-bs-toggle="dropdown"
                     >
                       <i className="ti ti-calendar me-2" />
-                      This Month
+                      {leaveTimeRange}
                     </Link>
                     <ul className="dropdown-menu mt-2 p-3">
                       <li>
-                        <Link to="#" className="dropdown-item rounded-1">
+                        <Link to="#" className="dropdown-item rounded-1" onClick={(e) => { e.preventDefault(); setLeaveTimeRange("This Month"); }}>
                           This Month
                         </Link>
                       </li>
                       <li>
-                        <Link to="#" className="dropdown-item rounded-1">
+                        <Link to="#" className="dropdown-item rounded-1" onClick={(e) => { e.preventDefault(); setLeaveTimeRange("This Year"); }}>
                           This Year
                         </Link>
                       </li>
                       <li>
-                        <Link to="#" className="dropdown-item rounded-1">
+                        <Link to="#" className="dropdown-item rounded-1" onClick={(e) => { e.preventDefault(); setLeaveTimeRange("Last Week"); }}>
                           Last Week
+                        </Link>
+                      </li>
+                      <li>
+                        <Link to="#" className="dropdown-item rounded-1" onClick={(e) => { e.preventDefault(); setLeaveTimeRange("All Time"); }}>
+                          All Time
                         </Link>
                       </li>
                     </ul>
@@ -877,13 +950,13 @@ const TeacherDashboard = () => {
                       <div className="spinner-border spinner-border-sm text-primary" role="status" />
                       <span className="ms-2">Loading...</span>
                     </div>
-                  ) : !myLeaves?.length ? (
+                  ) : !filteredLeaves?.length ? (
                     <div className="alert alert-info d-flex align-items-center mb-0" role="alert">
                       <i className="ti ti-info-circle me-2 fs-18" />
                       <span>No leave applications. Your leave requests will appear here.</span>
                     </div>
                   ) : (
-                    myLeaves.map((leave: { id?: number; leaveType?: string; leaveRange?: string; status?: string; statusBadgeClass?: string }) => (
+                    filteredLeaves.map((leave: { id?: number; leaveType?: string; leaveRange?: string; status?: string; statusBadgeClass?: string }) => (
                       <div key={leave.id} className="bg-light-300 d-sm-flex align-items-center justify-content-between p-3 mb-3">
                         <div className="d-flex align-items-center mb-2 mb-sm-0">
                           <div className="avatar avatar-lg bg-primary-transparent flex-shrink-0 me-2">

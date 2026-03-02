@@ -10,7 +10,16 @@ export const useStudents = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiService.getStudents();
+
+      const userStr = localStorage.getItem('preskool_user');
+      const userStrData = userStr ? JSON.parse(userStr) : null;
+      let response;
+      if (userStrData && userStrData.role_id === 3) {
+        response = await apiService.getTeacherStudents();
+      } else {
+        response = await apiService.getStudents();
+      }
+
       setStudents(response.data || []);
     } catch (err) {
       console.error('Error fetching students:', err);

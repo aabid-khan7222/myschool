@@ -35,10 +35,10 @@ const createStudent = async (req, res) => {
     }
 
     const hasParentInfo = father_name || father_email || father_phone || father_occupation ||
-                         mother_name || mother_email || mother_phone || mother_occupation;
+      mother_name || mother_email || mother_phone || mother_occupation;
 
     const hasGuardianInfo = guardian_first_name || guardian_last_name || guardian_phone ||
-                           guardian_email || guardian_occupation || guardian_relation;
+      guardian_email || guardian_occupation || guardian_relation;
 
     const addrVal = current_address || address || null;
     const knownAllergiesVal = Array.isArray(known_allergies)
@@ -279,10 +279,10 @@ const updateStudent = async (req, res) => {
     }
 
     const hasParentInfo = father_name || father_email || father_phone || father_occupation ||
-                         mother_name || mother_email || mother_phone || mother_occupation;
+      mother_name || mother_email || mother_phone || mother_occupation;
 
     const hasGuardianInfo = guardian_first_name || guardian_last_name || guardian_phone ||
-                           guardian_email || guardian_occupation || guardian_relation;
+      guardian_email || guardian_occupation || guardian_relation;
 
     const addrVal = current_address || address || null;
     const knownAllergiesVal = Array.isArray(known_allergies)
@@ -693,7 +693,7 @@ const getAllStudents = async (req, res) => {
       ORDER BY s.first_name ASC, s.last_name ASC
       LIMIT $1 OFFSET $2
     `, [limit, offset]);
-    
+
     res.status(200).json({
       status: 'SUCCESS',
       message: 'Students fetched successfully',
@@ -706,6 +706,68 @@ const getAllStudents = async (req, res) => {
     res.status(500).json({
       status: 'ERROR',
       message: 'Failed to fetch students'
+    });
+  }
+};
+
+// Get students assigned to a teacher
+const getTeacherStudents = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ status: 'ERROR', message: 'Not authenticated' });
+    }
+
+    // Get the teacher record for the current user
+    const teacherCheck = await query(
+      `SELECT t.id 
+       FROM teachers t 
+       INNER JOIN staff st ON t.staff_id = st.id 
+       WHERE st.user_id = $1 AND st.is_active = true`,
+      [userId]
+    );
+
+    if (teacherCheck.rows.length === 0) {
+      return res.status(403).json({ status: 'ERROR', message: 'Access denied. User is not an active teacher.' });
+    }
+    const teacherId = teacherCheck.rows[0].id;
+
+    // Get the students
+    const result = await query(
+      `SELECT
+        s.id, s.admission_number, s.roll_number, s.first_name, s.last_name, s.gender,
+        s.date_of_birth, s.phone, s.email, s.class_id, s.section_id, s.photo_url,
+        c.class_name, sec.section_name
+       FROM students s
+       LEFT JOIN classes c ON s.class_id = c.id
+       LEFT JOIN sections sec ON s.section_id = sec.id
+       WHERE s.is_active = true AND (
+         EXISTS (
+           SELECT 1 FROM class_schedules cs
+           WHERE cs.teacher_id = $1
+             AND cs.class_id = s.class_id
+             AND (cs.section_id = s.section_id OR cs.section_id IS NULL)
+         )
+         OR EXISTS (
+           SELECT 1 FROM teachers t
+           WHERE t.id = $1 AND t.class_id = s.class_id
+         )
+       )
+       ORDER BY s.first_name ASC, s.last_name ASC`,
+      [teacherId]
+    );
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      message: 'Teacher students fetched successfully',
+      data: result.rows,
+      count: result.rows.length
+    });
+  } catch (error) {
+    console.error('Error fetching teacher students:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Failed to fetch teacher students'
     });
   }
 };
@@ -920,7 +982,7 @@ const getStudentById = async (req, res) => {
           studentData.phone = studentData.phone || u.phone;
           studentData.email = studentData.email || u.email;
         }
-      } catch (e) {}
+      } catch (e) { }
     }
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.status(200).json({
@@ -1114,11 +1176,11 @@ const getStudentLoginDetails = async (req, res) => {
     const loginDetails = {
       student: stu.user_id
         ? {
-            userType: 'Student',
-            username: stu.student_username || null,
-            phone: stu.student_phone || null,
-            email: stu.student_email || null,
-          }
+          userType: 'Student',
+          username: stu.student_username || null,
+          phone: stu.student_phone || null,
+          email: stu.student_email || null,
+        }
         : null,
       parents: parentUsers.map((u) => ({
         userType: 'Parent',
@@ -1276,7 +1338,7 @@ const getCurrentStudent = async (req, res) => {
           studentData.phone = studentData.phone || u.phone;
           studentData.email = studentData.email || u.email;
         }
-      } catch (e) {}
+      } catch (e) { }
     }
     // Hostel: resolve hostel_name, floor, hostel_room_number from hostels + hostel_rooms
     try {
@@ -1329,7 +1391,7 @@ const getCurrentStudent = async (req, res) => {
         const ppRes = await query('SELECT pickup_point_name, name FROM pickup_points WHERE id = $1', [studentData.pickup_point_id]);
         if (ppRes.rows.length > 0) { studentData.pickup_point_name = ppRes.rows[0].pickup_point_name || ppRes.rows[0].name || null; }
       }
-    } catch (e) {}
+    } catch (e) { }
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.status(200).json({
       status: 'SUCCESS',
@@ -1349,7 +1411,7 @@ const getCurrentStudent = async (req, res) => {
 const getStudentsByClass = async (req, res) => {
   try {
     const { classId } = req.params;
-    
+
     const result = await query(`
       SELECT
         s.id,
@@ -1412,7 +1474,7 @@ const getStudentsByClass = async (req, res) => {
       WHERE s.class_id = $1 AND s.is_active = true
       ORDER BY s.first_name ASC, s.last_name ASC
     `, [classId]);
-    
+
     res.status(200).json({
       status: 'SUCCESS',
       message: 'Students fetched successfully',
@@ -1795,6 +1857,7 @@ module.exports = {
   createStudent,
   updateStudent,
   getAllStudents,
+  getTeacherStudents,
   getStudentById,
   getStudentLoginDetails,
   getCurrentStudent,
