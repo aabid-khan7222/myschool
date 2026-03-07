@@ -135,19 +135,19 @@ const TransportVehicleDrivers = () => {
                       // Check is_active from originalData (true/1 = active, false/0 = inactive)
                       // Fallback to status string if is_active is not available
                       let driverStatus = true; // default to active
-                      if (driver.hasOwnProperty('is_active')) {
+                      if (Object.prototype.hasOwnProperty.call(driver, 'is_active')) {
                         driverStatus = driver.is_active === true || driver.is_active === 1 || driver.is_active === 'true';
                       } else if (record.status) {
                         driverStatus = record.status === 'Active';
                       }
-                      
+
                       setEditDriverName(driverName);
                       setEditDriverPhone(driverPhone);
                       setEditDriverLicense(driverLicense);
                       setEditDriverAddress(driverAddress);
                       setEditDriverStatus(driverStatus);
                       setSelectedDriver(record);
-                      
+
                       setTimeout(() => {
                         const modalElement = document.getElementById('edit_driver');
                         if (modalElement) {
@@ -346,7 +346,7 @@ const TransportVehicleDrivers = () => {
         </div>
       </div>
       {/* /Page Wrapper */}
-      <TransportModal 
+      <TransportModal
         selectedDriver={selectedDriver}
         editDriverName={editDriverName}
         setEditDriverName={setEditDriverName}
@@ -363,7 +363,7 @@ const TransportVehicleDrivers = () => {
         onDriverUpdate={async () => {
           const driverId = selectedDriver?.originalData?.id || selectedDriver?.id;
           if (!driverId || isUpdating) return;
-          
+
           setIsUpdating(true);
           try {
             const updateData = {
@@ -373,9 +373,9 @@ const TransportVehicleDrivers = () => {
               address: editDriverAddress.trim() || null,
               is_active: editDriverStatus
             };
-            
+
             const response = await apiService.updateTransportDriver(driverId, updateData);
-            
+
             if (response && response.status === 'SUCCESS') {
               // Close modal
               const modalElement = document.getElementById('edit_driver');

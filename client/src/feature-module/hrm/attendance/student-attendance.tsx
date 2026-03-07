@@ -1,4 +1,4 @@
-import  { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import PredefinedDateRanges from "../../../core/common/datePicker";
 import CommonSelect from "../../../core/common/commonSelect";
 import {
@@ -20,7 +20,7 @@ const StudentAttendance = () => {
   const routes = all_routes;
   const data = studentAttendance;
 
-  const [] = useState(
+  useState(
     data.map(() => "Present") // Default to 'Present' for each row
   );
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
@@ -35,7 +35,7 @@ const StudentAttendance = () => {
     {
       title: "AdmissionNo",
       dataIndex: "admissionNo",
-      render: ( record: any) => (
+      render: (record: any) => (
         <>
           <Link to="#" className="link-primary">
             {record.admissionNo}
@@ -85,49 +85,49 @@ const StudentAttendance = () => {
     {
       title: "Attendance",
       dataIndex: "attendance",
-      render: ( record: any ) => (
+      render: (record: any) => (
         <div className="d-flex align-items-center check-radio-group flex-nowrap">
           <label className="custom-radio">
-            <input 
-              type="radio" 
-              name={`student${record.key}`} 
-              defaultChecked={record.present === "true"} 
+            <input
+              type="radio"
+              name={`student${record.key}`}
+              defaultChecked={record.present === "true"}
             />
             <span className="checkmark" />
             Present
           </label>
           <label className="custom-radio">
-            <input 
-              type="radio" 
-              name={`student${record.key}`} 
-              defaultChecked={record.Late === "true"} 
+            <input
+              type="radio"
+              name={`student${record.key}`}
+              defaultChecked={record.Late === "true"}
             />
             <span className="checkmark" />
             Late
           </label>
           <label className="custom-radio">
-            <input 
-              type="radio" 
-              name={`student${record.key}`} 
-              defaultChecked={record.Absent === "true"} 
+            <input
+              type="radio"
+              name={`student${record.key}`}
+              defaultChecked={record.Absent === "true"}
             />
             <span className="checkmark" />
             Absent
           </label>
           <label className="custom-radio">
-            <input 
-              type="radio" 
-              name={`student${record.key}`} 
-              defaultChecked={record.Holiday === "true"} 
+            <input
+              type="radio"
+              name={`student${record.key}`}
+              defaultChecked={record.Holiday === "true"}
             />
             <span className="checkmark" />
             Holiday
           </label>
           <label className="custom-radio">
-            <input 
-              type="radio" 
-              name={`student${record.key}`} 
-              defaultChecked={record.Halfday === "true"} 
+            <input
+              type="radio"
+              name={`student${record.key}`}
+              defaultChecked={record.Halfday === "true"}
             />
             <span className="checkmark" />
             Halfday

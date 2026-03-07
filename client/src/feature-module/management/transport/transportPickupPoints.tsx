@@ -42,22 +42,22 @@ const TransportPickupPoints = () => {
     {
       title: "Pickup Point",
       dataIndex: "pickupPoint",
-      
+
       sorter: (a: TableData, b: TableData) =>
         a.pickupPoint.length - b.pickupPoint.length,
     },
     {
-        title: "Status",
-        dataIndex: "status",
-        render: (text: string) => (
-          <>
-            {text === "Active" ? (
-              <span
-                className="badge badge-soft-success d-inline-flex align-items-center"
-              >
-                <i className='ti ti-circle-filled fs-5 me-1'></i>{text}
-              </span>
-            ):
+      title: "Status",
+      dataIndex: "status",
+      render: (text: string) => (
+        <>
+          {text === "Active" ? (
+            <span
+              className="badge badge-soft-success d-inline-flex align-items-center"
+            >
+              <i className='ti ti-circle-filled fs-5 me-1'></i>{text}
+            </span>
+          ) :
             (
               <span
                 className="badge badge-soft-danger d-inline-flex align-items-center"
@@ -65,18 +65,18 @@ const TransportPickupPoints = () => {
                 <i className='ti ti-circle-filled fs-5 me-1'></i>{text}
               </span>
             )}
-          </>
-        ),
-        sorter: (a: TableData, b: TableData) =>
-          a.status.length - b.status.length,
-      },
+        </>
+      ),
+      sorter: (a: TableData, b: TableData) =>
+        a.status.length - b.status.length,
+    },
     {
       title: "Added On",
       dataIndex: "addedOn",
       sorter: (a: TableData, b: TableData) =>
         a.addedOn.length - b.addedOn.length,
     },
-    
+
     {
       title: "Action",
       dataIndex: "action",
@@ -106,16 +106,16 @@ const TransportPickupPoints = () => {
                       // Check is_active from originalData (true/1 = active, false/0 = inactive)
                       // Fallback to status string if is_active is not available
                       let pickupStatus = true; // default to active
-                      if (pickup.hasOwnProperty('is_active')) {
+                      if (Object.prototype.hasOwnProperty.call(pickup, 'is_active')) {
                         pickupStatus = pickup.is_active === true || pickup.is_active === 1 || pickup.is_active === 'true';
                       } else if (record.status) {
                         pickupStatus = record.status === 'Active';
                       }
-                      
+
                       setEditPickupAddress(pickupAddress);
                       setEditPickupStatus(pickupStatus);
                       setSelectedPickupPoint(record);
-                      
+
                       setTimeout(() => {
                         const modalElement = document.getElementById('edit_pickup');
                         if (modalElement) {
@@ -168,7 +168,7 @@ const TransportPickupPoints = () => {
                     <Link to="#">Management</Link>
                   </li>
                   <li className="breadcrumb-item active" aria-current="page">
-                  Pickup Points
+                    Pickup Points
                   </li>
                 </ol>
               </nav>
@@ -216,7 +216,7 @@ const TransportPickupPoints = () => {
                         <h4>Filter</h4>
                       </div>
                       <div className="p-3 border-bottom">
-                      <div className="row">
+                        <div className="row">
                           <div className="col-md-12">
                             <div className="mb-3">
                               <label className="form-label">Pickup Points</label>
@@ -305,7 +305,7 @@ const TransportPickupPoints = () => {
         </div>
       </div>
       {/* /Page Wrapper */}
-      <TransportModal 
+      <TransportModal
         selectedPickupPoint={selectedPickupPoint}
         editPickupAddress={editPickupAddress}
         setEditPickupAddress={setEditPickupAddress}
@@ -316,16 +316,16 @@ const TransportPickupPoints = () => {
         onPickupUpdate={async () => {
           const pickupId = selectedPickupPoint?.originalData?.id || selectedPickupPoint?.id;
           if (!pickupId || isUpdating) return;
-          
+
           setIsUpdating(true);
           try {
             const updateData = {
               address: editPickupAddress.trim(),
               is_active: editPickupStatus
             };
-            
+
             const response = await apiService.updateTransportPickupPoint(pickupId, updateData);
-            
+
             if (response && response.status === 'SUCCESS') {
               // Close modal
               const modalElement = document.getElementById('edit_pickup');

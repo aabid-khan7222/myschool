@@ -44,11 +44,11 @@ interface TransportModalProps {
   onVehicleUpdate?: () => Promise<void>;
 }
 
-const TransportModal = ({ 
-  selectedRoute, 
-  selectedPickupPoint, 
-  selectedDriver, 
-  selectedAssignment, 
+const TransportModal = ({
+  selectedRoute,
+  selectedPickupPoint,
+  selectedDriver,
+  selectedAssignment,
   selectedVehicle,
   editRouteName = '',
   setEditRouteName,
@@ -80,120 +80,120 @@ const TransportModal = ({
   onAssignUpdate,
   onVehicleUpdate
 }: TransportModalProps) => {
-    // Update form fields when selectedRoute changes
-    useEffect(() => {
-      if (selectedRoute && setEditRouteName && setEditRouteStatus) {
-        const route = selectedRoute.originalData || selectedRoute;
-        // Use route_name from originalData, or fallback to mapped routes property
-        const routeName = route.route_name || selectedRoute.routes || '';
-        // Check is_active from originalData (true/1 = active, false/0 = inactive)
-        // Fallback to status string if is_active is not available
-        let routeStatus = true; // default to active
-        if (route.hasOwnProperty('is_active')) {
-          routeStatus = route.is_active === true || route.is_active === 1 || route.is_active === 'true';
-        } else if (selectedRoute.status) {
-          routeStatus = selectedRoute.status === 'Active';
-        }
-        
-        setEditRouteName(routeName);
-        setEditRouteStatus(routeStatus);
+  // Update form fields when selectedRoute changes
+  useEffect(() => {
+    if (selectedRoute && setEditRouteName && setEditRouteStatus) {
+      const route = selectedRoute.originalData || selectedRoute;
+      // Use route_name from originalData, or fallback to mapped routes property
+      const routeName = route.route_name || selectedRoute.routes || '';
+      // Check is_active from originalData (true/1 = active, false/0 = inactive)
+      // Fallback to status string if is_active is not available
+      let routeStatus = true; // default to active
+      if (Object.prototype.hasOwnProperty.call(route, 'is_active')) {
+        routeStatus = route.is_active === true || route.is_active === 1 || route.is_active === 'true';
+      } else if (selectedRoute.status) {
+        routeStatus = selectedRoute.status === 'Active';
       }
-    }, [selectedRoute, setEditRouteName, setEditRouteStatus]);
 
-    // Update form fields when selectedPickupPoint changes
-    useEffect(() => {
-      if (selectedPickupPoint && setEditPickupAddress && setEditPickupStatus) {
-        const pickup = selectedPickupPoint.originalData || selectedPickupPoint;
-        // Use address from originalData, or fallback to mapped pickupPoint property
-        const pickupAddress = pickup.address || selectedPickupPoint.pickupPoint || '';
-        // Check is_active from originalData (true/1 = active, false/0 = inactive)
-        // Fallback to status string if is_active is not available
-        let pickupStatus = true; // default to active
-        if (pickup.hasOwnProperty('is_active')) {
-          pickupStatus = pickup.is_active === true || pickup.is_active === 1 || pickup.is_active === 'true';
-        } else if (selectedPickupPoint.status) {
-          pickupStatus = selectedPickupPoint.status === 'Active';
-        }
-        
-        setEditPickupAddress(pickupAddress);
-        setEditPickupStatus(pickupStatus);
+      setEditRouteName(routeName);
+      setEditRouteStatus(routeStatus);
+    }
+  }, [selectedRoute, setEditRouteName, setEditRouteStatus]);
+
+  // Update form fields when selectedPickupPoint changes
+  useEffect(() => {
+    if (selectedPickupPoint && setEditPickupAddress && setEditPickupStatus) {
+      const pickup = selectedPickupPoint.originalData || selectedPickupPoint;
+      // Use address from originalData, or fallback to mapped pickupPoint property
+      const pickupAddress = pickup.address || selectedPickupPoint.pickupPoint || '';
+      // Check is_active from originalData (true/1 = active, false/0 = inactive)
+      // Fallback to status string if is_active is not available
+      let pickupStatus = true; // default to active
+      if (Object.prototype.hasOwnProperty.call(pickup, 'is_active')) {
+        pickupStatus = pickup.is_active === true || pickup.is_active === 1 || pickup.is_active === 'true';
+      } else if (selectedPickupPoint.status) {
+        pickupStatus = selectedPickupPoint.status === 'Active';
       }
-    }, [selectedPickupPoint, setEditPickupAddress, setEditPickupStatus]);
 
-    // Update status when selectedAssignment changes (assign vehicle page)
-    useEffect(() => {
-      if (selectedAssignment && setEditAssignStatus) {
-        const assignment = selectedAssignment.originalData || selectedAssignment;
-        let status = true;
-        if (assignment && Object.prototype.hasOwnProperty.call(assignment, "is_active")) {
-          status =
-            assignment.is_active === true ||
-            assignment.is_active === 1 ||
-            assignment.is_active === "true";
-        } else if (selectedAssignment.status) {
-          status = selectedAssignment.status === "Active";
-        }
-        setEditAssignStatus(status);
+      setEditPickupAddress(pickupAddress);
+      setEditPickupStatus(pickupStatus);
+    }
+  }, [selectedPickupPoint, setEditPickupAddress, setEditPickupStatus]);
+
+  // Update status when selectedAssignment changes (assign vehicle page)
+  useEffect(() => {
+    if (selectedAssignment && setEditAssignStatus) {
+      const assignment = selectedAssignment.originalData || selectedAssignment;
+      let status = true;
+      if (assignment && Object.prototype.hasOwnProperty.call(assignment, "is_active")) {
+        status =
+          assignment.is_active === true ||
+          assignment.is_active === 1 ||
+          assignment.is_active === "true";
+      } else if (selectedAssignment.status) {
+        status = selectedAssignment.status === "Active";
       }
-    }, [selectedAssignment, setEditAssignStatus]);
+      setEditAssignStatus(status);
+    }
+  }, [selectedAssignment, setEditAssignStatus]);
 
-    // Update status when selectedVehicle changes
-    useEffect(() => {
-      if (selectedVehicle && setEditVehicleStatus) {
-        const vehicle = selectedVehicle.originalData || selectedVehicle;
-        let status = true;
-        if (vehicle && Object.prototype.hasOwnProperty.call(vehicle, "is_active")) {
-          status =
-            vehicle.is_active === true ||
-            vehicle.is_active === 1 ||
-            vehicle.is_active === "true";
-        } else if (selectedVehicle.status) {
-          status = selectedVehicle.status === "Active";
-        }
-        setEditVehicleStatus(status);
+  // Update status when selectedVehicle changes
+  useEffect(() => {
+    if (selectedVehicle && setEditVehicleStatus) {
+      const vehicle = selectedVehicle.originalData || selectedVehicle;
+      let status = true;
+      if (vehicle && Object.prototype.hasOwnProperty.call(vehicle, "is_active")) {
+        status =
+          vehicle.is_active === true ||
+          vehicle.is_active === 1 ||
+          vehicle.is_active === "true";
+      } else if (selectedVehicle.status) {
+        status = selectedVehicle.status === "Active";
       }
-    }, [selectedVehicle, setEditVehicleStatus]);
+      setEditVehicleStatus(status);
+    }
+  }, [selectedVehicle, setEditVehicleStatus]);
 
-    // Update form fields when selectedDriver changes
-    useEffect(() => {
-      if (selectedDriver && setEditDriverName && setEditDriverPhone && setEditDriverLicense && setEditDriverAddress && setEditDriverStatus) {
-        const driver = selectedDriver.originalData || selectedDriver;
-        // Get driver name (could be from name, driver_name, or first_name + last_name)
-        const driverName = driver.name || driver.driver_name || selectedDriver.name || '';
-        const driverPhone = driver.phone || selectedDriver.phone || '';
-        const driverLicense = driver.license_number || selectedDriver.driverLicenseNo || '';
-        const driverAddress = driver.address || selectedDriver.address || '';
-        // Check is_active from originalData (true/1 = active, false/0 = inactive)
-        // Fallback to status string if is_active is not available
-        let driverStatus = true; // default to active
-        if (driver.hasOwnProperty('is_active')) {
-          driverStatus = driver.is_active === true || driver.is_active === 1 || driver.is_active === 'true';
-        } else if (selectedDriver.status) {
-          driverStatus = selectedDriver.status === 'Active';
-        }
-        
-        setEditDriverName(driverName);
-        setEditDriverPhone(driverPhone);
-        setEditDriverLicense(driverLicense);
-        setEditDriverAddress(driverAddress);
-        setEditDriverStatus(driverStatus);
+  // Update form fields when selectedDriver changes
+  useEffect(() => {
+    if (selectedDriver && setEditDriverName && setEditDriverPhone && setEditDriverLicense && setEditDriverAddress && setEditDriverStatus) {
+      const driver = selectedDriver.originalData || selectedDriver;
+      // Get driver name (could be from name, driver_name, or first_name + last_name)
+      const driverName = driver.name || driver.driver_name || selectedDriver.name || '';
+      const driverPhone = driver.phone || selectedDriver.phone || '';
+      const driverLicense = driver.license_number || selectedDriver.driverLicenseNo || '';
+      const driverAddress = driver.address || selectedDriver.address || '';
+      // Check is_active from originalData (true/1 = active, false/0 = inactive)
+      // Fallback to status string if is_active is not available
+      let driverStatus = true; // default to active
+      if (Object.prototype.hasOwnProperty.call(driver, 'is_active')) {
+        driverStatus = driver.is_active === true || driver.is_active === 1 || driver.is_active === 'true';
+      } else if (selectedDriver.status) {
+        driverStatus = selectedDriver.status === 'Active';
       }
-    }, [selectedDriver, setEditDriverName, setEditDriverPhone, setEditDriverLicense, setEditDriverAddress, setEditDriverStatus]);
 
-    const today = new Date()
-    const year = today.getFullYear()
-    const month = String(today.getMonth() + 1).padStart(2, '0') // Month is zero-based, so we add 1
-    const day = String(today.getDate()).padStart(2, '0')
-    const formattedDate = `${month}-${day}-${year}`
-    const defaultValue = dayjs(formattedDate);
-    const getModalContainer = () => {
-     const modalElement = document.getElementById('modal-datepicker');
-     return modalElement ? modalElement : document.body; // Fallback to document.body if modalElement is null
-   };
-    const getModalContainer2 = () => {
-     const modalElement = document.getElementById('modal-datepicker2');
-     return modalElement ? modalElement : document.body; // Fallback to document.body if modalElement is null
-   };
+      setEditDriverName(driverName);
+      setEditDriverPhone(driverPhone);
+      setEditDriverLicense(driverLicense);
+      setEditDriverAddress(driverAddress);
+      setEditDriverStatus(driverStatus);
+    }
+  }, [selectedDriver, setEditDriverName, setEditDriverPhone, setEditDriverLicense, setEditDriverAddress, setEditDriverStatus]);
+
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0') // Month is zero-based, so we add 1
+  const day = String(today.getDate()).padStart(2, '0')
+  const formattedDate = `${month}-${day}-${year}`
+  const defaultValue = dayjs(formattedDate);
+  const getModalContainer = () => {
+    const modalElement = document.getElementById('modal-datepicker');
+    return modalElement ? modalElement : document.body; // Fallback to document.body if modalElement is null
+  };
+  const getModalContainer2 = () => {
+    const modalElement = document.getElementById('modal-datepicker2');
+    return modalElement ? modalElement : document.body; // Fallback to document.body if modalElement is null
+  };
   return (
     <>
       <>
@@ -880,7 +880,7 @@ const TransportModal = ({
       </>
       <>
         {/* Add New Vehicle */}
-        <div className="modal fade"  id="add_vehicle">
+        <div className="modal fade" id="add_vehicle">
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -915,16 +915,16 @@ const TransportModal = ({
                           <div className="mb-3">
                             <label className="form-label">Made of Year</label>
                             <div className="date-pic">
-                            <DatePicker
+                              <DatePicker
                                 className="form-control datetimepicker"
                                 format={{
-                                    format: "DD-MM-YYYY",
-                                    type: "mask",
+                                  format: "DD-MM-YYYY",
+                                  type: "mask",
                                 }}
                                 getPopupContainer={getModalContainer}
                                 defaultValue=""
                                 placeholder="16 May 2024"
-                                />
+                              />
                               <span className="cal-icon">
                                 <i className="ti ti-calendar" />
                               </span>
@@ -1069,17 +1069,17 @@ const TransportModal = ({
                           <div className="mb-3">
                             <label className="form-label">Made of Year</label>
                             <div className="date-pic">
-                            <DatePicker
-                      className="form-control datetimepicker"
-                      format={{
-                        format: "DD-MM-YYYY",
-                        type: "mask",
-                      }}
-                      getPopupContainer={getModalContainer2}
-                      defaultValue={selectedVehicle?.originalData?.year || selectedVehicle?.madeofYear ? dayjs(`${selectedVehicle?.originalData?.year ?? selectedVehicle?.madeofYear}-01-01`) : defaultValue}
-                      placeholder="16 May 2024"
-                      key={`edit-vehicle-year-${selectedVehicle?.id || 'new'}`}
-                    />
+                              <DatePicker
+                                className="form-control datetimepicker"
+                                format={{
+                                  format: "DD-MM-YYYY",
+                                  type: "mask",
+                                }}
+                                getPopupContainer={getModalContainer2}
+                                defaultValue={selectedVehicle?.originalData?.year || selectedVehicle?.madeofYear ? dayjs(`${selectedVehicle?.originalData?.year ?? selectedVehicle?.madeofYear}-01-01`) : defaultValue}
+                                placeholder="16 May 2024"
+                                key={`edit-vehicle-year-${selectedVehicle?.id || 'new'}`}
+                              />
                               <span className="cal-icon">
                                 <i className="ti ti-calendar" />
                               </span>
