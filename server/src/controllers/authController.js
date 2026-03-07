@@ -79,13 +79,7 @@ const login = async (req, res) => {
         passwordValid = false;
       }
     }
-    if (!passwordValid && storedPhone) {
-      passwordValid = enteredPassword === storedPhone;
-      if (passwordValid) {
-        const hash = bcrypt.hashSync(enteredPassword, 10);
-        await query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, user.id]).catch(() => {});
-      }
-    }
+
     if (!passwordValid) {
       return errorResponse(res, 401, 'Invalid username or password');
     }

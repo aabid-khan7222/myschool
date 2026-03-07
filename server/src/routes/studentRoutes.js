@@ -28,7 +28,7 @@ router.get('/teacher/students', requireRole([ROLES.TEACHER]), getTeacherStudents
 router.get('/me', getCurrentStudent);
 
 // Get students by class - Admin or Teacher
-router.get('/class/:classId', getStudentsByClass);
+router.get('/class/:classId', requireRole(STUDENT_LIST_ALL_ROLES), getStudentsByClass);
 
 // Get login details (usernames) for a student
 // Auth is handled by protectApi globally; controller enforces ownership (admin / student / parent / guardian)

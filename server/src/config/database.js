@@ -3,11 +3,21 @@ require('dotenv').config();
 
 // Use DATABASE_URL in production (Render)
 // Fallback to local config only if DATABASE_URL not present
-// Cloud DBs (Render, Heroku, etc.) often use self-signed certs - rejectUnauthorized: false allows connection
+// DATABASE_SSL_MODE can be used to control SSL behavior for cloud DBs:
+// - "no-verify"  -> ssl: { rejectUnauthorized: false }  (self-signed certs)
+// - "require"    -> ssl: { rejectUnauthorized: true }   (verify certificates)
+let sslConfig = undefined;
+const sslMode = process.env.DATABASE_SSL_MODE;
+if (sslMode === 'no-verify') {
+  sslConfig = { rejectUnauthorized: false };
+} else if (sslMode === 'require') {
+  sslConfig = { rejectUnauthorized: true };
+}
+
 const pool = process.env.DATABASE_URL
   ? new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
+      ...(sslConfig ? { ssl: sslConfig } : {}),
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
