@@ -1,8 +1,19 @@
 const { query } = require('../config/database');
 
+// Parse academic_year_id from query (optional - when set, filter year-specific data)
+function parseAcademicYearId(req) {
+  const val = req.query?.academic_year_id;
+  if (val == null || val === '') return null;
+  const n = parseInt(val, 10);
+  return Number.isNaN(n) ? null : n;
+}
+
 // Get dashboard stats (counts for students, teachers, staff, subjects)
 const getDashboardStats = async (req, res) => {
   try {
+    const academicYearId = parseAcademicYearId(req);
+    const hasYearFilter = academicYearId != null;
+
     const stats = {
       students: { total: 0, active: 0, inactive: 0 },
       teachers: { total: 0, active: 0, inactive: 0 },
@@ -11,14 +22,27 @@ const getDashboardStats = async (req, res) => {
     };
 
     // Students: total, active (is_active = true), inactive (is_active = false)
+    // When academic_year_id provided, filter students by that year
     try {
-      const studentsCount = await query(`
+      const studentsCount = await query(
+        hasYearFilter
+          ? `
         SELECT
           COUNT(*)::int as total,
           COUNT(*) FILTER (WHERE is_active = true)::int as active,
           COUNT(*) FILTER (WHERE is_active = false)::int as inactive
         FROM students
-      `);
+        WHERE academic_year_id = $1
+      `
+          : `
+        SELECT
+          COUNT(*)::int as total,
+          COUNT(*) FILTER (WHERE is_active = true)::int as active,
+          COUNT(*) FILTER (WHERE is_active = false)::int as inactive
+        FROM students
+      `,
+        hasYearFilter ? [academicYearId] : []
+      );
       if (studentsCount.rows[0]) {
         stats.students.total = parseInt(studentsCount.rows[0].total, 10) || 0;
         stats.students.active = parseInt(studentsCount.rows[0].active, 10) || 0;
@@ -28,13 +52,10 @@ const getDashboardStats = async (req, res) => {
       console.warn('Dashboard: students count failed', e.message);
     }
 
-    // Teachers: from teachers table joined with staff; active = status 'Active' and staff is_active
+    // Teachers: shared across years - always show full count (not filtered by academic year)
     try {
-      const teachersTotal = await query(`
-        SELECT COUNT(*)::int as total FROM teachers
-      `);
+      const teachersTotal = await query(`SELECT COUNT(*)::int as total FROM teachers`);
       stats.teachers.total = parseInt(teachersTotal.rows[0]?.total, 10) || 0;
-
       const teachersActive = await query(`
         SELECT COUNT(*)::int as active
         FROM teachers t
@@ -129,10 +150,24 @@ const getUpcomingEvents = async (req, res) => {
 const getClassRoutineForDashboard = async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 5, 20);
+    const academicYearId = parseAcademicYearId(req);
+    const hasYearFilter = academicYearId != null;
+
     let rows = [];
     try {
-      const r = await query('SELECT * FROM class_schedules ORDER BY id DESC LIMIT $1', [limit]);
-      rows = r.rows;
+      if (hasYearFilter) {
+        const r = await query(
+          `SELECT cs.* FROM class_schedules cs
+           INNER JOIN classes c ON cs.class_id = c.id
+           WHERE c.academic_year_id = $1
+           ORDER BY cs.id DESC LIMIT $2`,
+          [academicYearId, limit]
+        );
+        rows = r.rows;
+      } else {
+        const r = await query('SELECT * FROM class_schedules ORDER BY id DESC LIMIT $1', [limit]);
+        rows = r.rows;
+      }
     } catch (e) {
       try {
         const r = await query('SELECT * FROM class_schedule ORDER BY id DESC LIMIT $1', [limit]);
@@ -255,16 +290,28 @@ const getBestPerformers = async (req, res) => {
 const getStarStudents = async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 3, 10);
+    const academicYearId = parseAcademicYearId(req);
+    const hasYearFilter = academicYearId != null;
+
     const result = await query(
-      `SELECT st.id, st.first_name, st.last_name, st.photo_url, st.class_id, st.section_id,
-              c.class_name, sec.section_name
-       FROM students st
-       LEFT JOIN classes c ON st.class_id = c.id
-       LEFT JOIN sections sec ON st.section_id = sec.id
-       WHERE st.is_active = true
-       ORDER BY st.first_name ASC, st.last_name ASC
-       LIMIT $1`,
-      [limit]
+      hasYearFilter
+        ? `SELECT st.id, st.first_name, st.last_name, st.photo_url, st.class_id, st.section_id,
+                c.class_name, sec.section_name
+         FROM students st
+         LEFT JOIN classes c ON st.class_id = c.id
+         LEFT JOIN sections sec ON st.section_id = sec.id
+         WHERE st.is_active = true AND st.academic_year_id = $1
+         ORDER BY st.first_name ASC, st.last_name ASC
+         LIMIT $2`
+        : `SELECT st.id, st.first_name, st.last_name, st.photo_url, st.class_id, st.section_id,
+                c.class_name, sec.section_name
+         FROM students st
+         LEFT JOIN classes c ON st.class_id = c.id
+         LEFT JOIN sections sec ON st.section_id = sec.id
+         WHERE st.is_active = true
+         ORDER BY st.first_name ASC, st.last_name ASC
+         LIMIT $1`,
+      hasYearFilter ? [academicYearId, limit] : [limit]
     );
     const data = result.rows.map((r) => ({
       id: r.id,
@@ -289,12 +336,21 @@ const getStarStudents = async (req, res) => {
 // Performance summary from class_syllabus (Good/Average/Below Average by syllabus count per class)
 const getPerformanceSummary = async (req, res) => {
   try {
-    const result = await query(`
-      SELECT class_id, class_name, COUNT(*) AS syllabus_count
-      FROM class_syllabus
-      WHERE status = 'Active'
-      GROUP BY class_id, class_name
-    `);
+    const academicYearId = parseAcademicYearId(req);
+    const hasYearFilter = academicYearId != null;
+
+    const result = await query(
+      hasYearFilter
+        ? `SELECT class_id, class_name, COUNT(*) AS syllabus_count
+           FROM class_syllabus
+           WHERE status = 'Active' AND academic_year_id = $1
+           GROUP BY class_id, class_name`
+        : `SELECT class_id, class_name, COUNT(*) AS syllabus_count
+           FROM class_syllabus
+           WHERE status = 'Active'
+           GROUP BY class_id, class_name`,
+      hasYearFilter ? [academicYearId] : []
+    );
     const rows = result.rows;
     let good = 0;
     let average = 0;
@@ -308,7 +364,9 @@ const getPerformanceSummary = async (req, res) => {
       else below += 1;
     });
     if (rows.length === 0) {
-      const classCount = await query('SELECT COUNT(*)::int AS cnt FROM classes');
+      const classCount = hasYearFilter
+        ? await query('SELECT COUNT(*)::int AS cnt FROM classes WHERE academic_year_id = $1', [academicYearId])
+        : await query('SELECT COUNT(*)::int AS cnt FROM classes');
       const total = parseInt(classCount.rows[0]?.cnt, 10) || 0;
       if (total > 0) {
         below = total;
@@ -328,16 +386,28 @@ const getPerformanceSummary = async (req, res) => {
   }
 };
 
-// Top subjects (from subjects table - active subjects)
+// Top subjects (from subjects table - active subjects; when year filter, only subjects in that year's syllabus)
 const getTopSubjects = async (req, res) => {
   try {
-    const result = await query(`
-      SELECT id, subject_name, subject_code
-      FROM subjects
-      WHERE is_active = true
-      ORDER BY subject_name ASC
-      LIMIT 10
-    `);
+    const academicYearId = parseAcademicYearId(req);
+    const hasYearFilter = academicYearId != null;
+
+    const result = await query(
+      hasYearFilter
+        ? `SELECT DISTINCT sub.id, sub.subject_name, sub.subject_code
+           FROM subjects sub
+           INNER JOIN class_schedules cs ON cs.subject_id = sub.id
+           INNER JOIN classes c ON cs.class_id = c.id
+           WHERE sub.is_active = true AND c.academic_year_id = $1
+           ORDER BY sub.subject_name ASC
+           LIMIT 10`
+        : `SELECT id, subject_name, subject_code
+           FROM subjects
+           WHERE is_active = true
+           ORDER BY subject_name ASC
+           LIMIT 10`,
+      hasYearFilter ? [academicYearId] : []
+    );
     const data = result.rows.map((r) => ({
       id: r.id,
       name: r.subject_name || r.subject_code || 'N/A',
@@ -384,17 +454,28 @@ const getNoticeBoardForDashboard = async (req, res) => {
 // Fee stats for dashboard (from fee_collections and fee_structures)
 const getDashboardFeeStats = async (req, res) => {
   try {
+    const academicYearId = parseAcademicYearId(req);
+    const hasYearFilter = academicYearId != null;
+
     let totalFeesCollected = 0;
     let fineCollected = 0;
     let studentNotPaid = 0;
     let totalOutstanding = 0;
 
     try {
-      const collectedResult = await query(`
-        SELECT COALESCE(SUM(amount_paid::numeric), 0) AS total
-        FROM fee_collections
-        WHERE is_active = true
-      `);
+      const collectedResult = hasYearFilter
+        ? await query(
+            `SELECT COALESCE(SUM(fc.amount_paid::numeric), 0) AS total
+             FROM fee_collections fc
+             INNER JOIN students s ON fc.student_id = s.id
+             WHERE fc.is_active = true AND s.academic_year_id = $1`,
+            [academicYearId]
+          )
+        : await query(`
+            SELECT COALESCE(SUM(amount_paid::numeric), 0) AS total
+            FROM fee_collections
+            WHERE is_active = true
+          `);
       totalFeesCollected = parseFloat(collectedResult.rows[0]?.total || '0') || 0;
     } catch (e) {
       console.warn('Dashboard: fee_collections sum failed', e.message);
@@ -404,8 +485,10 @@ const getDashboardFeeStats = async (req, res) => {
     fineCollected = 0;
 
     try {
-      const outstandingResult = await query(`
-        WITH student_fee_due AS (
+      const studentWhere = hasYearFilter ? ' AND s.academic_year_id = $1' : '';
+      const outstandingParams = hasYearFilter ? [academicYearId] : [];
+      const outstandingResult = await query(
+        `WITH student_fee_due AS (
           SELECT s.id AS student_id, fs.id AS fee_structure_id, fs.amount::numeric AS due_amount,
             COALESCE((
               SELECT SUM(fc.amount_paid::numeric)
@@ -414,7 +497,7 @@ const getDashboardFeeStats = async (req, res) => {
             ), 0) AS paid
           FROM students s
           INNER JOIN fee_structures fs ON (fs.class_id IS NULL OR fs.class_id = s.class_id) AND COALESCE(fs.is_active, true) = true
-          WHERE s.is_active = true
+          WHERE s.is_active = true${studentWhere}
         ),
         with_outstanding AS (
           SELECT student_id, (due_amount - paid) AS outstanding
@@ -425,7 +508,9 @@ const getDashboardFeeStats = async (req, res) => {
           COUNT(DISTINCT student_id)::int AS student_not_paid,
           COALESCE(SUM(outstanding), 0)::numeric AS total_outstanding
         FROM with_outstanding
-      `);
+      `,
+        outstandingParams
+      );
       const row = outstandingResult.rows[0];
       studentNotPaid = parseInt(row?.student_not_paid || '0', 10) || 0;
       totalOutstanding = parseFloat(row?.total_outstanding || '0') || 0;
@@ -455,15 +540,26 @@ const getDashboardFeeStats = async (req, res) => {
 // Finance summary: Total Earnings (from fees), Total Expenses (0 - no expense table)
 const getDashboardFinanceSummary = async (req, res) => {
   try {
+    const academicYearId = parseAcademicYearId(req);
+    const hasYearFilter = academicYearId != null;
+
     let totalEarnings = 0;
     let totalExpenses = 0;
 
     try {
-      const earningsResult = await query(`
-        SELECT COALESCE(SUM(amount_paid::numeric), 0) AS total
-        FROM fee_collections
-        WHERE is_active = true
-      `);
+      const earningsResult = hasYearFilter
+        ? await query(
+            `SELECT COALESCE(SUM(fc.amount_paid::numeric), 0) AS total
+             FROM fee_collections fc
+             INNER JOIN students s ON fc.student_id = s.id
+             WHERE fc.is_active = true AND s.academic_year_id = $1`,
+            [academicYearId]
+          )
+        : await query(`
+            SELECT COALESCE(SUM(amount_paid::numeric), 0) AS total
+            FROM fee_collections
+            WHERE is_active = true
+          `);
       totalEarnings = parseFloat(earningsResult.rows[0]?.total || '0') || 0;
     } catch (e) {
       console.warn('Dashboard: total earnings (fees) failed', e.message);
@@ -489,8 +585,15 @@ const getDashboardFinanceSummary = async (req, res) => {
 // Recent activity for alert (most recent leave application)
 const getRecentActivity = async (req, res) => {
   try {
-    const result = await query(`
-      SELECT la.id, la.start_date, la.end_date, la.applied_at, la.created_at,
+    const academicYearId = parseAcademicYearId(req);
+    const hasYearFilter = academicYearId != null;
+    const yearFilter = hasYearFilter
+      ? ' AND (la.student_id IS NULL OR st.academic_year_id = $1)'
+      : '';
+    const params = hasYearFilter ? [academicYearId] : [];
+
+    const result = await query(
+      `SELECT la.id, la.start_date, la.end_date, la.applied_at, la.created_at,
              lt.leave_type AS leave_type_name,
              COALESCE(s.first_name || ' ' || s.last_name, st.first_name || ' ' || st.last_name) AS applicant_name,
              c.class_name, sec.section_name
@@ -500,9 +603,11 @@ const getRecentActivity = async (req, res) => {
       LEFT JOIN students st ON la.student_id = st.id
       LEFT JOIN classes c ON st.class_id = c.id
       LEFT JOIN sections sec ON st.section_id = sec.id
+      WHERE 1=1${yearFilter}
       ORDER BY COALESCE(la.applied_at, la.created_at, la.start_date) DESC NULLS LAST
-      LIMIT 1
-    `);
+      LIMIT 1`,
+      params
+    );
     if (result.rows.length === 0) {
       return res.status(200).json({
         status: 'SUCCESS',

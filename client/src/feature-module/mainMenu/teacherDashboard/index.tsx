@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
+import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { all_routes } from "../../router/all_routes";
+import { selectSelectedAcademicYearId } from "../../../core/data/redux/academicYearSlice";
 import ImageWithBasePath from "../../../core/common/imageWithBasePath";
 import AdminDashboardModal from "../adminDashboard/adminDashboardModal";
 import ReactApexChart from "react-apexcharts";
@@ -22,6 +24,7 @@ const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Frid
 
 const TeacherDashboard = () => {
   const routes = all_routes;
+  const academicYearId = useSelector(selectSelectedAcademicYearId);
   const [date, setDate] = useState<Nullable<Date>>(null);
 
   const [selectedClass, setSelectedClass] = useState<string>("All Classes");
@@ -38,12 +41,12 @@ const TeacherDashboard = () => {
   } as const;
 
   const { teacher, loading: teacherLoading, error: teacherError } = useCurrentTeacher();
-  const { routine, loading: routineLoading } = useTeacherRoutine(teacher?.id ?? null);
+  const { routine, loading: routineLoading } = useTeacherRoutine(teacher?.id ?? null, { academicYearId });
   const { data: attendanceData, loading: attendanceLoading, error: attendanceError } = useTeacherClassAttendance(
     teacher?.id ?? null,
     attendanceOptions[attendanceRange]
   );
-  const { data: syllabusData } = useClassSyllabus();
+  const { data: syllabusData } = useClassSyllabus({ academicYearId });
   const { leaveApplications: myLeaves, loading: leaveLoading } = useLeaveApplications({ studentOnly: true, limit: 10 });
   const { upcomingEvents, completedEvents, loading: eventsLoading, refetch: refetchEvents } = useEvents({ forDashboard: true, limit: 5 });
 

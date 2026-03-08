@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { apiService } from '../services/apiService';
 
-export function useFeeCollections() {
+export function useFeeCollections(options = {}) {
+  const { academicYearId } = options;
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -10,7 +11,7 @@ export function useFeeCollections() {
     try {
       setLoading(true);
       setError(null);
-      const res = await apiService.getFeeCollectionsList();
+      const res = await apiService.getFeeCollectionsList({ academicYearId });
       if (res?.status === 'SUCCESS' && Array.isArray(res.data)) {
         const rows = res.data.map((r, idx) => ({
           key: String(r.id ?? idx),
@@ -42,7 +43,7 @@ export function useFeeCollections() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [academicYearId]);
 
   return { data, loading, error, refetch: fetchData };
 }

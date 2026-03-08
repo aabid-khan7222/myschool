@@ -332,8 +332,11 @@ class ApiService {
   }
 
   // Parents
-  async getParents() {
-    return this.makeRequest('/parents');
+  async getParents(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.academicYearId != null) searchParams.set('academic_year_id', params.academicYearId);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/parents${qs ? `?${qs}` : ''}`);
   }
 
   async getMyParents() {
@@ -363,8 +366,11 @@ class ApiService {
   }
 
   // Guardians
-  async getGuardians() {
-    return this.makeRequest('/guardians');
+  async getGuardians(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.academicYearId != null) searchParams.set('academic_year_id', params.academicYearId);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/guardians${qs ? `?${qs}` : ''}`);
   }
 
   async getCurrentGuardian() {
@@ -410,8 +416,11 @@ class ApiService {
     return this.makeRequest(`/teachers/class/${classId}`);
   }
 
-  async getTeacherRoutine(teacherId) {
-    return this.makeRequest(`/teachers/${teacherId}/routine`);
+  async getTeacherRoutine(teacherId, params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.academicYearId != null) searchParams.set('academic_year_id', params.academicYearId);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/teachers/${teacherId}/routine${qs ? `?${qs}` : ''}`);
   }
 
   async getTeacherClassAttendance(teacherId, params = {}) {
@@ -492,9 +501,12 @@ class ApiService {
     return this.makeRequest(`/user-roles/${id}`);
   }
 
-  // Dashboard stats
-  async getDashboardStats() {
-    return this.makeRequest('/dashboard/stats');
+  // Dashboard stats (optional academicYearId for Headmaster/Teacher year filter)
+  async getDashboardStats(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.academicYearId != null) searchParams.set('academic_year_id', params.academicYearId);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/dashboard/stats${qs ? `?${qs}` : ''}`);
   }
 
   async getDashboardUpcomingEvents(params = {}) {
@@ -507,6 +519,7 @@ class ApiService {
   async getDashboardClassRoutine(params = {}) {
     const searchParams = new URLSearchParams();
     if (params.limit != null) searchParams.set('limit', params.limit);
+    if (params.academicYearId != null) searchParams.set('academic_year_id', params.academicYearId);
     const qs = searchParams.toString();
     return this.makeRequest(`/dashboard/class-routine${qs ? `?${qs}` : ''}`);
   }
@@ -521,6 +534,7 @@ class ApiService {
   async getDashboardStarStudents(params = {}) {
     const searchParams = new URLSearchParams();
     if (params.limit != null) searchParams.set('limit', params.limit);
+    if (params.academicYearId != null) searchParams.set('academic_year_id', params.academicYearId);
     const qs = searchParams.toString();
     return this.makeRequest(`/dashboard/star-students${qs ? `?${qs}` : ''}`);
   }
@@ -529,12 +543,18 @@ class ApiService {
     return this.makeRequest('/dashboard/performance-summary');
   }
 
-  async getDashboardTopSubjects() {
-    return this.makeRequest('/dashboard/top-subjects');
+  async getDashboardTopSubjects(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.academicYearId != null) searchParams.set('academic_year_id', params.academicYearId);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/dashboard/top-subjects${qs ? `?${qs}` : ''}`);
   }
 
-  async getDashboardRecentActivity() {
-    return this.makeRequest('/dashboard/recent-activity');
+  async getDashboardRecentActivity(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.academicYearId != null) searchParams.set('academic_year_id', params.academicYearId);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/dashboard/recent-activity${qs ? `?${qs}` : ''}`);
   }
 
   async getDashboardNoticeBoard(params = {}) {
@@ -544,17 +564,26 @@ class ApiService {
     return this.makeRequest(`/dashboard/notice-board${qs ? `?${qs}` : ''}`);
   }
 
-  async getDashboardFeeStats() {
-    return this.makeRequest('/dashboard/fee-stats');
+  async getDashboardFeeStats(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.academicYearId != null) searchParams.set('academic_year_id', params.academicYearId);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/dashboard/fee-stats${qs ? `?${qs}` : ''}`);
   }
 
-  async getDashboardFinanceSummary() {
-    return this.makeRequest('/dashboard/finance-summary');
+  async getDashboardFinanceSummary(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.academicYearId != null) searchParams.set('academic_year_id', params.academicYearId);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/dashboard/finance-summary${qs ? `?${qs}` : ''}`);
   }
 
-  // Fees
-  async getFeeCollectionsList() {
-    return this.makeRequest('/fees/collections');
+  // Fees (optional academicYearId for year filter)
+  async getFeeCollectionsList(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.academicYearId != null) searchParams.set('academic_year_id', params.academicYearId);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/fees/collections${qs ? `?${qs}` : ''}`);
   }
 
   async getStudentFees(studentId) {
@@ -613,6 +642,7 @@ class ApiService {
     if (params.limit != null) searchParams.set('limit', params.limit);
     if (params.student_id != null) searchParams.set('student_id', params.student_id);
     if (params.staff_id != null) searchParams.set('staff_id', params.staff_id);
+    if (params.academic_year_id != null) searchParams.set('academic_year_id', params.academic_year_id);
     const qs = searchParams.toString();
     return this.makeRequest(`/leave-applications${qs ? `?${qs}` : ''}`);
   }

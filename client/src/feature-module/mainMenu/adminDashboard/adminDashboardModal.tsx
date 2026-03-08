@@ -7,6 +7,7 @@ import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { apiService } from '../../../core/services/apiService';
 import { selectUser } from '../../../core/data/redux/authSlice';
+import { selectSelectedAcademicYearId } from '../../../core/data/redux/academicYearSlice';
 
 type SelectOption = { value: string; label: string };
 
@@ -17,6 +18,7 @@ interface AdminDashboardModalProps {
 
 const AdminDashboardModal = ({ refetchRoutine, refetchEvents }: AdminDashboardModalProps) => {
     const user = useSelector(selectUser);
+    const academicYearId = useSelector(selectSelectedAcademicYearId);
     const isTeacherRole = (user?.role ?? '').trim().toLowerCase() === 'teacher';
     const [activeContent, setActiveContent] = useState('');
     const [allTeacher, setAllTeacher] = useState<SelectOption[]>([{ value: "", label: "Loading..." }]);
@@ -59,9 +61,13 @@ const AdminDashboardModal = ({ refetchRoutine, refetchEvents }: AdminDashboardMo
                     }
                     return apiService.getTeachers();
                 };
+                const fetchClasses = () =>
+                    academicYearId != null
+                        ? apiService.getClassesByAcademicYear(academicYearId)
+                        : apiService.getClasses();
                 const [tRes, cRes, sRes, rRes] = await Promise.all([
                     fetchTeachers(),
-                    apiService.getClasses(),
+                    fetchClasses(),
                     apiService.getSections(),
                     apiService.getClassRooms(),
                 ]);
@@ -108,7 +114,7 @@ const AdminDashboardModal = ({ refetchRoutine, refetchEvents }: AdminDashboardMo
                 setAllClassRoom([{ value: "", label: "No rooms" }]);
             }
         })();
-    }, [isTeacherRole]);
+    }, [isTeacherRole, academicYearId]);
 
     const handleContentChange = (event: any) => {
         setActiveContent(event.target.value);

@@ -3,10 +3,16 @@ const { getParentsForUser } = require('../utils/parentUserMatch');
 const { ROLES } = require('../config/roles');
 
 // Get fee collections list for Collect Fees page (students with fee summary)
+// Optional query: academic_year_id - filter students by academic year
 const getFeeCollectionsList = async (req, res) => {
   try {
-    const result = await query(`
-      WITH student_fee_summary AS (
+    const academicYearId = req.query.academic_year_id ? parseInt(req.query.academic_year_id, 10) : null;
+    const hasYearFilter = academicYearId != null && !Number.isNaN(academicYearId);
+    const studentWhere = hasYearFilter ? ' AND s.academic_year_id = $1' : '';
+    const params = hasYearFilter ? [academicYearId] : [];
+
+    const result = await query(
+      `WITH student_fee_summary AS (
         SELECT
           s.id AS student_id,
           s.admission_number,
@@ -28,7 +34,7 @@ const getFeeCollectionsList = async (req, res) => {
         LEFT JOIN classes c ON s.class_id = c.id
         LEFT JOIN sections sec ON s.section_id = sec.id
         LEFT JOIN fee_structures fs ON (fs.class_id IS NULL OR fs.class_id = s.class_id) AND COALESCE(fs.is_active, true) = true
-        WHERE s.is_active = true
+        WHERE s.is_active = true${studentWhere}
         GROUP BY s.id, s.admission_number, s.roll_number, s.first_name, s.last_name, s.photo_url,
           s.class_id, s.section_id, c.class_name, sec.section_name
       )
@@ -45,7 +51,9 @@ const getFeeCollectionsList = async (req, res) => {
         CASE WHEN total_paid >= total_due AND total_due > 0 THEN 'Paid' ELSE 'Unpaid' END AS status
       FROM student_fee_summary
       ORDER BY student_name ASC
-    `);
+    `,
+      params
+    );
     const rows = result.rows.map((r) => ({
       id: r.id,
       admNo: r.adm_no || '',

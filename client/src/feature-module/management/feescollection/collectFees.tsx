@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
+import { useSelector } from "react-redux";
 import { all_routes } from "../../router/all_routes";
 import { Link } from "react-router-dom";
+import { selectSelectedAcademicYearId } from "../../../core/data/redux/academicYearSlice";
 import PredefinedDateRanges from "../../../core/common/datePicker";
 import CommonSelect from "../../../core/common/commonSelect";
 import {
@@ -21,8 +23,9 @@ import TooltipOption from "../../../core/common/tooltipOption";
 
 const CollectFees = () => {
   const routes = all_routes;
+  const academicYearId = useSelector(selectSelectedAcademicYearId);
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
-  const { data, loading, error, refetch } = useFeeCollections();
+  const { data, loading, error, refetch } = useFeeCollections({ academicYearId });
   const [selectedStudentForFee, setSelectedStudentForFee] = useState<{
     id: number;
     admission_number?: string;

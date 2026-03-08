@@ -20,9 +20,9 @@ import { apiService } from "../../../core/services/apiService";
 
 const ClassSyllabus = () => {
   const routes = all_routes;
-  const [selectedSyllabus, setSelectedSyllabus] = useState<any>(null);
-  const { data: apiData, loading, error, refetch, fallbackData } = useClassSyllabus();
   const academicYearId = useSelector(selectSelectedAcademicYearId);
+  const [selectedSyllabus, setSelectedSyllabus] = useState<any>(null);
+  const { data: apiData, loading, error, refetch, fallbackData } = useClassSyllabus({ academicYearId });
   const { classes = [] } = useClasses(academicYearId);
   const { sections = [] } = useSections();
 

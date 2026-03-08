@@ -1,5 +1,6 @@
-const { query } = require('../config/database');
+const { query, executeTransaction } = require('../config/database');
 const { parsePagination } = require('../utils/pagination');
+const { createParentUser } = require('../utils/createPersonUser');
 const { getParentsForUser } = require('../utils/parentUserMatch');
 
 // Create new parent
@@ -31,24 +32,43 @@ const createParent = async (req, res) => {
       });
     }
 
-    const result = await query(`
-      INSERT INTO parents (
-        student_id, father_name, father_email, father_phone, father_occupation, father_image_url,
-        mother_name, mother_email, mother_phone, mother_occupation, mother_image_url,
-        created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
-      RETURNING *
-    `, [
-      student_id, father_name || null, father_email || null, father_phone || null, 
-      father_occupation || null, father_image_url || null, mother_name || null, 
-      mother_email || null, mother_phone || null, mother_occupation || null, 
-      mother_image_url || null
-    ]);
+    const parentRow = await executeTransaction(async (client) => {
+      const result = await client.query(`
+        INSERT INTO parents (
+          student_id, father_name, father_email, father_phone, father_occupation, father_image_url,
+          mother_name, mother_email, mother_phone, mother_occupation, mother_image_url,
+          created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+        RETURNING *
+      `, [
+        student_id, father_name || null, father_email || null, father_phone || null,
+        father_occupation || null, father_image_url || null, mother_name || null,
+        mother_email || null, mother_phone || null, mother_occupation || null,
+        mother_image_url || null
+      ]);
+      const row = result.rows[0];
+      const parentEmail = (father_email || mother_email || '').toString().trim();
+      const parentPhone = (father_phone || mother_phone || '').toString().trim();
+      if (parentEmail || parentPhone) {
+        try {
+          const parentUserId = await createParentUser(client, {
+            father_name, father_email, father_phone, mother_name, mother_email, mother_phone, student_id
+          });
+          if (parentUserId) {
+            await client.query('UPDATE parents SET user_id = $1, updated_at = NOW() WHERE id = $2', [parentUserId, row.id]);
+            row.user_id = parentUserId;
+          }
+        } catch (e) {
+          console.warn('createParent: could not create parent user:', e.message);
+        }
+      }
+      return row;
+    });
 
     res.status(201).json({
       status: 'SUCCESS',
       message: 'Parent created successfully',
-      data: result.rows[0]
+      data: parentRow
     });
   } catch (error) {
     console.error('Error creating parent:', error);
@@ -141,22 +161,29 @@ const getMyParents = async (req, res) => {
   }
 };
 
-// Get all parents
+// Get all parents (optional query: academic_year_id - only parents whose student is in that year)
 const getAllParents = async (req, res) => {
   try {
     const { page, limit, offset } = parsePagination(req.query);
+    const academicYearId = req.query.academic_year_id ? parseInt(req.query.academic_year_id, 10) : null;
+    const hasYearFilter = academicYearId != null && !Number.isNaN(academicYearId);
+    const yearWhere = hasYearFilter ? ' AND s.academic_year_id = $1' : '';
+    const countParams = hasYearFilter ? [academicYearId] : [];
+    const listParams = hasYearFilter ? [academicYearId, limit, offset] : [limit, offset];
+    const limitOffsetPlaceholders = hasYearFilter ? 'LIMIT $2 OFFSET $3' : 'LIMIT $1 OFFSET $2';
 
     let countResult;
     let result;
     try {
-      countResult = await query(`
-        SELECT COUNT(*)::int as total
+      countResult = await query(
+        `SELECT COUNT(*)::int as total
         FROM parents p
         LEFT JOIN students s ON p.student_id = s.id
-        WHERE s.is_active = true
-      `);
-      result = await query(`
-        SELECT
+        WHERE s.is_active = true${yearWhere}`,
+        countParams
+      );
+      result = await query(
+        `SELECT
           p.id,
           p.student_id,
           p.father_name,
@@ -181,21 +208,23 @@ const getAllParents = async (req, res) => {
         LEFT JOIN students s ON p.student_id = s.id
         LEFT JOIN classes c ON s.class_id = c.id
         LEFT JOIN sections sec ON s.section_id = sec.id
-        WHERE s.is_active = true
+        WHERE s.is_active = true${yearWhere}
         ORDER BY s.first_name ASC, s.last_name ASC
-        LIMIT $1 OFFSET $2
-      `, [limit, offset]);
+        ${limitOffsetPlaceholders}`,
+        listParams
+      );
     } catch (queryErr) {
       // Fallback: simpler query if classes/sections tables are missing or have schema issues
       console.warn('Parent list full query failed, using fallback:', queryErr.message);
-      countResult = await query(`
-        SELECT COUNT(*)::int as total
+      countResult = await query(
+        `SELECT COUNT(*)::int as total
         FROM parents p
         LEFT JOIN students s ON p.student_id = s.id
-        WHERE s.is_active = true
-      `);
-      result = await query(`
-        SELECT
+        WHERE s.is_active = true${yearWhere}`,
+        countParams
+      );
+      result = await query(
+        `SELECT
           p.id,
           p.student_id,
           p.father_name,
@@ -218,10 +247,11 @@ const getAllParents = async (req, res) => {
           NULL::text as section_name
         FROM parents p
         LEFT JOIN students s ON p.student_id = s.id
-        WHERE s.is_active = true
+        WHERE s.is_active = true${yearWhere}
         ORDER BY s.first_name ASC, s.last_name ASC
-        LIMIT $1 OFFSET $2
-      `, [limit, offset]);
+        ${limitOffsetPlaceholders}`,
+        listParams
+      );
     }
 
     const total = countResult.rows[0].total;

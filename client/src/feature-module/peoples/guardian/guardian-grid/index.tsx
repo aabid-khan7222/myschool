@@ -14,6 +14,7 @@ import GuardianModal from "../guardianModal";
 import TooltipOption from "../../../../core/common/tooltipOption";
 import { useGuardians } from "../../../../core/hooks/useGuardians";
 import { selectUser } from "../../../../core/data/redux/authSlice";
+import { selectSelectedAcademicYearId } from "../../../../core/data/redux/academicYearSlice";
 
 const GuardianGrid = () => {
   const [show, setShow] = useState(false);
@@ -21,9 +22,10 @@ const GuardianGrid = () => {
   const [guardianToEdit, setGuardianToEdit] = useState<any>(null);
   const routes = all_routes;
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
-  const { guardians, loading, error, refetch } = useGuardians();
   const user = useSelector(selectUser);
+  const academicYearId = useSelector(selectSelectedAcademicYearId);
   const isGuardian = (user?.role || "").toLowerCase() === "guardian";
+  const { guardians, loading, error, refetch } = useGuardians({ academicYearId: isGuardian ? null : academicYearId });
 
   // useGuardians already returns transformed guardian objects in the exact
   // shape expected by this grid and the View Details modal.

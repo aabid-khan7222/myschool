@@ -1,11 +1,12 @@
-
 import TeacherModal from "../teacherModal";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
 import { all_routes } from "../../../router/all_routes";
 import TeacherSidebar from "./teacherSidebar";
 import TeacherBreadcrumb from "./teacherBreadcrumb";
 import { apiService } from "../../../../core/services/apiService";
+import { selectSelectedAcademicYearId } from "../../../../core/data/redux/academicYearSlice";
 
 interface TeacherDetailsLocationState {
   teacherId?: number;
@@ -42,6 +43,7 @@ const TeachersRoutine = () => {
   const routes = all_routes;
   const navigate = useNavigate();
   const location = useLocation();
+  const academicYearId = useSelector(selectSelectedAcademicYearId);
   const state = location.state as TeacherDetailsLocationState | null;
   const teacherId = state?.teacherId ?? state?.teacher?.id;
   const [teacher, setTeacher] = useState<any>(state?.teacher ?? null);
@@ -96,7 +98,7 @@ const TeachersRoutine = () => {
         })
         .finally(() => setRoutineLoading(false));
     }
-  }, [teacherId]);
+  }, [teacherId, academicYearId]);
 
   // Helper function to format time
   const formatTime = (time: string | null | undefined): string => {

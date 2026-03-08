@@ -20,9 +20,11 @@ function formatTime(t) {
 /**
  * Fetches teacher's class schedule/routine.
  * @param {number|null} teacherId - Teacher ID (from useCurrentTeacher)
+ * @param {Object} options - { academicYearId } for year filter
  * @returns {Object} { routine, loading, error, refetch }
  */
-export const useTeacherRoutine = (teacherId) => {
+export const useTeacherRoutine = (teacherId, options = {}) => {
+  const { academicYearId } = options;
   const [routine, setRoutine] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -36,7 +38,7 @@ export const useTeacherRoutine = (teacherId) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiService.getTeacherRoutine(teacherId);
+      const response = await apiService.getTeacherRoutine(teacherId, { academicYearId });
       const raw = response?.data ?? response ?? {};
       const list = Array.isArray(raw) ? raw : (raw.routine ?? raw.schedules ?? []);
       const mapped = (Array.isArray(list) ? list : []).map((row) => {
@@ -64,7 +66,7 @@ export const useTeacherRoutine = (teacherId) => {
 
   useEffect(() => {
     fetchRoutine();
-  }, [teacherId]);
+  }, [teacherId, academicYearId]);
 
   return {
     routine,

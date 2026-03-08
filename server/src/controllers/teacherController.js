@@ -367,6 +367,11 @@ const getTeacherRoutine = async (req, res) => {
       console.log('Sample schedule row:', JSON.stringify(sampleQuery.rows[0], null, 2));
     }
 
+    const academicYearId = req.query.academic_year_id ? parseInt(req.query.academic_year_id, 10) : null;
+    const hasYearFilter = academicYearId != null && !Number.isNaN(academicYearId);
+    const yearClause = hasYearFilter ? ' AND c.academic_year_id = $2' : '';
+    const scheduleParams = hasYearFilter ? [id, academicYearId] : [id];
+
     // Get class schedules for this teacher
     // Handle both 'slots' and 'time_slots' table names
     let schedulesQuery = `
@@ -394,7 +399,7 @@ const getTeacherRoutine = async (req, res) => {
       LEFT JOIN sections sec ON cs.section_id = sec.id
       LEFT JOIN subjects sub ON cs.subject_id = sub.id
       LEFT JOIN slots ts ON cs.time_slot_id::text ~ '^[0-9]+$' AND ts.id = (cs.time_slot_id::text)::int
-      WHERE cs.teacher_id = $1
+      WHERE cs.teacher_id = $1${yearClause}
       ORDER BY 
         CASE LOWER(TRIM(cs.day_of_week::text))
           WHEN '0' THEN 1
@@ -418,7 +423,7 @@ const getTeacherRoutine = async (req, res) => {
 
     let schedulesResult;
     try {
-      schedulesResult = await query(schedulesQuery, [id]);
+      schedulesResult = await query(schedulesQuery, scheduleParams);
       console.log('Schedules found:', schedulesResult.rows.length);
       if (schedulesResult.rows.length > 0) {
         console.log('First schedule:', JSON.stringify(schedulesResult.rows[0], null, 2));
@@ -453,7 +458,7 @@ const getTeacherRoutine = async (req, res) => {
           LEFT JOIN sections sec ON cs.section_id = sec.id
           LEFT JOIN subjects sub ON cs.subject_id = sub.id
           LEFT JOIN time_slots ts ON cs.time_slot_id::text ~ '^[0-9]+$' AND ts.id = (cs.time_slot_id::text)::int
-          WHERE cs.teacher_id = $1
+          WHERE cs.teacher_id = $1${yearClause}
           ORDER BY 
             CASE LOWER(TRIM(cs.day_of_week::text))
               WHEN '0' THEN 1
@@ -474,7 +479,7 @@ const getTeacherRoutine = async (req, res) => {
             END,
             ts.start_time ASC
         `;
-        schedulesResult = await query(schedulesQuery, [id]);
+        schedulesResult = await query(schedulesQuery, scheduleParams);
         console.log('Schedules found with time_slots:', schedulesResult.rows.length);
       } else {
         // If error is not about slots table, try without slot join
@@ -489,9 +494,9 @@ const getTeacherRoutine = async (req, res) => {
           LEFT JOIN classes c ON cs.class_id = c.id
           LEFT JOIN sections sec ON cs.section_id = sec.id
           LEFT JOIN subjects sub ON cs.subject_id = sub.id
-          WHERE cs.teacher_id = $1
+          WHERE cs.teacher_id = $1${yearClause}
         `;
-        schedulesResult = await query(schedulesQuery, [id]);
+        schedulesResult = await query(schedulesQuery, scheduleParams);
         console.log('Schedules found without slot join:', schedulesResult.rows.length);
       }
     }

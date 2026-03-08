@@ -4,9 +4,10 @@ import { apiService } from '../services/apiService';
 /**
  * @param {Object} options
  * @param {boolean} [options.forCurrentUser=false] - When true (e.g. Parent role), fetches only logged-in parent's data
+ * @param {number|null} [options.academicYearId] - When set (headmaster), only parents whose student is in this academic year
  */
 export const useParents = (options = {}) => {
-  const { forCurrentUser = false } = options;
+  const { forCurrentUser = false, academicYearId = null } = options;
   const [parents, setParents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,8 +16,9 @@ export const useParents = (options = {}) => {
     try {
       setLoading(true);
       setError(null);
-      const apiMethod = forCurrentUser ? apiService.getMyParents.bind(apiService) : apiService.getParents.bind(apiService);
-      const response = await apiMethod();
+      const response = forCurrentUser
+        ? await apiService.getMyParents()
+        : await apiService.getParents({ academicYearId });
       if (response && response.status === 'SUCCESS') {
         const rawData = Array.isArray(response.data) ? response.data : [];
         const transformedData = rawData.map((parent) => {
@@ -64,7 +66,7 @@ export const useParents = (options = {}) => {
 
   useEffect(() => {
     fetchParents();
-  }, [forCurrentUser]);
+  }, [forCurrentUser, academicYearId]);
 
   return {
     parents,

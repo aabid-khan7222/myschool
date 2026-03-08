@@ -4,6 +4,7 @@ import ParentModal from "../parentModal";
 import { all_routes } from "../../../router/all_routes";
 import { Link } from "react-router-dom";
 import { selectUser } from "../../../../core/data/redux/authSlice";
+import { selectSelectedAcademicYearId } from "../../../../core/data/redux/academicYearSlice";
 import { getDashboardForRole } from "../../../../core/utils/roleUtils";
 import { Modal } from "react-bootstrap";
 import ImageWithBasePath from "../../../../core/common/imageWithBasePath";
@@ -27,9 +28,10 @@ const ParentList = () => {
   const routes = all_routes;
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   const user = useSelector(selectUser);
+  const academicYearId = useSelector(selectSelectedAcademicYearId);
   const role = user?.role || "Admin";
   const isParentRole = (role || "").toLowerCase() === "parent";
-  const { parents, loading, error, refetch } = useParents({ forCurrentUser: isParentRole });
+  const { parents, loading, error, refetch } = useParents({ forCurrentUser: isParentRole, academicYearId: isParentRole ? null : academicYearId });
   const dashboardRoute = getDashboardForRole(role);
 
   // useParents already returns parent records transformed into the

@@ -30,10 +30,16 @@ function mapRow(row) {
 }
 
 // Returns ALL syllabus (Active + Inactive) - no status filter
+// Optional query: academic_year_id - filter by academic year
 const getAllSyllabus = async (req, res) => {
   try {
-    const result = await query(`
-      SELECT
+    const academicYearId = req.query.academic_year_id ? parseInt(req.query.academic_year_id, 10) : null;
+    const hasYearFilter = academicYearId != null && !Number.isNaN(academicYearId);
+    const yearWhere = hasYearFilter ? ' WHERE s.academic_year_id = $1' : '';
+    const params = hasYearFilter ? [academicYearId] : [];
+
+    const result = await query(
+      `SELECT
         s.id,
         s.class_id,
         s.section_id,
@@ -47,9 +53,10 @@ const getAllSyllabus = async (req, res) => {
         s.modified_at
       FROM class_syllabus s
       LEFT JOIN classes c ON c.id = s.class_id
-      LEFT JOIN sections sec ON sec.id = s.section_id
-      ORDER BY s.id ASC
-    `);
+      LEFT JOIN sections sec ON sec.id = s.section_id${yearWhere}
+      ORDER BY s.id ASC`,
+      params
+    );
     const data = result.rows.map(mapRow);
     res.status(200).json({
       status: 'SUCCESS',

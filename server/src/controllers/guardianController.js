@@ -1,4 +1,5 @@
-const { query } = require('../config/database');
+const { query, executeTransaction } = require('../config/database');
+const { createGuardianUser } = require('../utils/createPersonUser');
 
 // Create new guardian
 const createGuardian = async (req, res) => {
@@ -22,32 +23,47 @@ const createGuardian = async (req, res) => {
       });
     }
 
-    const result = await query(`
-      INSERT INTO guardians (
-        student_id, guardian_type, first_name, last_name, relation, occupation,
-        phone, email, address, office_address, is_primary_contact, is_emergency_contact,
-        is_active, created_at, modified_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true, NOW(), NOW())
-      RETURNING *
-    `, [
-      student_id,
-      guardian_type || null,
-      first_name,
-      last_name,
-      relation || null,
-      occupation || null,
-      phone,
-      email || null,
-      address || null,
-      office_address || null,
-      is_primary_contact === true || is_primary_contact === 'true',
-      is_emergency_contact === true || is_emergency_contact === 'true'
-    ]);
+    const guardianRow = await executeTransaction(async (client) => {
+      const result = await client.query(`
+        INSERT INTO guardians (
+          student_id, guardian_type, first_name, last_name, relation, occupation,
+          phone, email, address, office_address, is_primary_contact, is_emergency_contact,
+          is_active, created_at, modified_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true, NOW(), NOW())
+        RETURNING *
+      `, [
+        student_id,
+        guardian_type || null,
+        first_name,
+        last_name,
+        relation || null,
+        occupation || null,
+        phone,
+        email || null,
+        address || null,
+        office_address || null,
+        is_primary_contact === true || is_primary_contact === 'true',
+        is_emergency_contact === true || is_emergency_contact === 'true'
+      ]);
+      const row = result.rows[0];
+      try {
+        const guardianUserId = await createGuardianUser(client, {
+          first_name, last_name, phone, email: email || null
+        });
+        if (guardianUserId) {
+          await client.query('UPDATE guardians SET user_id = $1, modified_at = NOW() WHERE id = $2', [guardianUserId, row.id]);
+          row.user_id = guardianUserId;
+        }
+      } catch (e) {
+        console.warn('createGuardian: could not create guardian user:', e.message);
+      }
+      return row;
+    });
 
     res.status(201).json({
       status: 'SUCCESS',
       message: 'Guardian created successfully',
-      data: result.rows[0]
+      data: guardianRow
     });
   } catch (error) {
     console.error('Error creating guardian:', error);
@@ -128,11 +144,16 @@ const updateGuardian = async (req, res) => {
   }
 };
 
-// Get all guardians
+// Get all guardians (optional query: academic_year_id - only guardians whose student is in that year)
 const getAllGuardians = async (req, res) => {
   try {
-    const result = await query(`
-      SELECT
+    const academicYearId = req.query.academic_year_id ? parseInt(req.query.academic_year_id, 10) : null;
+    const hasYearFilter = academicYearId != null && !Number.isNaN(academicYearId);
+    const yearWhere = hasYearFilter ? ' AND s.academic_year_id = $1' : '';
+    const params = hasYearFilter ? [academicYearId] : [];
+
+    const result = await query(
+      `SELECT
         g.id,
         g.student_id,
         g.guardian_type,
@@ -152,9 +173,10 @@ const getAllGuardians = async (req, res) => {
       LEFT JOIN students s ON g.student_id = s.id
       LEFT JOIN classes c ON s.class_id = c.id
       LEFT JOIN sections sec ON s.section_id = sec.id
-      WHERE s.is_active = true
-      ORDER BY s.first_name ASC, s.last_name ASC
-    `);
+      WHERE s.is_active = true${yearWhere}
+      ORDER BY s.first_name ASC, s.last_name ASC`,
+      params
+    );
     
     res.status(200).json({
       status: 'SUCCESS',

@@ -2,6 +2,7 @@ const { query, executeTransaction } = require('../config/database');
 const { parsePagination } = require('../utils/pagination');
 const { ROLES } = require('../config/roles');
 const { getParentsForUser } = require('../utils/parentUserMatch');
+const { createStudentUser, createParentUser, createGuardianUser } = require('../utils/createPersonUser');
 
 // Create new student
 const createStudent = async (req, res) => {
@@ -62,6 +63,7 @@ const createStudent = async (req, res) => {
       }
 
       let result;
+      await client.query('SAVEPOINT student_insert');
       try {
         // Primary path: for schemas using correct "religion_id" column and new address columns
         result = await client.query(`
@@ -83,7 +85,8 @@ const createStudent = async (req, res) => {
           RETURNING *
         `, [
           academic_year_id || null, admission_number, admission_date || null, roll_number || null,
-          first_name, last_name, class_id || null, section_id || null, gender || null,
+          first_name, last_name, class_id || null, section_id || null,
+          (gender && typeof gender === 'string' && ['male','female','other'].includes(gender.trim().toLowerCase()) ? gender.trim().toLowerCase() : null),
           date_of_birth || null, blood_group_id || null, house_id || null, religion_id || null,
           cast_id || null, phone || null, email || null, mother_tongue_id || null,
           status === 'Active' ? true : false,
@@ -102,6 +105,7 @@ const createStudent = async (req, res) => {
           unique_student_ids || null, pen_number || null, aadhaar_no || null
         ]);
       } catch (e) {
+        await client.query('ROLLBACK TO SAVEPOINT student_insert');
         // Fallback path: handle legacy schemas that use "reigion_id" and/or lack new address columns
         const hasReligionError = e.message && (e.message.includes('religion_id') || e.message.includes('reigion'));
         const useLegacyReligion = hasReligionError;
@@ -125,7 +129,8 @@ const createStudent = async (req, res) => {
           RETURNING *
         `, [
           academic_year_id || null, admission_number, admission_date || null, roll_number || null,
-          first_name, last_name, class_id || null, section_id || null, gender || null,
+          first_name, last_name, class_id || null, section_id || null,
+          (gender && typeof gender === 'string' && ['male','female','other'].includes(gender.trim().toLowerCase()) ? gender.trim().toLowerCase() : null),
           date_of_birth || null, blood_group_id || null, house_id || null, religion_id || null,
           cast_id || null, phone || null, email || null, mother_tongue_id || null,
           status === 'Active' ? true : false,
@@ -144,6 +149,27 @@ const createStudent = async (req, res) => {
       }
 
       const studentRow = result.rows[0];
+
+      // Create student user and link (phone/email for login)
+      const stuPhone = (phone || '').toString().trim();
+      const stuEmail = (email || '').toString().trim();
+      if (stuPhone || stuEmail || admission_number) {
+        try {
+          const studentUserId = await createStudentUser(client, {
+            admission_number,
+            first_name,
+            last_name,
+            phone: stuPhone || null,
+            email: stuEmail || null
+          });
+          if (studentUserId) {
+            await client.query('UPDATE students SET user_id = $1, modified_at = NOW() WHERE id = $2', [studentUserId, studentRow.id]);
+            studentRow.user_id = studentUserId;
+          }
+        } catch (e) {
+          console.warn('createStudent: could not create student user:', e.message);
+        }
+      }
 
       if (hasParentInfo) {
         const parentResult = await client.query(`
@@ -165,6 +191,22 @@ const createStudent = async (req, res) => {
         `, [parentResult.rows[0].id, studentRow.id]);
 
         studentRow.parent_id = parentResult.rows[0].id;
+
+        // Create parent user and link
+        const parentEmail = (father_email || mother_email || '').toString().trim();
+        const parentPhone = (father_phone || mother_phone || '').toString().trim();
+        if (parentEmail || parentPhone) {
+          try {
+            const parentUserId = await createParentUser(client, {
+              father_name, father_email, father_phone, mother_name, mother_email, mother_phone, student_id: studentRow.id
+            });
+            if (parentUserId) {
+              await client.query('UPDATE parents SET user_id = $1, updated_at = NOW() WHERE id = $2', [parentUserId, parentResult.rows[0].id]);
+            }
+          } catch (e) {
+            console.warn('createStudent: could not create parent user:', e.message);
+          }
+        }
       }
 
       if (hasGuardianInfo) {
@@ -190,6 +232,25 @@ const createStudent = async (req, res) => {
         `, [guardianResult.rows[0].id, studentRow.id]);
 
         studentRow.guardian_id = guardianResult.rows[0].id;
+
+        // Create guardian user and link
+        const gPhone = (guardian_phone || '').toString().trim();
+        const gEmail = (guardian_email || '').toString().trim();
+        if (gPhone || gEmail) {
+          try {
+            const guardianUserId = await createGuardianUser(client, {
+              first_name: guardian_first_name || 'Guardian',
+              last_name: guardian_last_name || '',
+              phone: gPhone || null,
+              email: gEmail || null
+            });
+            if (guardianUserId) {
+              await client.query('UPDATE guardians SET user_id = $1, modified_at = NOW() WHERE id = $2', [guardianUserId, guardianResult.rows[0].id]);
+            }
+          } catch (e) {
+            console.warn('createStudent: could not create guardian user:', e.message);
+          }
+        }
       }
 
       // Sync current & permanent address into addresses table (per-user address book)
@@ -244,9 +305,10 @@ const createStudent = async (req, res) => {
     if (error.statusCode === 400) {
       return res.status(400).json({ status: 'ERROR', message: process.env.NODE_ENV === 'production' ? 'Invalid request' : error.message });
     }
+    const devMsg = process.env.NODE_ENV !== 'production' ? (error.message || 'Failed to create student') : 'Failed to create student';
     res.status(500).json({
       status: 'ERROR',
-      message: 'Failed to create student'
+      message: devMsg
     });
   }
 };
@@ -364,7 +426,8 @@ const updateStudent = async (req, res) => {
           RETURNING *
         `, [
           academic_year_id || null, admission_number, admission_date || null, roll_number || null,
-          first_name, last_name, class_id || null, section_id || null, gender || null,
+          first_name, last_name, class_id || null, section_id || null,
+          (gender && typeof gender === 'string' && ['male','female','other'].includes(gender.trim().toLowerCase()) ? gender.trim().toLowerCase() : null),
           date_of_birth || null, blood_group_id || null, house_id || null, religion_id || null,
           cast_id || null, phone || null, email || null, mother_tongue_id || null,
           status === 'Active' ? true : false,
@@ -436,7 +499,8 @@ const updateStudent = async (req, res) => {
               RETURNING *
             `, [
               academic_year_id || null, admission_number, admission_date || null, roll_number || null,
-              first_name, last_name, class_id || null, section_id || null, gender || null,
+              first_name, last_name, class_id || null, section_id || null,
+          (gender && typeof gender === 'string' && ['male','female','other'].includes(gender.trim().toLowerCase()) ? gender.trim().toLowerCase() : null),
               date_of_birth || null, blood_group_id || null, house_id || null, religion_id || null,
               cast_id || null, phone || null, email || null, mother_tongue_id || null,
               status === 'Active' ? true : false,
@@ -508,7 +572,8 @@ const updateStudent = async (req, res) => {
             RETURNING *
           `, [
             academic_year_id || null, admission_number, admission_date || null, roll_number || null,
-            first_name, last_name, class_id || null, section_id || null, gender || null,
+            first_name, last_name, class_id || null, section_id || null,
+          (gender && typeof gender === 'string' && ['male','female','other'].includes(gender.trim().toLowerCase()) ? gender.trim().toLowerCase() : null),
             date_of_birth || null, blood_group_id || null, house_id || null, religion_id || null,
             cast_id || null, phone || null, email || null, mother_tongue_id || null,
             status === 'Active' ? true : false,

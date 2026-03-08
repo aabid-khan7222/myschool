@@ -212,7 +212,10 @@ const Header = () => {
                           className="dropdown-item d-flex align-items-center"
                           onClick={(e) => {
                             e.preventDefault();
-                            dispatch(setSelectedAcademicYear(year.id));
+                            if (selectedAcademicYearId !== year.id) {
+                              dispatch(setSelectedAcademicYear(year.id));
+                              window.location.reload();
+                            }
                           }}
                         >
                           Academic Year : {year.year_name}

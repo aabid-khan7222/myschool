@@ -3,6 +3,7 @@ import { useSelector } from "react-redux";
 import ImageWithBasePath from "../../../../core/common/imageWithBasePath";
 import ParentModal from "../parentModal";
 import { selectUser } from "../../../../core/data/redux/authSlice";
+import { selectSelectedAcademicYearId } from "../../../../core/data/redux/academicYearSlice";
 import { getDashboardForRole } from "../../../../core/utils/roleUtils";
 import PredefinedDateRanges from "../../../../core/common/datePicker";
 import { Link } from "react-router-dom";
@@ -23,9 +24,10 @@ const ParentGrid = () => {
   const routes = all_routes;
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   const user = useSelector(selectUser);
+  const academicYearId = useSelector(selectSelectedAcademicYearId);
   const role = user?.role || "Admin";
   const isParentRole = (role || "").toLowerCase() === "parent";
-  const { parents, loading, error, refetch } = useParents({ forCurrentUser: isParentRole });
+  const { parents, loading, error, refetch } = useParents({ forCurrentUser: isParentRole, academicYearId: isParentRole ? null : academicYearId });
   const dashboardRoute = getDashboardForRole(role);
 
   // useParents already returns transformed parent objects in the exact

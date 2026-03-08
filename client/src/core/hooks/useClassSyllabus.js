@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { apiService } from '../services/apiService';
 import { classSyllabus as fallbackData } from '../data/json/class-syllabus';
 
-export const useClassSyllabus = () => {
+export const useClassSyllabus = (options = {}) => {
+  const { academicYearId } = options;
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -11,7 +12,7 @@ export const useClassSyllabus = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiService.getClassSyllabus();
+      const response = await apiService.getClassSyllabus({ academicYearId });
       const list = Array.isArray(response) ? response : (response?.data ?? []);
       if (Array.isArray(list)) {
         const mapped = list.map((row, index) => ({
@@ -39,7 +40,7 @@ export const useClassSyllabus = () => {
 
   useEffect(() => {
     fetchSyllabus();
-  }, []);
+  }, [academicYearId]);
 
   return {
     data,

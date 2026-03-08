@@ -26,7 +26,7 @@ function getBadgeClass(leaveTypeName) {
 }
 
 export const useLeaveApplications = (options = {}) => {
-  const { limit = 20, studentOnly = false, parentChildren = false, studentId = null, staffId = null, canUseAdminList = false } = options;
+  const { limit = 20, studentOnly = false, parentChildren = false, studentId = null, staffId = null, canUseAdminList = false, academicYearId = null } = options;
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -47,16 +47,16 @@ export const useLeaveApplications = (options = {}) => {
           setLoading(false);
           return;
         }
-        response = await apiService.getLeaveApplications({ limit, student_id: studentId });
+        response = await apiService.getLeaveApplications({ limit, student_id: studentId, academic_year_id: academicYearId });
       } else if (staffId != null) {
         if (!canUseAdminList) {
           setList([]);
           setLoading(false);
           return;
         }
-        response = await apiService.getLeaveApplications({ limit, staff_id: staffId });
+        response = await apiService.getLeaveApplications({ limit, staff_id: staffId, academic_year_id: academicYearId });
       } else if (canUseAdminList) {
-        response = await apiService.getLeaveApplications({ limit });
+        response = await apiService.getLeaveApplications({ limit, academic_year_id: academicYearId });
       } else {
         // Role loading or non-admin - skip admin API to avoid 403
         setList([]);
@@ -142,7 +142,7 @@ export const useLeaveApplications = (options = {}) => {
 
   useEffect(() => {
     fetchList();
-  }, [limit, studentOnly, parentChildren, studentId, staffId]);
+  }, [limit, studentOnly, parentChildren, studentId, staffId, canUseAdminList, academicYearId]);
 
   return {
     leaveApplications: list,

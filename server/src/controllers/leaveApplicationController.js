@@ -435,11 +435,14 @@ const getGuardianWardLeaves = async (req, res) => {
 
 // Get leave applications for dashboard (e.g. pending or recent).
 // Optional filters: ?student_id=X, ?staff_id=X (for admin viewing specific student/teacher).
+// Optional: ?academic_year_id=X - filter student leaves by academic year.
 const getLeaveApplications = async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
     const studentId = req.query.student_id ? parseInt(req.query.student_id, 10) : null;
     const staffId = req.query.staff_id ? parseInt(req.query.staff_id, 10) : null;
+    const academicYearId = req.query.academic_year_id ? parseInt(req.query.academic_year_id, 10) : null;
+    const hasYearFilter = academicYearId != null && !Number.isNaN(academicYearId);
 
     let whereClause = '';
     const params = [];
@@ -449,6 +452,9 @@ const getLeaveApplications = async (req, res) => {
     } else if (staffId) {
       whereClause = ' WHERE la.staff_id = $1';
       params.push(staffId);
+    } else if (hasYearFilter) {
+      whereClause = ' WHERE (la.student_id IS NULL OR st.academic_year_id = $1)';
+      params.push(academicYearId);
     }
     params.push(limit);
 

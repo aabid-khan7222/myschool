@@ -3,7 +3,12 @@ import { useSelector } from 'react-redux';
 import { apiService } from '../services/apiService';
 import { selectUser } from '../data/redux/authSlice';
 
-export const useGuardians = () => {
+/**
+ * @param {Object} options
+ * @param {number|null} [options.academicYearId] - When set (headmaster), only guardians whose student is in this academic year
+ */
+export const useGuardians = (options = {}) => {
+  const { academicYearId = null } = options;
   const [guardians, setGuardians] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -36,7 +41,7 @@ export const useGuardians = () => {
       setError(null);
       const response = isGuardian
         ? await apiService.getCurrentGuardian()
-        : await apiService.getGuardians();
+        : await apiService.getGuardians({ academicYearId });
       if (response.status === 'SUCCESS') {
         const raw = response.data || [];
         const data = Array.isArray(raw) ? raw : [raw];
@@ -55,7 +60,7 @@ export const useGuardians = () => {
 
   useEffect(() => {
     fetchGuardians();
-  }, [isGuardian]);
+  }, [isGuardian, academicYearId]);
 
   return {
     guardians,

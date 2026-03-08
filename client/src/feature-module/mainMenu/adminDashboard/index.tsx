@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSelector } from "react-redux";
 import ReactApexChart from "react-apexcharts";
 import { Link } from "react-router-dom";
 import CountUp from "react-countup";
@@ -12,6 +13,7 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import AdminDashboardModal from "./adminDashboardModal";
 import { apiService } from "../../../core/services/apiService";
+import { selectSelectedAcademicYearId } from "../../../core/data/redux/academicYearSlice";
 import { useDashboardStats } from "../../../core/hooks/useDashboardStats";
 import { useLeaveApplications } from "../../../core/hooks/useLeaveApplications";
 import { useCurrentUser } from "../../../core/hooks/useCurrentUser";
@@ -30,6 +32,7 @@ import {
 
 const AdminDashboard = () => {
   const routes = all_routes;
+  const academicYearId = useSelector(selectSelectedAcademicYearId);
   const [leaveActionId, setLeaveActionId] = useState<number | null>(null);
 
   const handleLeaveApprove = async (id: number) => {
@@ -56,19 +59,19 @@ const AdminDashboard = () => {
     setLeaveActionId(null);
   };
   const [date, setDate] = useState<Nullable<Date>>(null);
-  const { stats } = useDashboardStats();
-  const { leaveApplications, loading: leaveLoading, error: leaveError, refetch: refetchLeaves } = useLeaveApplications({ limit: 10, canUseAdminList: true });
+  const { stats } = useDashboardStats({ academicYearId });
+  const { leaveApplications, loading: leaveLoading, error: leaveError, refetch: refetchLeaves } = useLeaveApplications({ limit: 10, canUseAdminList: true, academicYearId });
   const { user: currentUser, loading: userLoading } = useCurrentUser();
   const { upcomingEvents, loading: eventsLoading, refetch: refetchEvents } = useEvents({ forDashboard: true, limit: 10 });
-  const { routine: classRoutine, loading: routineLoading, refetch: refetchRoutine } = useDashboardClassRoutine({ limit: 5 });
+  const { routine: classRoutine, loading: routineLoading, refetch: refetchRoutine } = useDashboardClassRoutine({ limit: 5, academicYearId });
   const { performers: bestPerformers } = useDashboardBestPerformers({ limit: 3 });
-  const { students: starStudents } = useDashboardStarStudents({ limit: 3 });
-  const { summary: performanceSummary } = useDashboardPerformanceSummary();
-  const { subjects: topSubjects } = useDashboardTopSubjects();
-  const { activity: recentActivity } = useDashboardRecentActivity();
+  const { students: starStudents } = useDashboardStarStudents({ limit: 3, academicYearId });
+  const { summary: performanceSummary } = useDashboardPerformanceSummary({ academicYearId });
+  const { subjects: topSubjects } = useDashboardTopSubjects({ academicYearId });
+  const { activity: recentActivity } = useDashboardRecentActivity({ academicYearId });
   const { notices: dashboardNotices } = useDashboardNoticeBoard({ limit: 5 });
-  const { feeStats } = useDashboardFeeStats();
-  const { financeSummary } = useDashboardFinanceSummary();
+  const { feeStats } = useDashboardFeeStats({ academicYearId });
+  const { financeSummary } = useDashboardFinanceSummary({ academicYearId });
   function SampleNextArrow(props: any) {
     const { style, onClick } = props;
     return (
