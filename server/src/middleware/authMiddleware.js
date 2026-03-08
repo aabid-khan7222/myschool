@@ -19,12 +19,15 @@ const protectApi = (req, res, next) => {
 };
 
 /**
- * Verify JWT token and attach user to request
+ * Verify JWT token and attach user to request.
+ * Accepts token from: (1) HTTP-only cookie auth_token, (2) Authorization: Bearer <token>
  */
 const authenticate = (req, res, next) => {
   try {
+    const cookieToken = req.cookies?.auth_token || null;
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const bearerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const token = cookieToken || bearerToken;
 
     if (!token) {
       return errorResponse(res, 401, 'Access denied. No token provided.');

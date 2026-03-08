@@ -1,5 +1,4 @@
-
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import ImageWithBasePath from '../../../../core/common/imageWithBasePath'
 import { all_routes } from '../../../router/all_routes'
@@ -17,6 +16,7 @@ interface StudentDetailsLocationState {
 
 const StudentDetails = () => {
   const routes = all_routes
+  const { id: paramId } = useParams<{ id: string }>()
   const location = useLocation()
   const state = location.state as StudentDetailsLocationState | null
   const { user: currentUser } = useCurrentUser()
@@ -26,7 +26,7 @@ const StudentDetails = () => {
   const role = (cu?.role || '').toString().toLowerCase()
   const isStudentRole = role === 'student'
 
-  const studentId = state?.studentId ?? state?.student?.id ?? (isStudentRole && cs ? cs.id : null)
+  const studentId = paramId != null ? (Number(paramId) || null) : state?.studentId ?? state?.student?.id ?? (isStudentRole && cs ? cs.id : null)
   const [student, setStudent] = useState<any>(state?.student ?? (isStudentRole ? currentStudent : null))
   const [loading, setLoading] = useState(
     (!!studentId && !state?.student && !(isStudentRole && currentStudent)) ||
@@ -115,6 +115,7 @@ const StudentDetails = () => {
   const currentAddress = student.current_address ?? student.address ?? 'N/A'
   const permanentAddress = student.permanent_address ?? 'N/A'
   const previousSchool = student.previous_school ?? 'N/A'
+  const previousSchoolAddress = student.previous_school_address ?? 'N/A'
 
   return (
     <>
@@ -136,7 +137,7 @@ const StudentDetails = () => {
               {/* List */}
               <ul className="nav nav-tabs nav-tabs-bottom mb-4">
                 <li>
-                  <Link to={routes.studentDetail} className="nav-link active">
+                  <Link to={studentId ? `${routes.studentDetail}/${studentId}` : routes.studentDetail} className="nav-link active">
                     <i className="ti ti-school me-2" />
                     Student Details
                   </Link>
@@ -437,7 +438,7 @@ const StudentDetails = () => {
                         <p className="text-dark fw-medium mb-1">
                           School Address
                         </p>
-                        <p>N/A</p>
+                        <p>{previousSchoolAddress}</p>
                       </div>
                     </div>
                   </div>

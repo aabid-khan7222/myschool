@@ -94,7 +94,7 @@ const GuardianList = () => {
       render: (text: string, record: any) => (
         <div className="d-flex align-items-center">
           <Link
-            to={routes.studentDetail}
+            to={record.student_id != null ? `${routes.studentDetail}/${record.student_id}` : routes.guardiansList}
             state={record.student_id != null ? { studentId: record.student_id } : undefined}
             className="avatar avatar-md"
           >
@@ -107,7 +107,7 @@ const GuardianList = () => {
           <div className="ms-2">
             <p className="text-dark mb-0">
               <Link
-                to={routes.studentDetail}
+                to={record.student_id != null ? `${routes.studentDetail}/${record.student_id}` : routes.guardiansList}
                 state={record.student_id != null ? { studentId: record.student_id } : undefined}
               >
                 {text}
@@ -477,7 +477,7 @@ const GuardianList = () => {
                   <div className="ms-2">
                     <p className="mb-0">
                       <Link
-                        to={routes.studentDetail}
+                        to={selectedGuardian.student_id != null ? `${routes.studentDetail}/${selectedGuardian.student_id}` : routes.guardiansList}
                         state={selectedGuardian.student_id != null ? { studentId: selectedGuardian.student_id } : undefined}
                       >
                         {selectedGuardian.Child}
@@ -505,7 +505,7 @@ const GuardianList = () => {
                     Add Fees
                   </Link>
                   <Link
-                    to={routes.studentDetail}
+                    to={selectedGuardian.student_id != null ? `${routes.studentDetail}/${selectedGuardian.student_id}` : routes.guardiansList}
                     state={selectedGuardian.student_id != null ? { studentId: selectedGuardian.student_id } : undefined}
                     className="btn btn-primary mb-3"
                   >

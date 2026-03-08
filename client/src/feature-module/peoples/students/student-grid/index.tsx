@@ -267,13 +267,13 @@ const StudentGrid = () => {
             </div>
           </div>
         ) : (
-          transformedData.map((student: any) => (
-            <div key={student.id} className="col-xxl-3 col-xl-4 col-md-6 d-flex">
+          transformedData.map((student: any, idx: number) => (
+            <div key={`student-${idx}-${student.id ?? 'u'}`} className="col-xxl-3 col-xl-4 col-md-6 d-flex">
               <div className="card flex-fill">
                 <div className="card-header d-flex align-items-center justify-content-between">
                   <Link
-                    to={routes.studentDetail}
-                    state={{ studentId: student.id, student: student.student }}
+                    to={student.id ? `${routes.studentDetail}/${student.id}` : routes.studentList}
+                    state={student.student ? { student: student.student } : undefined}
                     className="link-primary"
                   >
                     {student.admission_number}
@@ -296,8 +296,8 @@ const StudentGrid = () => {
                         <li>
                           <Link
                             className="dropdown-item rounded-1"
-                            to={routes.studentDetail}
-                            state={{ studentId: student.id, student: student.student }}
+                            to={student.id ? `${routes.studentDetail}/${student.id}` : routes.studentList}
+                            state={student.student ? { student: student.student } : undefined}
                           >
                             <i className="ti ti-menu me-2" />
                             View Student
@@ -340,8 +340,8 @@ const StudentGrid = () => {
                   <div className="bg-light-300 rounded-2 p-3 mb-3">
                     <div className="d-flex align-items-center">
                       <Link
-                        to={routes.studentDetail}
-                        state={{ studentId: student.id, student: student.student }}
+                        to={student.id ? `${routes.studentDetail}/${student.id}` : routes.studentList}
+                        state={student.student ? { student: student.student } : undefined}
                         className="avatar avatar-lg flex-shrink-0"
                       >
                         <ImageWithBasePath
@@ -354,8 +354,8 @@ const StudentGrid = () => {
                       <div className="ms-2">
                         <h5 className="mb-0">
                           <Link
-                            to={routes.studentDetail}
-                            state={{ studentId: student.id, student: student.student }}
+                            to={student.id ? `${routes.studentDetail}/${student.id}` : routes.studentList}
+                            state={student.student ? { student: student.student } : undefined}
                           >
                             {student.full_name}
                           </Link>

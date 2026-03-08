@@ -131,7 +131,7 @@ export const SidebarData = [
           { label: "Students List", link: routes.studentList },
           {
             label: "Students Details",
-            link: routes.studentDetail,
+            link: routes.studentList,
             subLink1: routes.studentLibrary,
             subLink2: routes.studentResult,
             subLink3: routes.studentFees,

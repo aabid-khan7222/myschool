@@ -10,16 +10,14 @@ export const useClasses = (academicYearId = null) => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching classes...');
-      
+
       let response;
       if (academicYearId) {
         response = await apiService.getClassesByAcademicYear(academicYearId);
       } else {
         response = await apiService.getClasses();
       }
-      
-      console.log('Classes response:', response);
+
       setClasses(response.data);
     } catch (err) {
       console.error('Error fetching classes:', err);

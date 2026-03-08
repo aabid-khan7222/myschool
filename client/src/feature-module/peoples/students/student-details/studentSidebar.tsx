@@ -25,6 +25,9 @@ interface StudentSidebarProps {
     sibiling_2?: string | null;
     sibiling_1_class?: string | null;
     sibiling_2_class?: string | null;
+    unique_student_ids?: string | null;
+    pen_number?: string | null;
+    aadhaar_no?: string | null;
     hostel_id?: number | null;
     hostel_room_id?: number | null;
     hostel_name?: string | null;
@@ -107,7 +110,7 @@ const StudentSidebar = ({ student }: StudentSidebarProps) => {
               <dt className="col-6 fw-medium text-dark mb-3">Blood Group</dt>
               <dd className="col-6 mb-3">{bloodGroup}</dd>
               {/* House removed as per requirements; address section already shows location */}
-              <dt className="col-6 fw-medium text-dark mb-3">Reigion</dt>
+              <dt className="col-6 fw-medium text-dark mb-3">Religion</dt>
               <dd className="col-6 mb-3">{religion}</dd>
               <dt className="col-6 fw-medium text-dark mb-3">Caste</dt>
               <dd className="col-6 mb-3">{caste}</dd>
@@ -115,6 +118,12 @@ const StudentSidebar = ({ student }: StudentSidebarProps) => {
               <dd className="col-6 mb-3">{caste}</dd>
               <dt className="col-6 fw-medium text-dark mb-3">Mother tongue</dt>
               <dd className="col-6 mb-3">{motherTongue}</dd>
+              <dt className="col-6 fw-medium text-dark mb-3">Unique Student ID (Saral)</dt>
+              <dd className="col-6 mb-3">{student?.unique_student_ids ?? 'N/A'}</dd>
+              <dt className="col-6 fw-medium text-dark mb-3">Pen Number (UDISE)</dt>
+              <dd className="col-6 mb-3">{student?.pen_number ?? 'N/A'}</dd>
+              <dt className="col-6 fw-medium text-dark mb-3">Aadhar Number</dt>
+              <dd className="col-6 mb-3">{student?.aadhaar_no ?? 'N/A'}</dd>
               <dt className="col-6 fw-medium text-dark mb-3">Class &amp; Section</dt>
               <dd className="col-6 mb-3">{classSection}</dd>
             </dl>

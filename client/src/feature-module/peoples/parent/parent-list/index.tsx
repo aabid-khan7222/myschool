@@ -97,7 +97,7 @@ const ParentList = () => {
       render: (text: string, record: any) => (
         <div className="d-flex align-items-center">
           <Link
-            to={routes.studentDetail}
+            to={record.student_id != null ? `${routes.studentDetail}/${record.student_id}` : routes.parentList}
             state={record.student_id != null ? { studentId: record.student_id } : undefined}
             className="avatar avatar-md"
           >
@@ -110,7 +110,7 @@ const ParentList = () => {
           <div className="ms-2">
             <p className="text-dark mb-0">
               <Link
-                to={routes.studentDetail}
+                to={record.student_id != null ? `${routes.studentDetail}/${record.student_id}` : routes.parentList}
                 state={record.student_id != null ? { studentId: record.student_id } : undefined}
               >
                 {text}
@@ -473,7 +473,7 @@ const ParentList = () => {
               <div className="d-flex align-items-center justify-content-between flex-wrap">
                 <div className="d-flex align-items-center mb-3">
                   <Link
-                    to={routes.studentDetail}
+                    to={selectedParent.student_id != null ? `${routes.studentDetail}/${selectedParent.student_id}` : routes.parentList}
                     state={selectedParent.student_id != null ? { studentId: selectedParent.student_id } : undefined}
                     className="avatar"
                   >
@@ -486,7 +486,7 @@ const ParentList = () => {
                   <div className="ms-2">
                     <p className="mb-0">
                       <Link
-                        to={routes.studentDetail}
+                        to={selectedParent.student_id != null ? `${routes.studentDetail}/${selectedParent.student_id}` : routes.parentList}
                         state={selectedParent.student_id != null ? { studentId: selectedParent.student_id } : undefined}
                       >
                         {selectedParent.Child}
@@ -514,7 +514,7 @@ const ParentList = () => {
                     Add Fees
                   </Link>
                   <Link
-                    to={routes.studentDetail}
+                    to={selectedParent.student_id != null ? `${routes.studentDetail}/${selectedParent.student_id}` : routes.parentList}
                     state={selectedParent.student_id != null ? { studentId: selectedParent.student_id } : undefined}
                     className="btn btn-primary mb-3"
                   >

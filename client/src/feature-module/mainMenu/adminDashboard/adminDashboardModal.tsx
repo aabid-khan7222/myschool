@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import Select from "react-select";
 import type { SingleValue } from 'react-select';
 import { DatePicker, TimePicker } from 'antd';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { apiService } from '../../../core/services/apiService';
+import { selectUser } from '../../../core/data/redux/authSlice';
 
 type SelectOption = { value: string; label: string };
 
@@ -14,6 +16,8 @@ interface AdminDashboardModalProps {
 }
 
 const AdminDashboardModal = ({ refetchRoutine, refetchEvents }: AdminDashboardModalProps) => {
+    const user = useSelector(selectUser);
+    const isTeacherRole = (user?.role ?? '').trim().toLowerCase() === 'teacher';
     const [activeContent, setActiveContent] = useState('');
     const [allTeacher, setAllTeacher] = useState<SelectOption[]>([{ value: "", label: "Loading..." }]);
     const [allSection, setAllSection] = useState<SelectOption[]>([{ value: "", label: "Loading..." }]);
@@ -42,14 +46,16 @@ const AdminDashboardModal = ({ refetchRoutine, refetchEvents }: AdminDashboardMo
         (async () => {
             try {
                 const fetchTeachers = async () => {
-                    try {
-                        const me = await apiService.getCurrentTeacher();
-                        if (me?.status === 'SUCCESS' && me.data) {
-                            const t = me.data as { id: number; first_name?: string; last_name?: string };
-                            return { status: 'SUCCESS' as const, data: [t] };
+                    if (isTeacherRole) {
+                        try {
+                            const me = await apiService.getCurrentTeacher();
+                            if (me?.status === 'SUCCESS' && me.data) {
+                                const t = me.data as { id: number; first_name?: string; last_name?: string };
+                                return { status: 'SUCCESS' as const, data: [t] };
+                            }
+                        } catch {
+                            // Teacher but no record - fall back to full list
                         }
-                    } catch {
-                        // Not a teacher (404 etc) - fall back to full list for admins
                     }
                     return apiService.getTeachers();
                 };
@@ -102,7 +108,7 @@ const AdminDashboardModal = ({ refetchRoutine, refetchEvents }: AdminDashboardMo
                 setAllClassRoom([{ value: "", label: "No rooms" }]);
             }
         })();
-    }, []);
+    }, [isTeacherRole]);
 
     const handleContentChange = (event: any) => {
         setActiveContent(event.target.value);

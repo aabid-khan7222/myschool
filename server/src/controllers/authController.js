@@ -4,6 +4,21 @@ const bcrypt = require('bcryptjs');
 const serverConfig = require('../config/server');
 const { success, error: errorResponse } = require('../utils/responseHelper');
 
+const AUTH_COOKIE_NAME = 'auth_token';
+
+/** Cookie options for HTTP-only auth cookie. SameSite=None for cross-origin (e.g. Render frontend/backend). */
+const getAuthCookieOptions = () => {
+  const isProd = process.env.NODE_ENV === 'production';
+  const maxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+  return {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
+    maxAge: maxAgeMs,
+    path: '/',
+  };
+};
+
 /**
  * Login - authenticate user with username/phone and password
  * Uses bcrypt.compare with password_hash column.
@@ -125,6 +140,8 @@ const login = async (req, res) => {
       // ignore; accountDisabled stays false
     }
 
+    res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions());
+
     success(res, 200, 'Login successful', {
       token,
       user: {
@@ -213,4 +230,18 @@ const getMe = async (req, res) => {
   }
 };
 
-module.exports = { login, getMe };
+/**
+ * Logout - clear HTTP-only auth cookie
+ */
+const logout = (req, res) => {
+  const opts = getAuthCookieOptions();
+  res.clearCookie(AUTH_COOKIE_NAME, {
+    httpOnly: opts.httpOnly,
+    secure: opts.secure,
+    sameSite: opts.sameSite,
+    path: opts.path,
+  });
+  success(res, 200, 'Logged out successfully', null);
+};
+
+module.exports = { login, getMe, logout };

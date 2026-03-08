@@ -58,7 +58,7 @@ const CollectFees = () => {
       dataIndex: "student",
       render: (text: string, record: any) => (
         <div className="d-flex align-items-center">
-          <Link to={routes.studentDetail} state={record.id ? { studentId: record.id } : undefined} className="avatar avatar-md">
+          <Link to={record.id ? `${routes.studentDetail}/${record.id}` : routes.studentDetail} state={record.id ? { studentId: record.id } : undefined} className="avatar avatar-md">
             <ImageWithBasePath
               src={record.studentImage}
               className="img-fluid rounded-circle"
@@ -67,7 +67,7 @@ const CollectFees = () => {
           </Link>
           <div className="ms-2">
             <p className="text-dark mb-0">
-              <Link to={routes.studentDetail} state={record.id ? { studentId: record.id } : undefined}>{text}</Link>
+              <Link to={record.id ? `${routes.studentDetail}/${record.id}` : routes.studentDetail} state={record.id ? { studentId: record.id } : undefined}>{text}</Link>
             </p>
             <span className="fs-12">{record.studentClass}</span>
           </div>

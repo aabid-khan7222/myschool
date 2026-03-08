@@ -2,6 +2,7 @@
 require('dotenv').config();
 
 const express = require('express');
+const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -62,6 +63,7 @@ const app = express();
 
 // Middleware
 app.use(helmet()); // Security headers
+app.use(cookieParser());
 // Logging: use 'dev' (shorter), skip OPTIONS to reduce noise
 app.use(morgan('dev', { skip: (req) => req.method === 'OPTIONS' }));
 // CORS: production = trusted origins from CORS_ORIGIN; dev = localhost

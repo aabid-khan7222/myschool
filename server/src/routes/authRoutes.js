@@ -1,5 +1,5 @@
 const express = require('express');
-const { login, getMe } = require('../controllers/authController');
+const { login, getMe, logout } = require('../controllers/authController');
 const { authenticate } = require('../middleware/authMiddleware');
 const { validate } = require('../utils/validate');
 const Joi = require('joi');
@@ -13,5 +13,7 @@ const loginSchema = Joi.object({
 
 router.post('/login', validate(loginSchema), login);
 router.get('/me', authenticate, getMe);
+// Logout clears cookie - no auth required so expired tokens can still clear the cookie
+router.post('/logout', logout);
 
 module.exports = router;

@@ -23,6 +23,8 @@ import {
 
 import CommonSelect from "../../../../core/common/commonSelect";
 import TagInput from "../../../../core/common/Taginput";
+import { useSelector } from "react-redux";
+import { selectSelectedAcademicYearId } from "../../../../core/data/redux/academicYearSlice";
 import { useClasses } from "../../../../core/hooks/useClasses";
 import { useSubjects } from "../../../../core/hooks/useSubjects";
 import { useBloodGroups } from "../../../../core/hooks/useBloodGroups";
@@ -66,7 +68,8 @@ const TeacherForm = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('Active');
 
   // Lookup data from API (real data for dropdowns)
-  const { classes, loading: classesLoading, error: classesError } = useClasses();
+  const academicYearId = useSelector(selectSelectedAcademicYearId);
+  const { classes, loading: classesLoading, error: classesError } = useClasses(academicYearId);
   const { subjects, loading: subjectsLoading, error: subjectsError } = useSubjects();
   const { bloodGroups, loading: bloodGroupsLoading, error: bloodGroupsError } = useBloodGroups();
   const { hostels } = useHostels();

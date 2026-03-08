@@ -118,7 +118,7 @@ export const all_routes = {
   uiCards: "/ui-cards",
   uiCarousel: "/ui-carousel",
   uiColor: "/ui-color",
-  uiDropdowns: "ui-dropdowns",
+  uiDropdowns: "/ui-dropdowns",
 
   // pages routes
   error404: "/error-404",

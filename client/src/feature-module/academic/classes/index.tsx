@@ -1,4 +1,6 @@
 import { useRef, useState, useEffect } from "react";
+import { useSelector } from "react-redux";
+import { selectSelectedAcademicYearId } from "../../../core/data/redux/academicYearSlice";
 import { useClassesWithSections } from "../../../core/hooks/useClassesWithSections";
 import { apiService } from "../../../core/services/apiService";
 import Table from "../../../core/common/dataTable/index";
@@ -25,7 +27,8 @@ type EditRow = {
 };
 
 const Classes = () => {
-  const { classesWithSections, loading, error, refetch } = useClassesWithSections();
+  const academicYearId = useSelector(selectSelectedAcademicYearId);
+  const { classesWithSections, loading, error, refetch } = useClassesWithSections(academicYearId);
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   const editModalRef = useRef<HTMLDivElement | null>(null);
   const [editingRow, setEditingRow] = useState<EditRow | null>(null);

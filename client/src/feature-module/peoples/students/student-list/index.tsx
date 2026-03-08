@@ -73,8 +73,8 @@ const StudentList = () => {
       dataIndex: "AdmissionNo",
       render: (text: string, record: any) => (
         <Link
-          to={routes.studentDetail}
-          state={{ studentId: record.studentId, student: record.student }}
+          to={record.studentId ? `${routes.studentDetail}/${record.studentId}` : routes.studentList}
+          state={record.student ? { student: record.student } : undefined}
           className="link-primary"
         >
           {text}
@@ -94,8 +94,8 @@ const StudentList = () => {
       render: (text: string, record: any) => (
         <div className="d-flex align-items-center">
           <Link
-            to={routes.studentDetail}
-            state={{ studentId: record.studentId, student: record.student }}
+            to={record.studentId ? `${routes.studentDetail}/${record.studentId}` : routes.studentList}
+            state={record.student ? { student: record.student } : undefined}
             className="avatar avatar-md"
           >
             <ImageWithBasePath
@@ -108,8 +108,8 @@ const StudentList = () => {
           <div className="ms-2">
             <p className="text-dark mb-0">
               <Link
-                to={routes.studentDetail}
-                state={{ studentId: record.studentId, student: record.student }}
+                to={record.studentId ? `${routes.studentDetail}/${record.studentId}` : routes.studentList}
+                state={record.student ? { student: record.student } : undefined}
               >
                 {text}
               </Link>
@@ -212,8 +212,8 @@ const StudentList = () => {
                 <li>
                   <Link
                     className="dropdown-item rounded-1"
-                    to={routes.studentDetail}
-                    state={{ studentId: record.studentId, student: record.student }}
+                    to={record.studentId ? `${routes.studentDetail}/${record.studentId}` : routes.studentList}
+                    state={record.student ? { student: record.student } : undefined}
                   >
                     <i className="ti ti-menu me-2" />
                     View Student

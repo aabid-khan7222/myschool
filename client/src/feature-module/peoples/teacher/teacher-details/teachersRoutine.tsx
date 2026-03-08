@@ -77,18 +77,13 @@ const TeachersRoutine = () => {
   useEffect(() => {
     if (teacherId) {
       setRoutineLoading(true);
-      console.log('Fetching routine for teacher ID:', teacherId);
       apiService
         .getTeacherRoutine(teacherId)
         .then((res: any) => {
-          console.log('Routine API response:', res);
           if (res?.data) {
-            console.log('Routine data:', res.data.routine);
-            console.log('Breaks data:', res.data.breaks);
             setRoutine(res.data.routine || []);
             setBreaks(res.data.breaks || []);
           } else {
-            console.warn('No data in response:', res);
             setRoutine([]);
             setBreaks([]);
           }

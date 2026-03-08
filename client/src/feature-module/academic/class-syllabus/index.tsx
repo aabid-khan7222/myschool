@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import Table from "../../../core/common/dataTable/index";
 import { useClassSyllabus } from "../../../core/hooks/useClassSyllabus";
+import { useSelector } from "react-redux";
+import { selectSelectedAcademicYearId } from "../../../core/data/redux/academicYearSlice";
 import { useClasses } from "../../../core/hooks/useClasses";
 import { useSections } from "../../../core/hooks/useSections";
 import {
@@ -20,7 +22,8 @@ const ClassSyllabus = () => {
   const routes = all_routes;
   const [selectedSyllabus, setSelectedSyllabus] = useState<any>(null);
   const { data: apiData, loading, error, refetch, fallbackData } = useClassSyllabus();
-  const { classes = [] } = useClasses();
+  const academicYearId = useSelector(selectSelectedAcademicYearId);
+  const { classes = [] } = useClasses(academicYearId);
   const { sections = [] } = useSections();
 
   const data = loading ? fallbackData : (apiData ?? []);

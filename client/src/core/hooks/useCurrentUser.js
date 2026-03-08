@@ -11,15 +11,7 @@ export const useCurrentUser = () => {
       setLoading(true);
       setError(null);
 
-      // Use /auth/me - works for all roles (students, parents, etc.)
-      // getUserById requires Admin and returns 403 for non-admins
-      const token = localStorage.getItem('preskool_token');
-      if (!token) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
+      // Use /auth/me - works for all roles. Auth via cookie or Bearer token.
       const response = await apiService.getMe();
 
       if (response.status === 'SUCCESS' && response.data) {

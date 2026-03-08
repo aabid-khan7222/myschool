@@ -57,7 +57,16 @@ export function getPageTitleForRole(role: string | undefined | null): string {
 }
 
 /**
- * Check if user with given role can access the given path
+ * Path prefixes restricted to Admin only (backend USER_MANAGER_ROLES).
+ * Add more prefixes as needed to align with backend RBAC.
+ */
+const ADMIN_ONLY_PATH_PREFIXES = [
+  '/user-management/',
+];
+
+/**
+ * Check if user with given role can access the given path.
+ * Used for frontend route protection to match backend RBAC.
  */
 export function canAccessPath(path: string, role: string | undefined | null): boolean {
   const userDashboard = getDashboardForRole(role);
@@ -70,6 +79,12 @@ export function canAccessPath(path: string, role: string | undefined | null): bo
   ];
   if (dashboardPaths.includes(path)) {
     return path === userDashboard;
+  }
+  // Admin-only paths: only Admin role can access
+  const normalizedRole = (role ?? '').trim().toLowerCase();
+  const isAdmin = normalizedRole === 'admin';
+  if (ADMIN_ONLY_PATH_PREFIXES.some((prefix) => path.startsWith(prefix))) {
+    return isAdmin;
   }
   return true;
 }

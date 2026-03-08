@@ -4,6 +4,8 @@ import Table from "../../../core/common/dataTable/index";
 import { useClassSchedules } from "../../../core/hooks/useClassSchedules";
 import { useTeachers } from "../../../core/hooks/useTeachers";
 import { useClassRooms } from "../../../core/hooks/useClassRooms";
+import { useSelector } from "react-redux";
+import { selectSelectedAcademicYearId } from "../../../core/data/redux/academicYearSlice";
 import { useClasses } from "../../../core/hooks/useClasses";
 import { useSections } from "../../../core/hooks/useSections";
 import PredefinedDateRanges from "../../../core/common/datePicker";
@@ -28,7 +30,8 @@ const ClassRoutine = () => {
   const { data: apiData, loading, error, fallbackData } = useClassSchedules();
   const { teachers = [] } = useTeachers();
   const { classRooms = [] } = useClassRooms();
-  const { classes = [] } = useClasses();
+  const academicYearId = useSelector(selectSelectedAcademicYearId);
+  const { classes = [] } = useClasses(academicYearId);
   const { sections = [] } = useSections();
   // Real data only: use API result when loaded; use fallback only while loading so layout doesn't jump
   const data = loading ? fallbackData : (apiData ?? []);

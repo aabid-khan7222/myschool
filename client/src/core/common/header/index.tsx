@@ -5,13 +5,15 @@ import {
   setDataTheme,
 } from "../../data/redux/themeSettingSlice";
 import { clearAuth, selectUser } from "../../data/redux/authSlice";
+import { setSelectedAcademicYear, selectSelectedAcademicYearId } from "../../data/redux/academicYearSlice";
 import ImageWithBasePath from "../imageWithBasePath";
 import {
   setExpandMenu,
   setMobileSidebar,
 } from "../../data/redux/sidebarSlice";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { all_routes } from "../../../feature-module/router/all_routes";
+import { getDashboardForRole } from "../../utils/roleUtils";
 import { useAcademicYears } from "../../hooks/useAcademicYears";
 const Header = () => {
   const routes = all_routes;
@@ -19,21 +21,43 @@ const Header = () => {
   const navigate = useNavigate();
   const user = useSelector(selectUser);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      const { apiService } = await import("../../services/apiService");
+      await apiService.logout();
+    } catch {
+      // ignore
+    }
     dispatch(clearAuth());
     navigate(routes.login);
   };
   const dataTheme = useSelector((state: any) => state.themeSetting.dataTheme);
   const dataLayout = useSelector((state: any) => state.themeSetting.dataLayout);
   const [notificationVisible, setNotificationVisible] = useState(false);
-  
+  const selectedAcademicYearId = useSelector(selectSelectedAcademicYearId);
+
   // Fetch academic years from API
   const { academicYears, loading, error } = useAcademicYears();
-  const currentAcademicYear = academicYears?.find(year => year.is_current === true) || academicYears?.[0]; // Get current academic year or first one as fallback
+  const academicYearsList = academicYears ?? [];
+  const currentAcademicYear = academicYearsList.find((year: { is_current?: boolean }) => year.is_current === true) || academicYearsList[0];
+  const selectedYear = selectedAcademicYearId != null
+    ? academicYearsList.find((y: { id: number }) => y.id === selectedAcademicYearId)
+    : currentAcademicYear || academicYearsList[0];
+  const displayYear = selectedYear || currentAcademicYear;
 
-  // Debug: Log academic years data
-  console.log('Header - Academic years:', academicYears);
-  console.log('Header - Current academic year:', currentAcademicYear);
+  // Show Academic Year dropdown only for Admin (Headmaster) and Teacher
+  const roleNorm = (user?.role ?? '').trim().toLowerCase();
+  const showAcademicYearDropdown = roleNorm === 'admin' || roleNorm === 'teacher';
+
+  // Bootstrap: when years load and no selection stored, set to current year
+  useEffect(() => {
+    if (!showAcademicYearDropdown) return;
+    if (academicYearsList.length > 0 && selectedAcademicYearId == null && currentAcademicYear?.id) {
+      dispatch(setSelectedAcademicYear(currentAcademicYear.id));
+    }
+  }, [showAcademicYearDropdown, academicYearsList.length, selectedAcademicYearId, currentAcademicYear?.id, dispatch]);
+
+  const dashboardRoute = getDashboardForRole(user?.role);
 
   const mobileSidebar = useSelector(
     (state: any) => state.sidebarSlice.mobileSidebar
@@ -102,13 +126,13 @@ const Header = () => {
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
         >
-          <Link to={routes.adminDashboard} className="logo logo-normal">
+          <Link to={dashboardRoute} className="logo logo-normal">
             <ImageWithBasePath src="assets/img/logo.svg" alt="Logo" />
           </Link>
-          <Link to={routes.adminDashboard} className="logo-small">
+          <Link to={dashboardRoute} className="logo-small">
             <ImageWithBasePath src="assets/img/logo-small.svg" alt="Logo" />
           </Link>
-          <Link to={routes.adminDashboard} className="dark-logo">
+          <Link to={dashboardRoute} className="dark-logo">
             <ImageWithBasePath src="assets/img/logo-dark.svg" alt="Logo" />
           </Link>
           <Link id="toggle_btn" to="#" onClick={handleToggleMiniSidebar}>
@@ -150,52 +174,58 @@ const Header = () => {
             </div>
             {/* /Search */}
             <div className="d-flex align-items-center">
-              <div className="dropdown me-2">
-                <Link
-                  to="#"
-                  className="btn btn-outline-light fw-normal bg-white d-flex align-items-center p-2"
-                  data-bs-toggle="dropdown"
-                  aria-expanded="false"
-                >
-                  <i className="ti ti-calendar-due me-1" />
-                  {loading ? (
-                    "Loading..."
-                  ) : error ? (
-                    "Error loading years"
-                  ) : currentAcademicYear ? (
-                    `Academic Year : ${currentAcademicYear.year_name}`
-                  ) : (
-                    "No academic year"
-                  )}
-                </Link>
-                <div className="dropdown-menu dropdown-menu-right">
-                  {loading ? (
-                    <div className="dropdown-item d-flex align-items-center">
-                      <i className="ti ti-loader ti-spin me-2"></i>
-                      Loading academic years...
-                    </div>
-                  ) : error ? (
-                    <div className="dropdown-item d-flex align-items-center text-danger">
-                      <i className="ti ti-alert-circle me-2"></i>
-                      Error: {error}
-                    </div>
-                  ) : academicYears.length > 0 ? (
-                    academicYears.map((year) => (
-                      <Link
-                        key={year.id}
-                        to="#"
-                        className="dropdown-item d-flex align-items-center"
-                      >
-                        Academic Year : {year.year_name}
-                      </Link>
-                    ))
-                  ) : (
-                    <div className="dropdown-item d-flex align-items-center">
-                      No academic years available
-                    </div>
-                  )}
+              {showAcademicYearDropdown && (
+                <div className="dropdown me-2">
+                  <Link
+                    to="#"
+                    className="btn btn-outline-light fw-normal bg-white d-flex align-items-center p-2"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                  >
+                    <i className="ti ti-calendar-due me-1" />
+                    {loading ? (
+                      "Loading..."
+                    ) : error ? (
+                      "Error loading years"
+                    ) : displayYear ? (
+                      `Academic Year : ${displayYear.year_name}`
+                    ) : (
+                      "No academic year"
+                    )}
+                  </Link>
+                  <div className="dropdown-menu dropdown-menu-right">
+                    {loading ? (
+                      <div className="dropdown-item d-flex align-items-center">
+                        <i className="ti ti-loader ti-spin me-2"></i>
+                        Loading academic years...
+                      </div>
+                    ) : error ? (
+                      <div className="dropdown-item d-flex align-items-center text-danger">
+                        <i className="ti ti-alert-circle me-2"></i>
+                        Error: {error}
+                      </div>
+                    ) : academicYearsList.length > 0 ? (
+                      academicYearsList.map((year: { id: number; year_name?: string }) => (
+                        <Link
+                          key={year.id}
+                          to="#"
+                          className="dropdown-item d-flex align-items-center"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            dispatch(setSelectedAcademicYear(year.id));
+                          }}
+                        >
+                          Academic Year : {year.year_name}
+                        </Link>
+                      ))
+                    ) : (
+                      <div className="dropdown-item d-flex align-items-center">
+                        No academic years available
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="pe-1">
                 {!location.pathname.includes("layout-dark") && (
                   <Link

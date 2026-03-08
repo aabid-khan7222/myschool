@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiService } from '../services/apiService.js';
 
-export const useClassesWithSections = () => {
+export const useClassesWithSections = (academicYearId = null) => {
   const [classesWithSections, setClassesWithSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -10,11 +10,14 @@ export const useClassesWithSections = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching classes with sections...');
-      
+
+      const classesPromise = academicYearId
+        ? apiService.getClassesByAcademicYear(academicYearId)
+        : apiService.getClasses();
+
       // Fetch classes, sections, and subjects
       const [classesResponse, sectionsResponse, subjectsResponse] = await Promise.all([
-        apiService.getClasses(),
+        classesPromise,
         apiService.getSections(),
         apiService.getSubjects()
       ]);
@@ -82,7 +85,7 @@ export const useClassesWithSections = () => {
 
   useEffect(() => {
     fetchClassesWithSections();
-  }, []);
+  }, [academicYearId]);
 
   return {
     classesWithSections,

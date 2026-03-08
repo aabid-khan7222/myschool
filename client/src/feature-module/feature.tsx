@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router";
 import Header from "../core/common/header";
 import Sidebar from "../core/common/sidebar";
 import DashboardGuard from "../core/components/DashboardGuard";
+import RoleGuard from "../core/components/RoleGuard";
 import InactiveAccountScreen from "../core/components/InactiveAccountScreen";
 import ThemeSettings from "../core/common/theme-settings";
 import { useEffect, useState } from "react";
@@ -233,9 +234,11 @@ const Feature = () => {
           >
             <Header />
             <Sidebar />
-            <DashboardGuard>
-              <Outlet />
-            </DashboardGuard>
+            <RoleGuard>
+              <DashboardGuard>
+                <Outlet />
+              </DashboardGuard>
+            </RoleGuard>
             {!location.pathname.includes("layout") && <ThemeSettings />}
           </div>
         </>
@@ -247,9 +250,11 @@ const Feature = () => {
           >
             <Header />
             <Sidebar />
-            <DashboardGuard>
-              <Outlet />
-            </DashboardGuard>
+            <RoleGuard>
+              <DashboardGuard>
+                <Outlet />
+              </DashboardGuard>
+            </RoleGuard>
             {!location.pathname.includes("layout") && <ThemeSettings />}
           </div>
         </>

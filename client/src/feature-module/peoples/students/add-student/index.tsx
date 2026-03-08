@@ -14,6 +14,8 @@ import CommonSelect from "../../../../core/common/commonSelect";
 import { useLocation } from "react-router-dom";
 import TagInput from "../../../../core/common/Taginput";
 import { useAcademicYears } from "../../../../core/hooks/useAcademicYears";
+import { useSelector } from "react-redux";
+import { selectSelectedAcademicYearId } from "../../../../core/data/redux/academicYearSlice";
 import { useClasses } from "../../../../core/hooks/useClasses";
 import { useSections } from "../../../../core/hooks/useSections";
 import { useBloodGroups } from "../../../../core/hooks/useBloodGroups";
@@ -215,7 +217,8 @@ const AddStudent = () => {
   const { academicYears, loading: academicYearsLoading, error: academicYearsError } = useAcademicYears();
 
   // Fetch classes from API
-  const { classes, loading: classesLoading, error: classesError } = useClasses();
+  const academicYearId = useSelector(selectSelectedAcademicYearId);
+  const { classes, loading: classesLoading, error: classesError } = useClasses(academicYearId);
 
   // Fetch sections from API
   const { sections, loading: sectionsLoading, error: sectionsError } = useSections();
@@ -293,88 +296,81 @@ const AddStudent = () => {
   // Function to fetch student data for editing
   const fetchStudentData = async (studentId: string) => {
     // Prevent multiple simultaneous calls or re-fetching the same student
-    if (loadingStudent) {
-      console.log('Already loading student data, skipping duplicate call');
-      return;
-    }
-    if (fetchedStudentIdRef.current === studentId && studentData) {
-      console.log('Student data already fetched for ID:', studentId);
-      return;
-    }
+    if (loadingStudent) return;
+    if (fetchedStudentIdRef.current === studentId && studentData) return;
     try {
       setLoadingStudent(true);
       fetchedStudentIdRef.current = studentId; // Mark as fetching
       const response = await apiService.getStudentById(studentId);
-      console.log('Fetched student data:', response);
-      setStudentData(response.data);
-
-      const student = response.data;
+      const student = response?.data ?? response;
+      const raw = (typeof student === 'object' && student !== null ? student?.student ?? student : {}) as Record<string, unknown>;
+      setStudentData(raw);
       setFormData({
-        academic_year_id: student.academic_year_id ? student.academic_year_id.toString() : null,
-        unique_student_ids: student.unique_student_ids || '',
-        pen_number: student.pen_number || '',
-        aadhaar_no: student.aadhaar_no || '',
-        admission_number: student.admission_number || '',
-        admission_date: student.admission_date ? dayjs(student.admission_date) : null,
-        roll_number: student.roll_number || '',
-        status: student.is_active ? 'Active' : 'Inactive',
-        first_name: student.first_name || '',
-        last_name: student.last_name || '',
-        class_id: student.class_id ? student.class_id.toString() : null,
-        section_id: student.section_id ? student.section_id.toString() : null,
-        gender: student.gender || '',
-        date_of_birth: student.date_of_birth ? dayjs(student.date_of_birth) : null,
-        blood_group_id: student.blood_group_id ? student.blood_group_id.toString() : null,
-        house_id: student.house_id ? student.house_id.toString() : null,
-        religion_id: student.religion_id ? student.religion_id.toString() : null,
-        cast_id: student.cast_id ? student.cast_id.toString() : null,
-        phone: student.phone || '',
-        email: student.email || '',
-        mother_tongue_id: student.mother_tongue_id ? student.mother_tongue_id.toString() : null,
-        current_address: student.current_address || student.address || '',
-        permanent_address: student.permanent_address || '',
-        father_name: student.father_name || '',
-        father_email: student.father_email || '',
-        father_phone: student.father_phone || '',
-        father_occupation: student.father_occupation || '',
-        father_image_url: student.father_image_url || '',
-        mother_name: student.mother_name || '',
-        mother_email: student.mother_email || '',
-        mother_phone: student.mother_phone || '',
-        mother_occupation: student.mother_occupation || '',
-        mother_image_url: student.mother_image_url || '',
-        guardian_first_name: student.guardian_first_name || '',
-        guardian_last_name: student.guardian_last_name || '',
-        guardian_relation: student.guardian_relation || '',
-        guardian_phone: student.guardian_phone || '',
-        guardian_email: student.guardian_email || '',
-        guardian_occupation: student.guardian_occupation || '',
-        guardian_address: student.guardian_address || '',
-        sibiling_1: student.sibiling_1 || '',
-        sibiling_2: student.sibiling_2 || '',
-        sibiling_1_class: student.sibiling_1_class || '',
-        sibiling_2_class: student.sibiling_2_class || '',
-        is_transport_required: !!student.is_transport_required,
-        route_id: student.route_id != null ? student.route_id.toString() : null,
-        pickup_point_id: student.pickup_point_id != null ? student.pickup_point_id.toString() : null,
-        route_name: student.route_name || '',
-        pickup_point_name: student.pickup_point_name || '',
-        vehicle_number: student.vehicle_number || '',
-        is_hostel_required: !!student.is_hostel_required,
-        hostel_id: student.hostel_id != null ? student.hostel_id.toString() : null,
-        hostel_room_id: student.hostel_room_id != null ? student.hostel_room_id.toString() : null,
-        hostel_name: student.hostel_name || '',
-        hostel_room_number: student.hostel_room_number != null ? String(student.hostel_room_number) : '',
-        medical_condition: student.medical_condition || 'Good',
-        previous_school: student.previous_school || '',
-        previous_school_address: student.previous_school_address || '',
-        bank_name: student.bank_name || student.bankName || '',
-        branch: student.branch || student.branchName || '',
-        ifsc: student.ifsc || student.ifscCode || '',
-        other_information: student.other_information || ''
+        academic_year_id: raw.academic_year_id ? raw.academic_year_id.toString() : null,
+        unique_student_ids: String(raw.unique_student_ids ?? raw.uniqueStudentIds ?? ''),
+        pen_number: String(raw.pen_number ?? raw.penNumber ?? ''),
+        aadhaar_no: String(raw.aadhaar_no ?? raw.aadhar_no ?? raw.aadhaarNo ?? ''),
+        admission_number: raw.admission_number || '',
+        admission_date: raw.admission_date ? dayjs(raw.admission_date) : null,
+        roll_number: raw.roll_number || '',
+        status: raw.is_active ? 'Active' : 'Inactive',
+        first_name: raw.first_name || '',
+        last_name: raw.last_name || '',
+        class_id: raw.class_id ? raw.class_id.toString() : null,
+        section_id: raw.section_id ? raw.section_id.toString() : null,
+        gender: raw.gender || '',
+        date_of_birth: raw.date_of_birth ? dayjs(raw.date_of_birth) : null,
+        blood_group_id: raw.blood_group_id ? raw.blood_group_id.toString() : null,
+        house_id: raw.house_id ? raw.house_id.toString() : null,
+        religion_id: raw.religion_id ? raw.religion_id.toString() : null,
+        cast_id: raw.cast_id ? raw.cast_id.toString() : null,
+        phone: raw.phone || '',
+        email: raw.email || '',
+        mother_tongue_id: raw.mother_tongue_id ? raw.mother_tongue_id.toString() : null,
+        current_address: raw.current_address || raw.address || '',
+        permanent_address: raw.permanent_address || '',
+        father_name: raw.father_name || '',
+        father_email: raw.father_email || '',
+        father_phone: raw.father_phone || '',
+        father_occupation: raw.father_occupation || '',
+        father_image_url: raw.father_image_url || '',
+        mother_name: raw.mother_name || '',
+        mother_email: raw.mother_email || '',
+        mother_phone: raw.mother_phone || '',
+        mother_occupation: raw.mother_occupation || '',
+        mother_image_url: raw.mother_image_url || '',
+        guardian_first_name: raw.guardian_first_name || '',
+        guardian_last_name: raw.guardian_last_name || '',
+        guardian_relation: raw.guardian_relation || '',
+        guardian_phone: raw.guardian_phone || '',
+        guardian_email: raw.guardian_email || '',
+        guardian_occupation: raw.guardian_occupation || '',
+        guardian_address: raw.guardian_address || '',
+        sibiling_1: raw.sibiling_1 || '',
+        sibiling_2: raw.sibiling_2 || '',
+        sibiling_1_class: raw.sibiling_1_class || '',
+        sibiling_2_class: raw.sibiling_2_class || '',
+        is_transport_required: !!raw.is_transport_required,
+        route_id: raw.route_id != null ? raw.route_id.toString() : null,
+        pickup_point_id: raw.pickup_point_id != null ? raw.pickup_point_id.toString() : null,
+        route_name: raw.route_name || '',
+        pickup_point_name: raw.pickup_point_name || '',
+        vehicle_number: raw.vehicle_number || '',
+        is_hostel_required: !!raw.is_hostel_required,
+        hostel_id: raw.hostel_id != null ? raw.hostel_id.toString() : null,
+        hostel_room_id: raw.hostel_room_id != null ? raw.hostel_room_id.toString() : null,
+        hostel_name: raw.hostel_name || '',
+        hostel_room_number: raw.hostel_room_number != null ? String(raw.hostel_room_number) : '',
+        medical_condition: raw.medical_condition || 'Good',
+        previous_school: raw.previous_school || '',
+        previous_school_address: raw.previous_school_address || '',
+        bank_name: raw.bank_name || raw.bankName || '',
+        branch: raw.branch || raw.branchName || '',
+        ifsc: raw.ifsc || raw.ifscCode || '',
+        other_information: raw.other_information || ''
       });
-      setOwner1(parseTagList(student.known_allergies ?? student.knownAllergies));
-      setOwner2(parseTagList(student.medications ?? student.medicationsList));
+      setOwner1(parseTagList(raw.known_allergies ?? raw.knownAllergies));
+      setOwner2(parseTagList(raw.medications ?? raw.medicationsList));
     } catch (error: any) {
       console.error('Error fetching student data:', error);
       setSubmitError(error.message || 'Failed to fetch student data');
@@ -394,7 +390,6 @@ const AddStudent = () => {
         casts.length > 0 && motherTongues.length > 0 && houses.length > 0;
 
       if (dropdownsReady) {
-        console.log('Student data available, populating form data...');
         const student = studentData;
         setFormData(prev => ({
           ...prev,
@@ -419,18 +414,14 @@ const AddStudent = () => {
   const academicYearSetRef = useRef(false);
   useEffect(() => {
     if (academicYearsList.length > 0 && !formData.academic_year_id && !academicYearSetRef.current) {
-      console.log('Academic years data:', academicYearsList);
-      // Find the current academic year (where is_current = true)
       const currentAcademicYear = academicYearsList.find(year => year.is_current === true);
 
       if (currentAcademicYear) {
-        console.log('Current academic year found:', currentAcademicYear);
         setFormData(prev => ({
           ...prev,
           academic_year_id: currentAcademicYear.id.toString()
         }));
       } else {
-        console.log('No current academic year found, using first one:', academicYearsList[0]);
         // Fallback to the first academic year if no current year is found
         setFormData(prev => ({
           ...prev,
@@ -485,15 +476,10 @@ const AddStudent = () => {
 
   // Handle form field changes
   const handleInputChange = (field: string, value: any) => {
-    console.log(`handleInputChange - Field: ${field}, Value:`, value, 'Type:', typeof value);
-    setFormData(prev => {
-      const newData = {
-        ...prev,
-        [field]: value
-      };
-      console.log(`Updated form data for ${field}:`, newData);
-      return newData;
-    });
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   // Handle form submission
@@ -503,9 +489,6 @@ const AddStudent = () => {
     setSubmitError(null);
 
     try {
-      // Debug: Log the raw form data
-      console.log('Raw form data before processing:', formData);
-
       // Prepare data for submission
       const submitData = {
         ...formData,
@@ -541,6 +524,7 @@ const AddStudent = () => {
         guardian_occupation: formData.guardian_occupation || null,
         guardian_address: formData.guardian_address || null,
         current_address: formData.current_address || null,
+        permanent_address: formData.permanent_address || null,
         previous_school: formData.previous_school || null,
         previous_school_address: formData.previous_school_address || null,
         sibiling_1: formData.sibiling_1 || null,
@@ -556,32 +540,19 @@ const AddStudent = () => {
         bank_name: formData.bank_name || null,
         branch: formData.branch || null,
         ifsc: formData.ifsc || null,
+        unique_student_ids: formData.unique_student_ids || null,
+        pen_number: formData.pen_number || null,
+        aadhaar_no: formData.aadhaar_no || null,
         known_allergies: Array.isArray(owner1) ? owner1 : (owner1 ? String(owner1).split(',').map(s => s.trim()).filter(Boolean) : []),
         medications: Array.isArray(owner2) ? owner2 : (owner2 ? String(owner2).split(',').map(s => s.trim()).filter(Boolean) : [])
       };
-
-      // Debug: Log the processed submit data
-      console.log('Processed submit data:', submitData);
-      console.log('ID fields debug:', {
-        academic_year_id: formData.academic_year_id,
-        class_id: formData.class_id,
-        section_id: formData.section_id,
-        blood_group_id: formData.blood_group_id,
-        house_id: formData.house_id,
-        religion_id: formData.religion_id,
-        cast_id: formData.cast_id,
-        mother_tongue_id: formData.mother_tongue_id
-      });
 
       let response;
       if (isEdit && id) {
         // Update existing student
         response = await apiService.updateStudent(id, submitData);
-        console.log('Student updated successfully:', response);
       } else {
-        // Create new student
         response = await apiService.createStudent(submitData);
-        console.log('Student created successfully:', response);
       }
 
       // Navigate to student list on success
@@ -607,18 +578,11 @@ const AddStudent = () => {
       const defaultValue = dayjs(formattedDate);
       setIsEdit(true);
       setOwner(["English"]);
-      // owner1/owner2 (allergies, medications) are set from API in fetchStudentData when editing
       setDefaultDate(defaultValue);
-      console.log('Edit mode detected, formattedDate:', formattedDate);
 
-      // Fetch student data if ID is available and not already loaded for this ID
       if (id && fetchedStudentIdRef.current !== id && !loadingStudent) {
-        console.log('Fetching student data for ID:', id);
         fetchStudentData(id);
-      } else if (id && fetchedStudentIdRef.current === id) {
-        console.log('Student data already fetched for ID:', id);
       } else if (!id) {
-        console.log('No student ID provided for edit mode');
         setSubmitError('No student ID provided for editing');
       }
     } else {
@@ -637,7 +601,7 @@ const AddStudent = () => {
           <div className="d-md-flex d-block align-items-center justify-content-between mb-3">
             <div className="my-auto mb-2">
               <Link
-                to={id ? `${routes.studentDetail}` : routes.studentList}
+                to={id ? `${routes.studentDetail}/${id}` : routes.studentList}
                 state={id ? { studentId: id } : undefined}
                 className="btn btn-outline-secondary mb-2 d-inline-flex align-items-center"
               >

@@ -13,14 +13,6 @@ export const useHostelRooms = () => {
       const response = await apiService.getHostelRooms();
       
       if (response.status === 'SUCCESS') {
-        // Log raw data for debugging
-        console.log('=== HOSTEL ROOMS RAW DATA ===');
-        console.log('Response data:', response.data);
-        if (response.data && response.data.length > 0) {
-          console.log('First room raw data:', response.data[0]);
-          console.log('First room keys:', Object.keys(response.data[0]));
-        }
-        
         // Transform the API data to match the expected format
         const transformedData = response.data.map((room, index) => {
           // Room Type: from room_types table JOIN (already handled by COALESCE in backend)
@@ -52,18 +44,7 @@ export const useHostelRooms = () => {
             amount: formattedAmount,
             originalData: room, // Store original data for edit modal
           };
-          
-          // Log transformation for first item
-          if (index === 0) {
-            console.log('=== TRANSFORMATION DEBUG ===');
-            console.log('Raw room:', room);
-            console.log('Room Type value:', roomTypeValue);
-            console.log('No Of Bed value:', noOfBedValue);
-            console.log('Cost value:', costValue);
-            console.log('Formatted amount:', formattedAmount);
-            console.log('Transformed:', transformed);
-          }
-          
+
           return transformed;
         });
         

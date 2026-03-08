@@ -281,8 +281,8 @@ const StudentDasboard = () => {
                             </span>
                           </div>
                           <Link
-                            to={routes.studentDetail}
-                            state={{ studentId: student?.id, student }}
+                            to={student?.id ? `${routes.studentDetail}/${student.id}` : routes.studentDashboard}
+                            state={student ? { student } : undefined}
                             className="btn btn-primary"
                           >
                             View Profile

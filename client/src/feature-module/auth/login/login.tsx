@@ -3,7 +3,7 @@ import ImageWithBasePath from "../../../core/common/imageWithBasePath";
 import { Link, useNavigate } from "react-router-dom";
 import { all_routes } from "../../router/all_routes";
 import { useDispatch, useSelector } from "react-redux";
-import { setAuth } from "../../../core/data/redux/authSlice";
+import { setAuth, selectUser } from "../../../core/data/redux/authSlice";
 import { apiService } from "../../../core/services/apiService";
 import { getDashboardForRole } from "../../../core/utils/roleUtils";
 
@@ -21,24 +21,21 @@ const Login = () => {
     setPasswordVisible((prevState) => !prevState);
   };
   const isAuthenticated = useSelector((state: any) => state.auth?.isAuthenticated);
+  const user = useSelector(selectUser);
 
   useEffect(() => {
     localStorage.setItem("menuOpened", "Dashboard");
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      try {
-        const u = localStorage.getItem("preskool_user");
-        const user = u ? JSON.parse(u) : null;
-        const role = user?.role || "Admin";
-        const dashboard = getDashboardForRole(role);
-        navigate(dashboard);
-      } catch {
-        navigate(routes.adminDashboard);
-      }
+    if (isAuthenticated && user) {
+      const role = user.role || "Admin";
+      const dashboard = getDashboardForRole(role);
+      navigate(dashboard);
+    } else if (isAuthenticated) {
+      navigate(routes.adminDashboard);
     }
-  }, [isAuthenticated, navigate, routes.adminDashboard]);
+  }, [isAuthenticated, user, navigate, routes.adminDashboard]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

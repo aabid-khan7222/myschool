@@ -315,10 +315,10 @@ const StudentModals = ({ studentId, onLeaveApplied, student, feeData, onFeeColle
                       <div className="row align-items-center">
                         <div className="col-lg-3 col-md-6">
                           <div className="d-flex align-items-center mb-3">
-                            <Link to={routes.studentDetail} state={student?.id ? { studentId: student.id, student } : undefined} className="avatar avatar-md me-2">
+                            <Link to={student?.id ? `${routes.studentDetail}/${student.id}` : routes.studentList} state={student ? { student } : undefined} className="avatar avatar-md me-2">
                               <ImageWithBasePath src={student.photo_url || 'assets/img/students/student-01.jpg'} alt="img" />
                             </Link>
-                            <Link to={routes.studentDetail} state={student?.id ? { studentId: student.id, student } : undefined} className="d-flex flex-column">
+                            <Link to={student?.id ? `${routes.studentDetail}/${student.id}` : routes.studentList} state={student ? { student } : undefined} className="d-flex flex-column">
                               <span className="text-dark">{[student.first_name, student.last_name].filter(Boolean).join(' ') || 'N/A'}</span>
                               {student.class_name && student.section_name ? `${student.class_name}, ${student.section_name}` : student.class_name || student.section_name || '-'}
                             </Link>

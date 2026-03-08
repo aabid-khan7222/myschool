@@ -97,28 +97,15 @@ const ClassSection = () => {
 
     try {
       setIsUpdating(true);
-      console.log('=== UPDATING SECTION ===');
-      console.log('Section ID:', selectedSection.id);
-      console.log('Update data:', {
-        section_name: editSectionName.trim(),
-        is_active: editSectionStatus,
-        is_active_type: typeof editSectionStatus
-      });
 
       const updateData = {
         section_name: editSectionName.trim(),
         is_active: editSectionStatus
       };
 
-      console.log('Calling apiService.updateSection...');
       const response = await apiService.updateSection(selectedSection.id, updateData);
-      
-      console.log('Update response:', response);
-      console.log('Response status:', response?.status);
 
       if (response && response.status === 'SUCCESS') {
-        console.log('Update successful!');
-        
         // Close modal
         const modalElement = document.getElementById('edit_class_section');
         if (modalElement) {
@@ -131,11 +118,8 @@ const ClassSection = () => {
           }
         }
 
-        // Refresh sections list
-        console.log('Refreshing sections list...');
         await refetch();
-        console.log('Sections list refreshed');
-        
+
         // Reset form
         setSelectedSection(null);
         setEditSectionName('');

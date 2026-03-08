@@ -80,7 +80,7 @@ class ApiService {
         method: 'GET',
         headers,
         mode: 'cors',
-        credentials: 'omit',
+        credentials: 'include',
         ...options,
       });
 
@@ -92,6 +92,7 @@ class ApiService {
         if (response.status === 401) {
           localStorage.removeItem(TOKEN_KEY);
           localStorage.removeItem('preskool_user');
+          this.logout().catch(() => {});
           window.dispatchEvent(new CustomEvent('auth:sessionExpired'));
         }
         // Handle rate limiting (429) specifically
@@ -237,12 +238,14 @@ class ApiService {
   }
 
   // Students
-  async getStudents() {
-    return this.makeRequest('/students');
+  async getStudents(academicYearId = null) {
+    const qs = academicYearId != null ? `?academic_year_id=${academicYearId}` : '';
+    return this.makeRequest(`/students${qs}`);
   }
 
-  async getTeacherStudents() {
-    return this.makeRequest('/teacher/students');
+  async getTeacherStudents(academicYearId = null) {
+    const qs = academicYearId != null ? `?academic_year_id=${academicYearId}` : '';
+    return this.makeRequest(`/students/teacher/students${qs}`);
   }
 
   async createStudent(studentData) {
@@ -779,6 +782,16 @@ class ApiService {
 
   async getMe() {
     return this.makeRequest('/auth/me');
+  }
+
+  async logout() {
+    const base = await getApiBaseUrl();
+    const url = `${base}/auth/logout`.replace(/([^:]\/)\/+/g, '$1');
+    await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   // Chats

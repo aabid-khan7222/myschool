@@ -13,14 +13,6 @@ export const useHostels = () => {
       const response = await apiService.getHostels();
       
       if (response.status === 'SUCCESS') {
-        // Log raw data to debug
-        console.log('=== HOSTELS RAW DATA ===');
-        console.log('Response data:', response.data);
-        if (response.data && response.data.length > 0) {
-          console.log('First hostel raw data:', response.data[0]);
-          console.log('First hostel keys:', Object.keys(response.data[0]));
-        }
-        
         // Transform the API data to match the expected format
         const transformedData = response.data.map((hostel, index) => {
           // Handle multiple possible column name variations for intake
@@ -49,16 +41,7 @@ export const useHostels = () => {
             description: descriptionValue !== null ? String(descriptionValue) : 'N/A',
             originalData: hostel, // Store original data for edit modal
           };
-          
-          // Log transformation for first item
-          if (index === 0) {
-            console.log('=== TRANSFORMATION DEBUG ===');
-            console.log('Raw hostel:', hostel);
-            console.log('Intake value found:', intakeValue);
-            console.log('Description value found:', descriptionValue);
-            console.log('Transformed:', transformed);
-          }
-          
+
           return transformed;
         });
         

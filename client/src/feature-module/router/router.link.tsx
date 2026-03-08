@@ -290,12 +290,6 @@ export const publicRoutes = [
     route: Route,
   },
   {
-    path: routes.callHistory,
-    element: <CallHistory />,
-    route: Route,
-  },
-
-  {
     path: routes.connectedApps,
     element: <ConnectedApps />,
     route: Route,
@@ -331,11 +325,6 @@ export const publicRoutes = [
   {
     path: routes.notes,
     element: <Notes />,
-  },
-  {
-    path: routes.countries,
-    element: <Countries />,
-    route: Route,
   },
   {
     path: routes.customFields,
@@ -614,11 +603,6 @@ export const publicRoutes = [
     route: Route,
   },
   {
-    path: routes.fantawesome,
-    element: <FontawesomeIcons />,
-    route: Route,
-  },
-  {
     path: routes.materialIcon,
     element: <MaterialIcons />,
     route: Route,
@@ -772,6 +756,11 @@ export const publicRoutes = [
   {
     path: routes.studentLibrary,
     element: <StudentLibrary />,
+    route: Route,
+  },
+  {
+    path: `${routes.studentDetail}/:id`,
+    element: <StudentDetails />,
     route: Route,
   },
   {
