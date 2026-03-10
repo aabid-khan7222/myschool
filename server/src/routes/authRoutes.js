@@ -7,6 +7,7 @@ const Joi = require('joi');
 const router = express.Router();
 
 const loginSchema = Joi.object({
+  instituteNumber: Joi.string().trim().required(),
   username: Joi.string().trim().required(),
   password: Joi.string().required()
 });

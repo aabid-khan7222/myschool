@@ -11,6 +11,7 @@ const Login = () => {
   const routes = all_routes;
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [instituteNumber, setInstituteNumber] = useState("1111");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -40,13 +41,13 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!username.trim() || !password) {
-      setError("Please enter username and password");
+    if (!instituteNumber.trim() || !username.trim() || !password) {
+      setError("Please enter institute number, username and password");
       return;
     }
     setLoading(true);
     try {
-      const res = await apiService.login(username.trim(), password);
+      const res = await apiService.login(instituteNumber.trim(), username.trim(), password);
       if (res.status === "SUCCESS" && res.data) {
         dispatch(
           setAuth({
@@ -216,6 +217,20 @@ const Login = () => {
                           </div>
                         )}
                         <div className="mb-3 ">
+                          <label className="form-label">Institute Number</label>
+                          <div className="input-icon mb-3 position-relative">
+                            <span className="input-icon-addon">
+                              <i className="ti ti-building-school" />
+                            </span>
+                            <input
+                              type="text"
+                              value={instituteNumber}
+                              onChange={(e) => setInstituteNumber(e.target.value)}
+                              className="form-control"
+                              placeholder="Enter institute number (e.g. 1111)"
+                              disabled={loading}
+                            />
+                          </div>
                           <label className="form-label">Username or Phone</label>
                           <div className="input-icon mb-3 position-relative">
                             <span className="input-icon-addon">

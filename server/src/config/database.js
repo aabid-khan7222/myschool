@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+const { AsyncLocalStorage } = require('async_hooks');
 require('dotenv').config();
 
 // Use DATABASE_URL in production (Render)
@@ -10,39 +11,149 @@ if (process.env.DATABASE_SSL_MODE === 'require') {
   sslConfig = { rejectUnauthorized: true };
 }
 
-const pool = process.env.DATABASE_URL
-  ? new Pool({
-      connectionString: process.env.DATABASE_URL,
+const tenantContext = new AsyncLocalStorage();
+
+const primaryDbName = process.env.DB_NAME || 'schooldb';
+const masterDbName = process.env.MASTER_DB_NAME || 'master_db';
+
+const baseLocalConfig = {
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5432'),
+  user: process.env.DB_USER || 'schooluser',
+  password: process.env.DB_PASSWORD || '',
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+};
+
+const tenantPools = new Map();
+
+const CONNECTION_TIMEOUT_MS = parseInt(process.env.DB_CONNECTION_TIMEOUT_MS || '10000', 10);
+
+/**
+ * School-specific database overrides (e.g. Millat on Neon).
+ * When dbName matches and the env var is set, use that connection string instead of
+ * the default host/database logic. Enables per-school cloud hosting.
+ */
+const SCHOOL_DATABASE_URL_MAP = {
+  millat_db: 'MILLAT_DATABASE_URL',
+  iqra_db: 'IQRA_DATABASE_URL',
+};
+
+function createPoolForDb(dbName) {
+  const overrideEnv = SCHOOL_DATABASE_URL_MAP[dbName];
+  const overrideUrl = overrideEnv && process.env[overrideEnv];
+  if (overrideUrl && typeof overrideUrl === 'string' && overrideUrl.trim()) {
+    const pool = new Pool({
+      connectionString: overrideUrl.trim(),
       ssl: sslConfig,
       max: 20,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
-    })
-  : new Pool({
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT || '5432'),
-      database: process.env.DB_NAME || 'schooldb',
-      user: process.env.DB_USER || 'schooluser',
-      password: process.env.DB_PASSWORD || '',
+      connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
+    });
+    attachPoolHandlers(pool, dbName);
+    return pool;
+  }
+
+  if (process.env.DATABASE_URL) {
+    // Derive connection string for specific DB from base DATABASE_URL
+    try {
+      const url = new URL(process.env.DATABASE_URL);
+      url.pathname = `/${dbName}`;
+      const connectionString = url.toString();
+      const pool = new Pool({
+        connectionString,
+        ssl: sslConfig,
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
+      });
+      attachPoolHandlers(pool, dbName);
+      return pool;
+    } catch (e) {
+      console.error('Failed to parse DATABASE_URL for multi-tenant setup:', e);
+      process.exit(1);
+    }
+  }
+
+  const pool = new Pool({
+    ...baseLocalConfig,
+    database: dbName,
+  });
+  attachPoolHandlers(pool, dbName);
+  return pool;
+}
+
+function attachPoolHandlers(pool, dbName) {
+  pool.on('connect', () => {
+    if (process.env.NODE_ENV !== 'development') return;
+    // Optionally log per-DB connection in development
+  });
+
+  pool.on('error', (err) => {
+    console.error(`Unexpected database error in pool for "${dbName}":`, err);
+    process.exit(1);
+  });
+}
+
+// Primary school DB (existing single-tenant DB)
+const primaryPool = createPoolForDb(primaryDbName);
+tenantPools.set(primaryDbName, primaryPool);
+
+// Master DB for school registry (created separately)
+const masterPool = (() => {
+  const masterUrl = (process.env.MASTER_DATABASE_URL || '').toString().trim();
+  if (masterUrl) {
+    const pool = new Pool({
+      connectionString: masterUrl,
+      ssl: sslConfig,
       max: 20,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
     });
+    attachPoolHandlers(pool, masterDbName);
+    return pool;
+  }
+  return createPoolForDb(masterDbName);
+})();
 
-pool.on('connect', () => {
-  if (process.env.NODE_ENV !== 'development') return;
-  // Log only once per pool init to reduce terminal noise
-});
+function getCurrentTenantDbName() {
+  const store = tenantContext.getStore();
+  if (store && store.dbName) {
+    return store.dbName;
+  }
+  return primaryDbName;
+}
 
-pool.on('error', (err) => {
-  console.error('Unexpected database error:', err);
-  process.exit(1);
-});
+function getTenantPool(dbName) {
+  const key = dbName || primaryDbName;
+  if (!tenantPools.has(key)) {
+    tenantPools.set(key, createPoolForDb(key));
+  }
+  return tenantPools.get(key);
+}
+
+function getCurrentPool() {
+  const dbName = getCurrentTenantDbName();
+  return getTenantPool(dbName);
+}
+
+const runWithTenant = (dbName, fn) => {
+  const effectiveDb = dbName || primaryDbName;
+  return tenantContext.run({ dbName: effectiveDb }, fn);
+};
 
 const testConnection = async () => {
   try {
-    await pool.query('SELECT NOW()');
-    console.log('✅ Database connection successful!');
+    await primaryPool.query('SELECT NOW()');
+    console.log(`✅ Primary database connection successful (${primaryDbName})`);
+    // Master DB might not exist in very early setups, so treat failure separately
+    try {
+      await masterPool.query('SELECT NOW()');
+      console.log(`✅ Master database connection successful (${masterDbName})`);
+    } catch (e) {
+      console.warn(`⚠️  Master database "${masterDbName}" not reachable yet. Run init-master-database if needed.`);
+    }
     return true;
   } catch (error) {
     console.error('❌ Database connection failed:', error);
@@ -51,14 +162,21 @@ const testConnection = async () => {
 };
 
 const getClient = async () => {
+  const pool = getCurrentPool();
   return await pool.connect();
 };
 
 const query = async (text, params) => {
+  const pool = getCurrentPool();
   return await pool.query(text, params);
 };
 
+const masterQuery = async (text, params) => {
+  return await masterPool.query(text, params);
+};
+
 const executeTransaction = async (callback) => {
+  const pool = getCurrentPool();
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -74,14 +192,22 @@ const executeTransaction = async (callback) => {
 };
 
 const closePool = async () => {
-  await pool.end();
+  await Promise.all(
+    Array.from(tenantPools.values()).map((p) => p.end())
+  );
+  await masterPool.end();
 };
 
 module.exports = {
-  pool,
+  // For backwards compatibility: primary pool reference
+  pool: primaryPool,
   testConnection,
   getClient,
   query,
+  masterQuery,
   executeTransaction,
   closePool,
+  runWithTenant,
+  getCurrentTenantDbName,
 };
+

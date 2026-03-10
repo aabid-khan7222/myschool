@@ -803,10 +803,10 @@ class ApiService {
   }
 
   // Auth
-  async login(username, password) {
+  async login(instituteNumber, username, password) {
     return this.makeRequest('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ instituteNumber, username, password }),
     });
   }
 

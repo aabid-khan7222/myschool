@@ -9,6 +9,8 @@ interface AuthUser {
   user_role_id?: number;
   staff_id?: number;
   accountDisabled?: boolean;
+  school_name?: string;
+  institute_number?: string;
 }
 
 interface AuthState {

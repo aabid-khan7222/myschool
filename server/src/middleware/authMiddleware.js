@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const serverConfig = require('../config/server');
 const { error: errorResponse } = require('../utils/responseHelper');
+const { runWithTenant } = require('../config/database');
 
 const isPublicPath = (path) => {
   const p = path || '';
@@ -39,7 +40,10 @@ const authenticate = (req, res, next) => {
 
     const decoded = jwt.verify(token, serverConfig.jwtSecret);
     req.user = decoded;
-    next();
+
+    const dbNameFromToken = decoded.db_name;
+    // Bind downstream handlers to the correct tenant DB for this request
+    runWithTenant(dbNameFromToken, () => next());
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
       return errorResponse(res, 401, 'Token expired. Please login again.');

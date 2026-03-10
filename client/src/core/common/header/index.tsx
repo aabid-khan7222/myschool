@@ -229,6 +229,13 @@ const Header = () => {
                   </div>
                 </div>
               )}
+              {user?.school_name && (
+                <div className="pe-2">
+                  <span className="badge bg-primary-subtle text-primary fw-semibold">
+                    {user.school_name} ({user.institute_number || "----"})
+                  </span>
+                </div>
+              )}
               <div className="pe-1">
                 {!location.pathname.includes("layout-dark") && (
                   <Link
