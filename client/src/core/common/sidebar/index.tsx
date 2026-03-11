@@ -23,6 +23,14 @@ const Sidebar = () => {
   const role = user?.role || "Admin";
   const SidebarData = useMemo(() => getSidebarDataForRole(role), [role]);
 
+  const schoolLogoSrc = useMemo(() => {
+    const name = (user?.school_name || "").toString().trim().toLowerCase();
+    if (name.includes("millat")) return "assets/img/icons/millat-logo.png";
+    if (name.includes("iqra")) return "assets/img/icons/iqra-logo.bmp";
+    return "assets/img/icons/global-img.svg";
+  }, [user?.school_name]);
+  const isMillatLogo = schoolLogoSrc.includes("millat-logo");
+
   const [subOpen, setSubopen] = useState<any>("");
   const [subsidebar, setSubsidebar] = useState("");
 
@@ -141,15 +149,16 @@ const Sidebar = () => {
                 <li>
                   <Link
                     to="#"
-                    className="d-flex align-items-center border bg-white rounded p-2 mb-4"
+                    className="school-card d-flex align-items-center border bg-white rounded p-2 mb-4"
                   >
                     <ImageWithBasePath
-                      src="assets/img/icons/global-img.svg"
+                      src={schoolLogoSrc}
                       className="avatar avatar-md img-fluid rounded"
-                      alt="Profile"
+                      alt="School Logo"
+                      style={isMillatLogo ? { width: 44, height: 44 } : undefined}
                     />
-                    <span className="text-dark ms-2 fw-normal">
-                      Global International
+                    <span className="school-card__name text-dark ms-2 fw-normal">
+                      {`${user?.school_name || ''} ${user?.school_type || ''}`.trim() || '—'}
                     </span>
                   </Link>
                 </li>

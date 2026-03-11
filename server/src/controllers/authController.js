@@ -1,4 +1,4 @@
-const { query, masterQuery, runWithTenant } = require('../config/database');
+const { query, masterQuery, runWithTenant, executeTransaction } = require('../config/database');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const serverConfig = require('../config/server');
@@ -38,7 +38,7 @@ const login = async (req, res) => {
     let school;
     try {
       const schoolRes = await masterQuery(
-        `SELECT id, school_name, institute_number, db_name 
+        `SELECT id, school_name, type, institute_number, db_name 
          FROM schools 
          WHERE institute_number = $1
          LIMIT 1`,
@@ -134,6 +134,7 @@ const login = async (req, res) => {
         db_name: targetDbName,
         school_id: school.id,
         school_name: school.school_name,
+        school_type: school.type,
         institute_number: school.institute_number,
       };
 
@@ -184,6 +185,7 @@ const login = async (req, res) => {
           staff_id: user.staff_id,
           accountDisabled,
           school_name: school.school_name,
+          school_type: school.type,
           institute_number: school.institute_number,
         }
       });
@@ -257,6 +259,7 @@ const login = async (req, res) => {
       display_role: displayRole,
       account_disabled: accountDisabled,
       school_name: tokenUser.school_name,
+      school_type: tokenUser.school_type,
       institute_number: tokenUser.institute_number,
     };
     success(res, 200, 'User fetched', userData);
@@ -280,4 +283,305 @@ const logout = (req, res) => {
   success(res, 200, 'Logged out successfully', null);
 };
 
-module.exports = { login, getMe, logout };
+async function getTableColumns(client, tableName) {
+  const r = await client.query(
+    `
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = $1
+    `,
+    [tableName]
+  );
+  return new Set((r.rows || []).map((x) => String(x.column_name)));
+}
+
+/**
+ * Update current user's own profile (and latest address).
+ * - No schema changes
+ * - Updates only columns that exist in this tenant DB
+ * - If linked student/staff exists, updates their first/last name too
+ */
+const updateMe = async (req, res) => {
+  try {
+    const tokenUser = req.user;
+    if (!tokenUser || !tokenUser.id) {
+      return errorResponse(res, 401, 'Not authenticated');
+    }
+
+    const userId = parseInt(tokenUser.id, 10);
+    const {
+      first_name,
+      last_name,
+      email,
+      phone,
+      current_address,
+      permanent_address,
+    } = req.body || {};
+
+    const resultUser = await executeTransaction(async (client) => {
+      const userCols = await getTableColumns(client, 'users');
+      const studentCols = await getTableColumns(client, 'students');
+      const staffCols = await getTableColumns(client, 'staff');
+
+      // Load current user and linkage
+      const base = await client.query(
+        `
+        SELECT
+          u.id,
+          u.role_id,
+          s.id AS student_id,
+          st.id AS staff_id
+        FROM users u
+        LEFT JOIN students s ON u.id = s.user_id
+        LEFT JOIN staff st ON u.id = st.user_id
+        WHERE u.id = $1 AND u.is_active = true
+        LIMIT 1
+        `,
+        [userId]
+      );
+      if (!base.rows || base.rows.length === 0) {
+        return null;
+      }
+      const link = base.rows[0];
+
+      // Update users table fields (only if columns exist)
+      const userUpdates = [];
+      const userParams = [];
+      const pushUser = (col, val) => {
+        userUpdates.push(`${col} = $${userParams.length + 1}`);
+        userParams.push(val);
+      };
+
+      if (userCols.has('first_name') && first_name !== undefined) pushUser('first_name', first_name || null);
+      if (userCols.has('last_name') && last_name !== undefined) pushUser('last_name', last_name || null);
+      if (userCols.has('email') && email !== undefined) pushUser('email', email || null);
+      if (userCols.has('phone') && phone !== undefined) pushUser('phone', phone || null);
+      if (userCols.has('current_address') && current_address !== undefined) {
+        pushUser('current_address', current_address || null);
+      }
+      if (userCols.has('permanent_address') && permanent_address !== undefined) {
+        pushUser('permanent_address', permanent_address || null);
+      }
+
+      if (userUpdates.length > 0) {
+        userParams.push(userId);
+        await client.query(
+          `UPDATE users SET ${userUpdates.join(', ')} WHERE id = $${userParams.length} AND is_active = true`,
+          userParams
+        );
+      }
+
+      // If this user is a student/staff, keep their person-name in sync when requested
+      const hasNameUpdate = first_name !== undefined || last_name !== undefined;
+      if (hasNameUpdate && link.student_id != null && studentCols.has('first_name') && studentCols.has('last_name')) {
+        const sFirst = first_name !== undefined ? (first_name || null) : undefined;
+        const sLast = last_name !== undefined ? (last_name || null) : undefined;
+        const sUpdates = [];
+        const sParams = [];
+        if (sFirst !== undefined) { sUpdates.push(`first_name = $${sParams.length + 1}`); sParams.push(sFirst); }
+        if (sLast !== undefined) { sUpdates.push(`last_name = $${sParams.length + 1}`); sParams.push(sLast); }
+        if (sUpdates.length > 0) {
+          sParams.push(userId);
+          await client.query(
+            `UPDATE students SET ${sUpdates.join(', ')} WHERE user_id = $${sParams.length}`,
+            sParams
+          );
+        }
+      }
+
+      if (hasNameUpdate && link.staff_id != null && staffCols.has('first_name') && staffCols.has('last_name')) {
+        const tFirst = first_name !== undefined ? (first_name || null) : undefined;
+        const tLast = last_name !== undefined ? (last_name || null) : undefined;
+        const tUpdates = [];
+        const tParams = [];
+        if (tFirst !== undefined) { tUpdates.push(`first_name = $${tParams.length + 1}`); tParams.push(tFirst); }
+        if (tLast !== undefined) { tUpdates.push(`last_name = $${tParams.length + 1}`); tParams.push(tLast); }
+        if (tUpdates.length > 0) {
+          tParams.push(userId);
+          await client.query(
+            `UPDATE staff SET ${tUpdates.join(', ')} WHERE user_id = $${tParams.length}`,
+            tParams
+          );
+        }
+      }
+
+      // Address: update latest row if exists, else insert a new one.
+      // Return fresh /auth/me-like payload by calling getMe-like query (but within same client)
+      let me;
+      try {
+        me = await client.query(
+          `SELECT 
+            u.*,
+            s.id AS student_id,
+            s.first_name AS student_first_name,
+            s.last_name AS student_last_name,
+            s.is_active AS student_is_active,
+            c.class_name,
+            sec.section_name,
+            st.id AS staff_id,
+            st.first_name AS staff_first_name,
+            st.last_name AS staff_last_name,
+            st.is_active AS staff_is_active,
+            d.designation_name,
+            ur.role_name,
+            addr.address_id,
+            addr.current_address,
+            addr.permanent_address
+          FROM users u
+          LEFT JOIN students s ON u.id = s.user_id
+          LEFT JOIN classes c ON s.class_id = c.id
+          LEFT JOIN sections sec ON s.section_id = sec.id
+          LEFT JOIN staff st ON u.id = st.user_id
+          LEFT JOIN designations d ON st.designation_id = d.id
+          LEFT JOIN user_roles ur ON u.role_id = ur.id
+          LEFT JOIN LATERAL (
+            SELECT id AS address_id, current_address, permanent_address
+            FROM addresses
+            WHERE user_id = u.id
+            ORDER BY id DESC
+            LIMIT 1
+          ) addr ON true
+          WHERE u.id = $1 AND u.is_active = true`,
+          [userId]
+        );
+      } catch (e) {
+        me = await client.query(
+          `SELECT 
+            u.*,
+            s.id AS student_id,
+            s.first_name AS student_first_name,
+            s.last_name AS student_last_name,
+            s.is_active AS student_is_active,
+            c.class_name,
+            sec.section_name,
+            st.id AS staff_id,
+            st.first_name AS staff_first_name,
+            st.last_name AS staff_last_name,
+            st.is_active AS staff_is_active,
+            d.designation_name,
+            ur.role_name
+          FROM users u
+          LEFT JOIN students s ON u.id = s.user_id
+          LEFT JOIN classes c ON s.class_id = c.id
+          LEFT JOIN sections sec ON s.section_id = sec.id
+          LEFT JOIN staff st ON u.id = st.user_id
+          LEFT JOIN designations d ON st.designation_id = d.id
+          LEFT JOIN user_roles ur ON u.role_id = ur.id
+          WHERE u.id = $1 AND u.is_active = true`,
+          [userId]
+        );
+      }
+      return me.rows[0] || null;
+    });
+
+    if (!resultUser) {
+      return errorResponse(res, 404, 'User not found');
+    }
+
+    // Compute display fields same as getMe
+    const user = resultUser;
+    const hasStudent = user.student_id != null;
+    const hasStaff = user.staff_id != null;
+    const studentInactive = hasStudent && (user.student_is_active === false || user.student_is_active === 'f' || user.student_is_active === 0);
+    const staffInactive = hasStaff && (user.staff_is_active === false || user.staff_is_active === 'f' || user.staff_is_active === 0);
+    const accountDisabled = !!studentInactive || !!staffInactive;
+
+    let displayName = '';
+    let displayRole = '';
+    if (user.student_first_name || user.student_last_name) {
+      displayName = `${user.student_first_name || ''} ${user.student_last_name || ''}`.trim();
+      displayRole = user.role_name || 'Student';
+    } else if (user.staff_first_name || user.staff_last_name) {
+      displayName = `${user.staff_first_name || ''} ${user.staff_last_name || ''}`.trim();
+      displayRole = user.designation_name || user.role_name || 'Teacher';
+    } else {
+      displayName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || 'User';
+      displayRole = user.role_name || 'User';
+    }
+
+    const userData = {
+      ...user,
+      display_name: displayName,
+      display_role: displayRole,
+      account_disabled: accountDisabled,
+      school_name: tokenUser.school_name,
+      school_type: tokenUser.school_type,
+      institute_number: tokenUser.institute_number,
+    };
+
+    success(res, 200, 'Profile updated', userData);
+  } catch (err) {
+    console.error('UpdateMe error:', err);
+    errorResponse(res, 500, 'Failed to update profile');
+  }
+};
+
+/**
+ * Change password for current user.
+ * Verifies current password against users.password_hash and updates it with bcrypt hash.
+ */
+const changePassword = async (req, res) => {
+  try {
+    const tokenUser = req.user;
+    if (!tokenUser || !tokenUser.id) {
+      return errorResponse(res, 401, 'Not authenticated');
+    }
+    const userId = parseInt(tokenUser.id, 10);
+    const { currentPassword, newPassword } = req.body || {};
+
+    await executeTransaction(async (client) => {
+      const cols = await getTableColumns(client, 'users');
+      if (!cols.has('password_hash')) {
+        throw new Error('Password change is not supported on this database');
+      }
+
+      const r = await client.query(
+        `SELECT password_hash FROM users WHERE id = $1 AND is_active = true LIMIT 1`,
+        [userId]
+      );
+      if (!r.rows || r.rows.length === 0) {
+        const err = new Error('User not found');
+        err.statusCode = 404;
+        throw err;
+      }
+      const passwordHash = r.rows[0].password_hash;
+      if (!passwordHash) {
+        const err = new Error('Account not configured for password change. Please contact admin.');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      let ok = false;
+      try {
+        ok = await bcrypt.compare(String(currentPassword || ''), String(passwordHash));
+      } catch {
+        ok = false;
+      }
+      if (!ok) {
+        const err = new Error('Current password is incorrect');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      const nextHash = await bcrypt.hash(String(newPassword), 10);
+      await client.query(
+        `UPDATE users SET password_hash = $1 WHERE id = $2 AND is_active = true`,
+        [nextHash, userId]
+      );
+    });
+
+    success(res, 200, 'Password changed successfully', null);
+  } catch (err) {
+    const statusCode = err?.statusCode || 500;
+    const msg =
+      statusCode === 500
+        ? 'Failed to change password'
+        : (err?.message || 'Failed to change password');
+    if (statusCode === 500) {
+      console.error('ChangePassword error:', err);
+    }
+    return errorResponse(res, statusCode, msg);
+  }
+};
+
+module.exports = { login, getMe, updateMe, changePassword, logout };

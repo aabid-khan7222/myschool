@@ -116,6 +116,14 @@ const Header = () => {
     }
   };
 
+  const schoolLogoSrc = (() => {
+    const name = (user?.school_name || "").toString().trim().toLowerCase();
+    if (name.includes("millat")) return "assets/img/icons/millat-logo.png";
+    if (name.includes("iqra")) return "assets/img/icons/iqra-logo.bmp";
+    return "assets/img/logo-small.svg";
+  })();
+  const isMillatLogo = schoolLogoSrc.includes("millat-logo");
+
   return (
     <>
       {/* Header */}
@@ -126,14 +134,23 @@ const Header = () => {
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
         >
-          <Link to={dashboardRoute} className="logo logo-normal">
-            <ImageWithBasePath src="assets/img/logo.svg" alt="Logo" />
+          <Link
+            to={dashboardRoute}
+            className={`logo ${dataTheme === "default_data_theme" ? "logo-normal" : "dark-logo"} d-flex align-items-center`}
+          >
+            <ImageWithBasePath
+              src={schoolLogoSrc}
+              alt="School Logo"
+              className={`logo-icon ${isMillatLogo ? "logo-icon--large" : ""}`}
+            />
+            <span className="logo-school-name">{user?.school_name || "PreSkool"}</span>
           </Link>
           <Link to={dashboardRoute} className="logo-small">
-            <ImageWithBasePath src="assets/img/logo-small.svg" alt="Logo" />
-          </Link>
-          <Link to={dashboardRoute} className="dark-logo">
-            <ImageWithBasePath src="assets/img/logo-dark.svg" alt="Logo" />
+            <ImageWithBasePath
+              src={schoolLogoSrc}
+              alt="School Logo"
+              className={isMillatLogo ? "logo-icon--large" : undefined}
+            />
           </Link>
           <Link id="toggle_btn" to="#" onClick={handleToggleMiniSidebar}>
             <i className="ti ti-menu-deep" />

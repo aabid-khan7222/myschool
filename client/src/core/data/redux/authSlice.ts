@@ -10,6 +10,7 @@ interface AuthUser {
   staff_id?: number;
   accountDisabled?: boolean;
   school_name?: string;
+  school_type?: string;
   institute_number?: string;
 }
 

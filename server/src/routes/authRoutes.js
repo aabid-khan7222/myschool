@@ -1,5 +1,5 @@
 const express = require('express');
-const { login, getMe, logout } = require('../controllers/authController');
+const { login, getMe, updateMe, changePassword, logout } = require('../controllers/authController');
 const { authenticate } = require('../middleware/authMiddleware');
 const { validate } = require('../utils/validate');
 const Joi = require('joi');
@@ -14,6 +14,46 @@ const loginSchema = Joi.object({
 
 router.post('/login', validate(loginSchema), login);
 router.get('/me', authenticate, getMe);
+router.patch(
+  '/me',
+  authenticate,
+  validate(
+    Joi.object({
+      first_name: Joi.string().trim().allow('', null).max(100).optional(),
+      last_name: Joi.string().trim().allow('', null).max(100).optional(),
+      email: Joi.string().trim().allow('', null).email().max(255).optional(),
+      phone: Joi.string().trim().allow('', null).max(50).optional(),
+      current_address: Joi.string().trim().allow('', null).max(2000).optional(),
+      permanent_address: Joi.string().trim().allow('', null).max(2000).optional(),
+    }).min(1)
+  ),
+  updateMe
+);
+
+router.post(
+  '/change-password',
+  authenticate,
+  validate(
+    Joi.object({
+      currentPassword: Joi.string().required(),
+      newPassword: Joi.string().min(6).max(200).required(),
+      confirmPassword: Joi.string().required(),
+    })
+      .custom((v, helpers) => {
+      if (v.newPassword !== v.confirmPassword) {
+        return helpers.error('any.invalid', { message: 'Passwords do not match' });
+      }
+      if (v.currentPassword === v.newPassword) {
+        return helpers.error('any.invalid', { message: 'New password must be different' });
+      }
+      return v;
+    }, 'password match validation')
+      .messages({
+        'any.invalid': '{{#message}}',
+      })
+  ),
+  changePassword
+);
 // Logout clears cookie - no auth required so expired tokens can still clear the cookie
 router.post('/logout', logout);
 

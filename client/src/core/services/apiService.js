@@ -814,6 +814,20 @@ class ApiService {
     return this.makeRequest('/auth/me');
   }
 
+  async updateMe(payload) {
+    return this.makeRequest('/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async changePassword(currentPassword, newPassword, confirmPassword) {
+    return this.makeRequest('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+    });
+  }
+
   async logout() {
     const base = await getApiBaseUrl();
     const url = `${base}/auth/logout`.replace(/([^:]\/)\/+/g, '$1');

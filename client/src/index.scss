@@ -569,6 +569,11 @@ div.rc-slider-handle-dragging.rc-slider-handle-dragging.rc-slider-handle-draggin
   display: block;
 }
 
+[data-theme="dark"] .header .header-left .logo .logo-school-name,
+[data-theme="dark"] .header .header-left .dark-logo .logo-school-name {
+  color: #fff;
+}
+
 [data-theme="dark"] .chat-footer form {
   background-color: #28283e;
 }
