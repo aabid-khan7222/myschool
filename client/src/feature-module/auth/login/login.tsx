@@ -6,6 +6,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { setAuth, selectUser } from "../../../core/data/redux/authSlice";
 import { apiService } from "../../../core/services/apiService";
 import { getDashboardForRole } from "../../../core/utils/roleUtils";
+import Swal from "sweetalert2";
+import withReactContent from "sweetalert2-react-content";
 
 const Login = () => {
   const routes = all_routes;
@@ -23,6 +25,8 @@ const Login = () => {
   };
   const isAuthenticated = useSelector((state: any) => state.auth?.isAuthenticated);
   const user = useSelector(selectUser);
+
+  const MySwal = withReactContent(Swal);
 
   useEffect(() => {
     localStorage.setItem("menuOpened", "Dashboard");
@@ -63,7 +67,22 @@ const Login = () => {
       }
     } catch (err: any) {
       const msg = err?.message || "Login failed. Please try again.";
-      setError(msg.includes("401") ? "Invalid username or password" : msg);
+
+      // Handle disabled school (403) with a SweetAlert-style popup
+      if (msg.includes("status: 403") && msg.includes("This school is currently disabled")) {
+        setError("");
+        MySwal.fire({
+          icon: "warning",
+          title: "School Disabled",
+          text: "This school is currently disabled. Please contact the platform administrator.",
+          confirmButtonText: "Go to Login",
+          confirmButtonColor: "#3085d6",
+        }).then(() => {
+          navigate(routes.login);
+        });
+      } else {
+        setError(msg.includes("401") ? "Invalid username or password" : msg);
+      }
     } finally {
       setLoading(false);
     }

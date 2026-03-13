@@ -55,8 +55,15 @@ async function ensureSchoolsTable() {
         school_name VARCHAR(255) NOT NULL,
         institute_number VARCHAR(50) NOT NULL UNIQUE,
         db_name VARCHAR(100) NOT NULL UNIQUE,
+        status VARCHAR(20) NOT NULL DEFAULT 'active',
         created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Backward-compatible: add status column if it was missing on older installations
+    await masterPool.query(`
+      ALTER TABLE schools
+      ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'active';
     `);
 
     // Upsert three schools
@@ -73,7 +80,40 @@ async function ensureSchoolsTable() {
       `
     );
 
+    // Ensure the sequence is aligned with the current max(id) to avoid PK conflicts
+    await masterPool.query(
+      `
+      SELECT setval(
+        pg_get_serial_sequence('schools', 'id'),
+        COALESCE((SELECT MAX(id) FROM schools), 1),
+        true
+      );
+      `
+    );
+
     console.log('✅ schools table ensured and seeded in master_db.');
+  } finally {
+    await masterPool.end();
+  }
+}
+
+async function ensureSuperAdminUsersTable() {
+  const masterPool = makeMasterPool();
+  try {
+    await masterPool.query(`
+      CREATE TABLE IF NOT EXISTS super_admin_users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(150) NOT NULL UNIQUE,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        role VARCHAR(50) NOT NULL DEFAULT 'super_admin',
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    console.log('✅ super_admin_users table ensured in master_db.');
   } finally {
     await masterPool.end();
   }
@@ -83,6 +123,7 @@ async function main() {
   try {
     await ensureMasterDb();
     await ensureSchoolsTable();
+    await ensureSuperAdminUsersTable();
     console.log('=== master_db initialization complete ===');
   } catch (err) {
     console.error('❌ Failed to initialize master_db:', err);

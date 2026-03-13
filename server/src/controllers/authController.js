@@ -38,7 +38,7 @@ const login = async (req, res) => {
     let school;
     try {
       const schoolRes = await masterQuery(
-        `SELECT id, school_name, type, institute_number, db_name 
+        `SELECT id, school_name, type, institute_number, db_name, status 
          FROM schools 
          WHERE institute_number = $1
          LIMIT 1`,
@@ -47,7 +47,11 @@ const login = async (req, res) => {
       if (schoolRes.rows.length === 0) {
         return errorResponse(res, 400, 'Invalid institute number');
       }
-      school = schoolRes.rows[0];
+      const s = schoolRes.rows[0];
+      if (s.status && String(s.status).toLowerCase() === 'disabled') {
+        return errorResponse(res, 403, 'This school is currently disabled. Please contact the platform administrator.');
+      }
+      school = s;
     } catch (e) {
       console.error('Error querying master_db.schools:', e);
       return errorResponse(res, 500, 'Failed to resolve institute');

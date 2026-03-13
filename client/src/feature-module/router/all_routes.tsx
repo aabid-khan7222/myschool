@@ -319,4 +319,10 @@ export const all_routes = {
   //page module
   profile:"/pages/profile",
   activity:"/pages/activities"
+,
+
+  // Super Admin
+  superAdminLogin: "/super-admin/login",
+  superAdminDashboard: "/super-admin/dashboard",
+  superAdminSchools: "/super-admin/schools",
 };

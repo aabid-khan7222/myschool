@@ -18,7 +18,9 @@ export const AuthBootstrap = () => {
 
   useEffect(() => {
     let cancelled = false;
-    const skipGetMe = SKIP_GET_ME_PATHS.some((p) => pathname.startsWith(p) || pathname === p);
+    const skipGetMe =
+      SKIP_GET_ME_PATHS.some((p) => pathname.startsWith(p) || pathname === p) ||
+      pathname.startsWith('/super-admin');
 
     const bootstrap = async () => {
       if (skipGetMe) {

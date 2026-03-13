@@ -55,6 +55,8 @@ const syllabusRoutes = require('./src/routes/syllabusRoutes');
 const noticeBoardRoutes = require('./src/routes/noticeBoardRoutes');
 const eventsRoutes = require('./src/routes/eventsRoutes');
 const feeRoutes = require('./src/routes/feeRoutes');
+const superAdminAuthRoutes = require('./src/routes/superAdminAuthRoutes');
+const superAdminRoutes = require('./src/routes/superAdminRoutes');
 const { protectApi } = require('./src/middleware/authMiddleware');
 const { requireActiveAccount } = require('./src/middleware/requireActiveAccount');
 
@@ -127,6 +129,9 @@ app.use('/api', limiter);
 
 // Auth routes - public, no token needed
 app.use('/api/auth', authRoutes);
+// Super Admin auth & API (master_db only, no tenant context)
+app.use('/super-admin/api/auth', superAdminAuthRoutes);
+app.use('/super-admin/api', superAdminRoutes);
 app.use('/api', healthRoutes);
 
 // Protect all other API routes - require valid JWT; then block inactive student/teacher accounts (except /auth/me)
