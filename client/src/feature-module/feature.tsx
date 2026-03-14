@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import { all_routes } from "./router/all_routes";
 import { useCurrentUser } from "../core/hooks/useCurrentUser";
 import { selectUser } from "../core/data/redux/authSlice";
-import { getPageTitleForRole } from "../core/utils/roleUtils";
+import { getTabTitleForSchoolRole } from "../core/utils/roleUtils";
 
 const Feature = () => {
   const routes = all_routes;
@@ -182,9 +182,13 @@ const Feature = () => {
     (currentUser as { role?: string } | null)?.role ??
     reduxUser?.role ??
     '';
+  const schoolNameForTitle =
+    (currentUser as { school_name?: string } | null)?.school_name ??
+    reduxUser?.school_name ??
+    '';
   useEffect(() => {
-    document.title = getPageTitleForRole(roleForTitle);
-  }, [roleForTitle]);
+    document.title = getTabTitleForSchoolRole(schoolNameForTitle, roleForTitle);
+  }, [schoolNameForTitle, roleForTitle]);
 
   useEffect(() => {
     // Remove any lingering unwanted classes

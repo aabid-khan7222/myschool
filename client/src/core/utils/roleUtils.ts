@@ -57,6 +57,44 @@ export function getPageTitleForRole(role: string | undefined | null): string {
 }
 
 /**
+ * Get browser tab title for the logged-in school + role.
+ * Example outputs:
+ * - "Millat's Student"
+ * - "Iqra's Teacher"
+ * - "Anglo's Headmaster"
+ */
+export function getTabTitleForSchoolRole(
+  schoolName: string | undefined | null,
+  role: string | undefined | null
+): string {
+  const safeSchool = (schoolName ?? '').trim();
+  const normalized = (role ?? '').trim().toLowerCase();
+
+  const roleLabel = (() => {
+    switch (normalized) {
+      case 'admin':
+      case 'headmaster':
+        return 'Headmaster';
+      case 'teacher':
+        return 'Teacher';
+      case 'student':
+        return 'Student';
+      case 'parent':
+        return 'Parent';
+      case 'guardian':
+        return 'Guardian';
+      default:
+        if (normalized.includes('teacher')) return 'Teacher';
+        if (normalized.includes('head')) return 'Headmaster';
+        return role?.trim() || 'User';
+    }
+  })();
+
+  if (!safeSchool) return `Preskool ${roleLabel}`.trim();
+  return `${safeSchool}'s ${roleLabel}`;
+}
+
+/**
  * Path prefixes restricted to Admin only (backend USER_MANAGER_ROLES).
  * Add more prefixes as needed to align with backend RBAC.
  */
