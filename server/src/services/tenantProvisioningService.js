@@ -1,4 +1,8 @@
 const { Pool } = require('pg');
+const { spawn } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
@@ -110,6 +114,56 @@ function generateTenantDbName(instituteNumber) {
   return base;
 }
 
+/**
+ * Get connection string for a database on Neon/same host.
+ */
+function getConnectionStringForDb(dbName) {
+  const baseUrl = (process.env.TENANT_ADMIN_DATABASE_URL || process.env.DATABASE_URL || '').toString().trim();
+  if (!baseUrl) return null;
+  try {
+    const u = new URL(baseUrl);
+    u.pathname = `/${dbName}`;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Clone database using pg_dump + pg_restore. Works when TEMPLATE fails (Neon keeps connections).
+ * Requires postgresql-client (pg_dump, pg_restore) in PATH.
+ */
+async function cloneViaDumpRestore(sourceDbName, targetDbName) {
+  const sourceUrl = getConnectionStringForDb(sourceDbName);
+  const targetUrl = getConnectionStringForDb(targetDbName);
+  if (!sourceUrl || !targetUrl) {
+    throw new Error('TENANT_ADMIN_DATABASE_URL or DATABASE_URL required for pg_dump fallback');
+  }
+  const tmpFile = path.join(os.tmpdir(), `tenant_clone_${targetDbName}_${Date.now()}.dump`);
+  try {
+    await new Promise((resolve, reject) => {
+      const pd = spawn('pg_dump', [sourceUrl, '-Fc', '-f', tmpFile], { stdio: ['ignore', 'pipe', 'pipe'] });
+      let stderr = '';
+      pd.stderr?.on('data', (c) => { stderr += c.toString(); });
+      pd.on('close', (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`pg_dump failed (${code}): ${stderr}`));
+      });
+    });
+    await new Promise((resolve, reject) => {
+      const pr = spawn('pg_restore', ['-d', targetUrl, '--no-owner', '--no-acl', '-Fc', tmpFile], { stdio: ['ignore', 'pipe', 'pipe'] });
+      let stderr = '';
+      pr.stderr?.on('data', (c) => { stderr += c.toString(); });
+      pr.on('close', (code) => {
+        if (code === 0 || code === 1) resolve();
+        else reject(new Error(`pg_restore failed (${code}): ${stderr}`));
+      });
+    });
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+  }
+}
+
 async function createTenantDatabase(dbName) {
   const pool = getAdminPool();
   const checkRes = await pool.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName]);
@@ -119,24 +173,28 @@ async function createTenantDatabase(dbName) {
 
   const sourceDbName = getTemplateDbName();
 
+  let created = false;
   try {
-    // Terminate connections to template (Postgres requires template to have zero connections)
     await pool.query(
-      `SELECT pg_terminate_backend(pid)
-       FROM pg_stat_activity
-       WHERE datname = $1 AND pid <> pg_backend_pid()`,
+      `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`,
       [sourceDbName]
     );
-  } catch {
-    /* ignore; CREATE may still succeed */
-  }
+  } catch { /* ignore */ }
 
   try {
     await pool.query(`CREATE DATABASE "${dbName}" TEMPLATE "${sourceDbName}"`);
+    created = true;
   } catch (err) {
-    throw new Error(
-      `Failed to create tenant database "${dbName}" from template "${sourceDbName}": ${err.message}`
-    );
+    const isAccessError = err.message && /is being accessed by other users/i.test(err.message);
+    if (isAccessError) {
+      await pool.query(`CREATE DATABASE "${dbName}"`);
+      created = true;
+      await cloneViaDumpRestore(sourceDbName, dbName);
+    } else {
+      throw new Error(
+        `Failed to create tenant database "${dbName}" from template "${sourceDbName}": ${err.message}`
+      );
+    }
   }
 
   // Immediately remove all tenant-specific/dynamic data so the new school starts clean.
