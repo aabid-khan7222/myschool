@@ -67,6 +67,25 @@ function createPoolForDb(dbName) {
     attachPoolHandlers(pool, dbName);
     return pool;
   }
+
+  // Dynamically created tenant DBs (school_4444, school_5555, ...) live on Neon
+  const tenantBaseUrl = (process.env.TENANT_ADMIN_DATABASE_URL || process.env.MILLAT_DATABASE_URL || '').toString().trim();
+  if (tenantBaseUrl && /^school_[a-zA-Z0-9_]+$/.test(dbName)) {
+    try {
+      const u = new URL(tenantBaseUrl);
+      u.pathname = `/${dbName}`;
+      const pool = new Pool({
+        connectionString: u.toString(),
+        ssl: sslConfig,
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
+      });
+      attachPoolHandlers(pool, dbName);
+      return pool;
+    } catch { /* fall through */ }
+  }
+
   const hasDatabaseUrl = typeof process.env.DATABASE_URL === 'string' && process.env.DATABASE_URL.trim() !== '';
   if (hasDatabaseUrl) {
     try {
