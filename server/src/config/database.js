@@ -13,7 +13,19 @@ if (process.env.DATABASE_SSL_MODE === 'require') {
 
 const tenantContext = new AsyncLocalStorage();
 
-const primaryDbName = process.env.DB_NAME || 'schooldb';
+// Primary: when DATABASE_URL set, use its DB name (e.g. myschool_db_6276 on Render); else DB_NAME
+function getPrimaryDbName() {
+  const url = (process.env.DATABASE_URL || '').toString().trim();
+  if (url) {
+    try {
+      const u = new URL(url);
+      const db = (u.pathname || '/').replace(/^\//, '').split('?')[0].trim();
+      if (db) return db;
+    } catch { /* ignore */ }
+  }
+  return process.env.DB_NAME || 'schooldb';
+}
+const primaryDbName = getPrimaryDbName();
 const masterDbName = process.env.MASTER_DB_NAME || 'master_db';
 
 const baseLocalConfig = {
@@ -31,11 +43,12 @@ const tenantPools = new Map();
 const CONNECTION_TIMEOUT_MS = parseInt(process.env.DB_CONNECTION_TIMEOUT_MS || '10000', 10);
 
 /**
- * School-specific database overrides (e.g. Millat on Neon).
- * When dbName matches and the env var is set, use that connection string instead of
- * the default host/database logic. Enables per-school cloud hosting.
+ * School-specific database overrides.
+ * PreSkool (1111) uses school_db in master; DATABASE_URL points to Render.
+ * Millat/Iqra use Neon. Enables split: PreSkool on Render, others on Neon.
  */
 const SCHOOL_DATABASE_URL_MAP = {
+  school_db: 'DATABASE_URL',      // PreSkool on Render (master has 1111 → school_db)
   millat_db: 'MILLAT_DATABASE_URL',
   iqra_db: 'IQRA_DATABASE_URL',
 };

@@ -120,7 +120,18 @@ async function createTenantDatabase(dbName) {
   const sourceDbName = getTemplateDbName();
 
   try {
-    // Clone schema + reference data from source DB
+    // Terminate connections to template (Postgres requires template to have zero connections)
+    await pool.query(
+      `SELECT pg_terminate_backend(pid)
+       FROM pg_stat_activity
+       WHERE datname = $1 AND pid <> pg_backend_pid()`,
+      [sourceDbName]
+    );
+  } catch {
+    /* ignore; CREATE may still succeed */
+  }
+
+  try {
     await pool.query(`CREATE DATABASE "${dbName}" TEMPLATE "${sourceDbName}"`);
   } catch (err) {
     throw new Error(

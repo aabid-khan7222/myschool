@@ -52,7 +52,7 @@ The template name is resolved as:
 3. Else database name from `DATABASE_URL` or `TENANT_ADMIN_DATABASE_URL`
 4. Else `school_db` (local default)
 
-**Production (Neon):** Create a dedicated `school_template` database on Neon (clone from `neondb` once). This DB is never used by the app, so it has no connections. Set `PROVISIONING_TEMPLATE_DB_NAME=school_template`. This avoids "source database is being accessed by other users".
+**Production (Neon):** Neon may keep connections to databases. If "source database is being accessed" persists: (1) Create `school_template` on Neon, (2) In Neon SQL Editor run `ALTER DATABASE school_template CONNECTION LIMIT 0` to block new connections, (3) Wait for existing connections to drop, then retry. Or use Neon API/Console to create databases.
 
 **TENANT_ADMIN_DATABASE_URL:** Connection for `CREATE DATABASE`. Falls back to `DATABASE_URL`.
 
@@ -60,13 +60,12 @@ The template name is resolved as:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD | Yes (local) or DATABASE_URL | Primary school + master_db connection |
-| DB_NAME | No | Template DB for new schools. Local: school_db. Neon: neondb. Auto-derived from DATABASE_URL if unset. |
-| DATABASE_URL | Yes (production) | Full connection string (primary DB) |
-| MASTER_DATABASE_URL | No | Full connection string for master_db on Neon |
-| TENANT_ADMIN_DATABASE_URL | No | Connection for CREATE DATABASE. Falls back to DATABASE_URL. |
-| MILLAT_DATABASE_URL | No | Full connection string for Millat on Neon |
-| IQRA_DATABASE_URL | No | Full connection string for Iqra on Neon |
+| DATABASE_URL | Yes (production) | Render Postgres. PreSkool (1111→school_db) uses this. |
+| DB_NAME | No | Local primary. Production primary from DATABASE_URL. |
+| MASTER_DATABASE_URL | Yes (production) | master_db on Neon (schools registry) |
+| MILLAT_DATABASE_URL | No | Millat on Neon |
+| IQRA_DATABASE_URL | No | Iqra on Neon |
+| TENANT_ADMIN_DATABASE_URL | No | CREATE DATABASE (Neon postgres). Falls back to DATABASE_URL. |
 
 ## Security
 
