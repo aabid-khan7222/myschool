@@ -200,7 +200,15 @@ const createSchool = async (req, res) => {
     return errorResponse(res, 400, 'Institute number already exists');
   }
 
-  const dbName = generateTenantDbName(institute);
+  let existingDbNames = [];
+  try {
+    const dbRes = await masterQuery('SELECT db_name FROM schools');
+    existingDbNames = (dbRes.rows || []).map((r) => r.db_name).filter(Boolean);
+  } catch {
+    /* ignore; use empty list */
+  }
+
+  const dbName = generateTenantDbName(name, institute, existingDbNames);
 
   try {
     await createTenantDatabase(dbName);

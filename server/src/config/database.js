@@ -68,9 +68,10 @@ function createPoolForDb(dbName) {
     return pool;
   }
 
-  // Dynamically created tenant DBs (school_4444, school_5555, ...) live on Neon
-  const tenantBaseUrl = (process.env.TENANT_ADMIN_DATABASE_URL || process.env.MILLAT_DATABASE_URL || '').toString().trim();
-  if (tenantBaseUrl && /^school_[a-zA-Z0-9_]+$/.test(dbName)) {
+  // Dynamically created tenant DBs: school_4444 (legacy), anglo_db, aabid_db (school-name based)
+  const tenantBaseUrl = (process.env.TENANT_ADMIN_DATABASE_URL || process.env.MILLAT_DATABASE_URL || process.env.DATABASE_URL || '').toString().trim();
+  const isDynamicTenant = /^school_[a-zA-Z0-9_]+$/.test(dbName) || /^[a-z0-9_]+_db$/.test(dbName);
+  if (tenantBaseUrl && isDynamicTenant) {
     try {
       const u = new URL(tenantBaseUrl);
       u.pathname = `/${dbName}`;

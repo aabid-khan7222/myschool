@@ -104,13 +104,38 @@ function createPoolForTenantDb(dbName) {
   });
 }
 
-function generateTenantDbName(instituteNumber) {
-  const digits = String(instituteNumber || '').replace(/[^0-9a-zA-Z]/g, '').toLowerCase();
-  const suffix = digits || 'school';
-  let base = `school_${suffix}`;
-  if (base.length > 40) {
-    base = base.slice(0, 40);
-  }
+/**
+ * Slug from school name for use as DB name. "Anglo School" → "anglo_school", "Aabid School" → "aabid_school".
+ * PostgreSQL: lowercase, alphanumeric + underscore, max 63 chars.
+ */
+function slugFromSchoolName(schoolName) {
+  const s = String(schoolName || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/[\s-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+  return s.slice(0, 56);
+}
+
+/**
+ * Generate tenant DB name from school name (e.g. anglo_db, aabid_db).
+ * Falls back to school_{institute} if slug is empty or collision.
+ */
+function generateTenantDbName(schoolName, instituteNumber, existingDbNames = []) {
+  const institute = String(instituteNumber || '').replace(/[^0-9a-zA-Z]/g, '').toLowerCase();
+  const fallback = `school_${institute || 'school'}`;
+
+  const slug = slugFromSchoolName(schoolName);
+  if (!slug) return fallback;
+
+  let base = `${slug}_db`;
+  if (base.length > 63) base = base.slice(0, 63);
+
+  const exists = existingDbNames.some((d) => d.toLowerCase() === base.toLowerCase());
+  if (exists) return `${slug}_${institute}_db`.slice(0, 63) || fallback;
+
   return base;
 }
 
