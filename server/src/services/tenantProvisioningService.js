@@ -434,46 +434,78 @@ async function createTenantDatabase(dbName) {
     }
   }
 
-  // Immediately remove all tenant-specific/dynamic data so the new school starts clean.
-  // Mirrors reset-tenant-dynamic-data.js behaviour.
-  const tenantPool = createPoolForTenantDb(dbName);
-
+  // On Neon (especially via pooler), CREATE DATABASE ... TEMPLATE can succeed but the new DB
+  // may be empty (schema not copied). If so, drop and provision via dump/restore from template.
+  let tenantPool = createPoolForTenantDb(dbName);
   try {
-    const tableCheck = await tenantPool.query(
+    let tableCheck = await tenantPool.query(
       `SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users' LIMIT 1`
     );
     if (!tableCheck.rows || tableCheck.rows.length === 0) {
-      throw new Error('relation "users" does not exist (schema restore did not create required tables)');
+      await tenantPool.end();
+      tenantPool = null;
+      // Template copy did not create schema (e.g. Neon pooler) — provision via dump/restore
+      try {
+        await pool.query(
+          `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`,
+          [dbName]
+        );
+      } catch { /* ignore */ }
+      await pool.query(`DROP DATABASE IF EXISTS "${dbName}"`);
+      await pool.query(`CREATE DATABASE "${dbName}"`);
+      try {
+        await cloneViaDumpRestore(sourceDbName, dbName);
+      } catch (dumpErr) {
+        try {
+          await pool.query(
+            `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`,
+            [dbName]
+          );
+          await pool.query(`DROP DATABASE IF EXISTS "${dbName}"`);
+        } catch { /* ignore */ }
+        throw new Error(
+          `Tenant database was empty after clone. Restore schema via dump: ${dumpErr.message}. Use PROVISIONING_SOURCE_DATABASE_URL with Neon DIRECT endpoint.`
+        );
+      }
+      tenantPool = createPoolForTenantDb(dbName);
+      tableCheck = await tenantPool.query(
+        `SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users' LIMIT 1`
+      );
+      if (!tableCheck.rows || tableCheck.rows.length === 0) {
+        await tenantPool.end();
+        try {
+          await pool.query(
+            `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`,
+            [dbName]
+          );
+          await pool.query(`DROP DATABASE IF EXISTS "${dbName}"`);
+        } catch { /* ignore */ }
+        throw new Error(
+          'Schema restore did not create required tables (e.g. users). Ensure template DB has full schema and use PROVISIONING_SOURCE_DATABASE_URL with Neon DIRECT endpoint.'
+        );
+      }
     }
+
+    // Immediately remove all tenant-specific/dynamic data so the new school starts clean.
     await tenantPool.query('BEGIN');
     await tenantPool.query('TRUNCATE TABLE users RESTART IDENTITY CASCADE');
     await tenantPool.query('COMMIT');
   } catch (err) {
-    await tenantPool.query('ROLLBACK').catch(() => {});
-    // Cleanup the half-initialized tenant DB to avoid leaking data
+    if (tenantPool) await tenantPool.query('ROLLBACK').catch(() => {});
     try {
       await pool.query(
-        `
-        SELECT pg_terminate_backend(pid)
-        FROM pg_stat_activity
-        WHERE datname = $1
-          AND pid <> pg_backend_pid()
-        `,
+        `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`,
         [dbName]
       );
-    } catch {
-      // ignore terminate errors
-    }
+    } catch { /* ignore */ }
     try {
       await pool.query(`DROP DATABASE IF EXISTS "${dbName}"`);
-    } catch {
-      // ignore drop errors; propagate root cause below
-    }
+    } catch { /* ignore */ }
     throw new Error(
       `Created tenant database "${dbName}" but failed to reset dynamic data: ${err.message}`
     );
   } finally {
-    await tenantPool.end();
+    if (tenantPool) await tenantPool.end();
   }
 }
 
