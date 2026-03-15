@@ -1,0 +1,10 @@
+# Render Blueprint: Backend as Docker (required for Create School / tenant provisioning)
+# Create School needs pg_dump/psql; they are installed only when using this Docker setup.
+# Add env vars in Render Dashboard → Environment (DATABASE_URL, PROVISIONING_SOURCE_DATABASE_URL, etc.)
+
+services:
+  - type: web
+    name: myschool-backend
+    runtime: docker
+    rootDir: server
+    dockerfilePath: ./Dockerfile
