@@ -163,28 +163,146 @@ function getDumpSourceUrl(sourceDbName, useAlternate = false) {
 }
 
 /**
- * Clone schema using pg_dump (plain format) then restore via Node pg client into target DB.
- * Restore uses the same createPoolForTenantDb() as TRUNCATE, so we are guaranteed to run
- * against the correct database (no psql/pooler/URI ambiguity on Neon).
+ * Split pg_dump plain SQL into single statements, respecting dollar-quoting and string literals.
+ * Running one statement at a time avoids "syntax error at or near ..." when the full dump
+ * is sent as a single query (e.g. escaping/parsing issues with node-pg).
+ */
+function splitSqlStatements(sql) {
+  const statements = [];
+  let current = '';
+  let i = 0;
+  const n = sql.length;
+  const pushStatement = (s) => {
+    const t = s.trim();
+    if (t && !t.startsWith('--')) statements.push(t);
+  };
+
+  while (i < n) {
+    const rest = sql.slice(i);
+    if (rest[0] === "'") {
+      current += rest[0];
+      i++;
+      while (i < n) {
+        if (sql[i] === "'" && sql[i + 1] === "'") {
+          current += "''";
+          i += 2;
+        } else if (sql[i] === "'") {
+          current += "'";
+          i++;
+          break;
+        } else {
+          current += sql[i];
+          i++;
+        }
+      }
+      continue;
+    }
+    if (rest[0] === '"') {
+      current += rest[0];
+      i++;
+      while (i < n) {
+        if (sql[i] === '"' && sql[i + 1] === '"') {
+          current += '""';
+          i += 2;
+        } else if (sql[i] === '"') {
+          current += '"';
+          i++;
+          break;
+        } else {
+          current += sql[i];
+          i++;
+        }
+      }
+      continue;
+    }
+    if (rest[0] === '$') {
+      const tagMatch = rest.match(/^\$([a-zA-Z0-9_]*)\$/);
+      if (tagMatch) {
+        const open = tagMatch[0]; // e.g. $$ or $body$
+        current += open;
+        i += open.length;
+        const closeIdx = sql.indexOf(open, i);
+        if (closeIdx === -1) {
+          current += sql.slice(i);
+          i = n;
+        } else {
+          current += sql.slice(i, closeIdx + open.length);
+          i = closeIdx + open.length;
+        }
+        continue;
+      }
+    }
+    if (rest.match(/^;\s*\n/) || (rest[0] === ';' && (i + 1 >= n || /[\r\n\s]/.test(sql[i + 1])))) {
+      pushStatement(current);
+      current = '';
+      i++;
+      while (i < n && /[\r\n\t ]/.test(sql[i])) i++;
+      continue;
+    }
+    current += sql[i];
+    i++;
+  }
+  if (current.trim()) pushStatement(current);
+  return statements;
+}
+
+/**
+ * Restore dump file using psql (when available). Handles multi-statement dumps and escaping correctly.
+ */
+function restoreViaPsql(targetUrl, tmpFile) {
+  return new Promise((resolve, reject) => {
+    const psql = spawn(
+      'psql',
+      ['-d', targetUrl, '-f', tmpFile, '-v', 'ON_ERROR_STOP=1', '--set', 'ON_ERROR_STOP=on'],
+      { stdio: ['ignore', 'pipe', 'pipe'] }
+    );
+    let stderr = '';
+    let stdout = '';
+    psql.stdout?.on('data', (c) => { stdout += c.toString(); });
+    psql.stderr?.on('data', (c) => { stderr += c.toString(); });
+    psql.on('close', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`psql restore failed (${code}): ${stderr || stdout}`));
+    });
+    psql.on('error', (err) => {
+      if (err.code === 'ENOENT') reject(new Error('psql not found; install postgresql-client or use Docker image with psql'));
+      else reject(err);
+    });
+  });
+}
+
+/**
+ * Clone schema using pg_dump (plain format) then restore.
+ * Prefers psql for restore (correct handling of all escaping). Falls back to executing
+ * statements one-by-one via node-pg to avoid "syntax error at or near ..." when sending
+ * the entire dump as a single query.
  */
 async function cloneViaDumpRestore(sourceDbName, targetDbName) {
+  const RESTORE_TIMEOUT_MS = 120000; // 2 minutes max for restore
+
+  const DUMP_TIMEOUT_MS = 90000; // 1.5 min for pg_dump (Neon can be slow)
   const tryDump = async (useAlternate) => {
     const sourceUrl = getDumpSourceUrl(sourceDbName, useAlternate);
     if (!sourceUrl) throw new Error('PROVISIONING_SOURCE_DATABASE_URL or TENANT_ADMIN_DATABASE_URL required');
     const tmpFile = path.join(os.tmpdir(), `tenant_clone_${targetDbName}_${Date.now()}.sql`);
-    await new Promise((resolve, reject) => {
-      const pd = spawn(
-        'pg_dump',
-        ['-d', sourceUrl, '--no-owner', '--no-privileges', '--format=plain', '--inserts', '-f', tmpFile],
-        { stdio: ['ignore', 'pipe', 'pipe'] }
-      );
-      let stderr = '';
-      pd.stderr?.on('data', (c) => { stderr += c.toString(); });
-      pd.on('close', (code) => {
-        if (code === 0) resolve(tmpFile);
-        else reject(new Error(`pg_dump failed (${code}): ${stderr}`));
-      });
-    });
+    await Promise.race([
+      new Promise((resolve, reject) => {
+        const pd = spawn(
+          'pg_dump',
+          ['-d', sourceUrl, '--no-owner', '--no-privileges', '--format=plain', '--inserts', '-f', tmpFile],
+          { stdio: ['ignore', 'pipe', 'pipe'] }
+        );
+        let stderr = '';
+        pd.stderr?.on('data', (c) => { stderr += c.toString(); });
+        pd.on('close', (code) => {
+          if (code === 0) resolve(tmpFile);
+          else reject(new Error(`pg_dump failed (${code}): ${stderr}`));
+        });
+      }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('pg_dump timed out. Use PROVISIONING_SOURCE_DATABASE_URL with Neon DIRECT endpoint (no -pooler).')), DUMP_TIMEOUT_MS)
+      ),
+    ]);
     return tmpFile;
   };
 
@@ -205,11 +323,42 @@ async function cloneViaDumpRestore(sourceDbName, targetDbName) {
       throw new Error('pg_dump produced empty output');
     }
 
+    const targetUrl = getConnectionStringForDb(targetDbName);
+    const restoreWithTimeout = (fn) =>
+      Promise.race([
+        fn(),
+        new Promise((_, rej) =>
+          setTimeout(() => rej(new Error('Restore timed out after 2 minutes. Check PROVISIONING_SOURCE_DATABASE_URL (use Neon DIRECT endpoint).')), RESTORE_TIMEOUT_MS)
+        ),
+      ]);
+
+    if (targetUrl) {
+      try {
+        await restoreWithTimeout(() => restoreViaPsql(targetUrl, tmpFile));
+        return;
+      } catch (psqlErr) {
+        if (psqlErr.message && psqlErr.message.includes('psql not found')) {
+          console.warn('psql not found, falling back to statement-by-statement restore');
+        } else {
+          throw psqlErr;
+        }
+      }
+    }
+
     const targetPool = createPoolForTenantDb(targetDbName);
     try {
       const client = await targetPool.connect();
       try {
-        await client.query(dumpSql);
+        const statements = splitSqlStatements(dumpSql);
+        for (let idx = 0; idx < statements.length; idx++) {
+          const stmt = statements[idx];
+          if (!stmt.trim()) continue;
+          try {
+            await client.query(stmt);
+          } catch (stmtErr) {
+            throw new Error(`Statement ${idx + 1}/${statements.length} failed: ${stmtErr.message}. SQL (first 200 chars): ${stmt.slice(0, 200)}...`);
+          }
+        }
       } finally {
         client.release();
       }
