@@ -92,23 +92,32 @@ function getAdminPool() {
  * Local: uses DB_HOST, DB_PORT, DB_USER, DB_PASSWORD.
  */
 function createPoolForTenantDb(dbName) {
+  const attachTenantPoolHandlers = (pool) => {
+    pool.on('error', (err) => {
+      // Avoid crashing the process when Neon or admin commands terminate
+      // tenant connections (e.g. error code 57P01).
+      console.error(`Unexpected tenant database error for "${dbName}":`, err);
+    });
+    return pool;
+  };
+
   const baseUrl = (process.env.TENANT_ADMIN_DATABASE_URL || process.env.DATABASE_URL || '').toString().trim();
   if (baseUrl) {
     try {
       const u = new URL(baseUrl);
       u.pathname = `/${dbName}`;
-      return new Pool({
+      return attachTenantPoolHandlers(new Pool({
         connectionString: u.toString(),
         ssl: sslConfig,
         max: 5,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 5000,
-      });
+      }));
     } catch {
       /* fall through to local config */
     }
   }
-  return new Pool({
+  return attachTenantPoolHandlers(new Pool({
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432', 10),
     user: process.env.DB_USER || 'postgres',
@@ -117,7 +126,7 @@ function createPoolForTenantDb(dbName) {
     max: 5,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
-  });
+  }));
 }
 
 /**
