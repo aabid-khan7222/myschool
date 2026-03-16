@@ -184,14 +184,19 @@ async function createTenantDatabase(dbName) {
   const pool = getAdminPool();
   const checkRes = await pool.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName]);
   if (checkRes.rowCount > 0) {
-    throw new Error(`Database "${dbName}" already exists`);
-  }
-
-  // 1) Create an empty tenant database (no TEMPLATE dependency).
-  try {
-    await pool.query(`CREATE DATABASE "${dbName}"`);
-  } catch (err) {
-    throw new Error(`Failed to create tenant database "${dbName}": ${err.message}`);
+    // If the database already exists, we treat this as an idempotent
+    // provisioning call and simply reuse the existing DB instead of
+    // failing the whole Create School flow.
+    console.warn(
+      `createTenantDatabase: database "${dbName}" already exists, reusing existing database and re-running template import.`
+    );
+  } else {
+    // 1) Create an empty tenant database (no TEMPLATE dependency).
+    try {
+      await pool.query(`CREATE DATABASE "${dbName}"`);
+    } catch (err) {
+      throw new Error(`Failed to create tenant database "${dbName}": ${err.message}`);
+    }
   }
 
   // 2) Connect to the new DB and import schema/reference data from template_schema.sql.
