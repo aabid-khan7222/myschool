@@ -74,30 +74,16 @@ app.use(helmet()); // Security headers
 app.use(cookieParser());
 // Logging: use 'dev' (shorter), skip OPTIONS to reduce noise
 app.use(morgan('dev', { skip: (req) => req.method === 'OPTIONS' }));
-// CORS: production = trusted origins from CORS_ORIGIN; dev = localhost
-const corsOrigins = ['http://localhost:3000', 'http://localhost:5173'];
-if (serverConfig.corsOrigin) {
-  const extra = serverConfig.corsOrigin.split(',').map((s) => s.trim()).filter(Boolean);
-  corsOrigins.push(...extra);
-}
+// CORS: production = explicit origins from CORS_ORIGIN, dev = localhost
+const defaultDevOrigins = ['http://localhost:3000', 'http://localhost:5173'];
 const isProduction = process.env.NODE_ENV === 'production';
 const allowedOrigins = serverConfig.corsOrigin
   ? serverConfig.corsOrigin.split(',').map((s) => s.trim()).filter(Boolean)
   : [];
 const corsOptions = {
   origin: isProduction
-    ? function (origin, callback) {
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.length === 0) {
-          if (process.env.NODE_ENV === 'production') {
-            console.warn('CORS_ORIGIN not set in production - restricting to localhost');
-          }
-          return callback(null, origin.startsWith('http://localhost') || origin.startsWith('https://localhost'));
-        }
-        const allowed = allowedOrigins.some((o) => origin === o);
-        return callback(allowed ? null : new Error('CORS not allowed'), allowed);
-      }
-    : corsOrigins,
+    ? (allowedOrigins.length > 0 ? allowedOrigins : defaultDevOrigins)
+    : defaultDevOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
