@@ -224,7 +224,7 @@ async function createTenantDatabase(dbName) {
       );
     }
 
-    await tenantPool.query('TRUNCATE TABLE users RESTART IDENTITY CASCADE');
+    await tenantPool.query('TRUNCATE TABLE public.users RESTART IDENTITY CASCADE');
     await tenantPool.query('COMMIT');
   } catch (err) {
     await tenantPool.query('ROLLBACK').catch(() => {});
