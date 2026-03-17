@@ -825,6 +825,29 @@
             }
         }
     }
+
+    // Mobile-only school label (e.g. Preskool (1111)).
+    // Desktop already shows this inside .user-menu, but .user-menu is hidden below lg.
+    .mobile-school-badge {
+        display: none;
+        position: absolute;
+        top: 50%;
+        right: 70px; // leave space for the 3-dots menu (60px) + gap
+        left: 70px;  // leave space for the hamburger (60px) + gap
+        transform: translateY(-50%);
+        text-align: center;
+        pointer-events: none; // avoid blocking header clicks
+        .badge {
+            max-width: 100%;
+            display: inline-block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        @include mixins.respond-below(lg) {
+            display: block;
+        }
+    }
 }
 .logo-small img {
     width: 30px;

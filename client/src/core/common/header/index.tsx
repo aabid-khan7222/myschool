@@ -169,6 +169,13 @@ const Header = () => {
             <span />
           </span>
         </Link>
+        {user?.school_name && (
+          <div className="mobile-show mobile-school-badge">
+            <span className="badge bg-primary-subtle text-primary fw-semibold">
+              {user.school_name} ({user.institute_number || "----"})
+            </span>
+          </div>
+        )}
         <div className="header-user">
           <div className="nav user-menu">
             {/* Search */}
