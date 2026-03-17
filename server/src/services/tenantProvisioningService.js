@@ -164,6 +164,29 @@ function generateTenantDbName(schoolName, instituteNumber, existingDbNames = [])
   return base;
 }
 
+/**
+ * Ensures required default rows exist in public.user_roles for a newly provisioned tenant.
+ * Template schema is schema-only (no data), so user_roles is empty and Headmaster creation would fail.
+ * We insert the 'admin' role (and other roles the app expects) if missing. Safe to run idempotently.
+ */
+async function ensureTenantDefaultRoles(pool) {
+  await pool.query(`
+    INSERT INTO public.user_roles (role_name, description, is_active)
+    SELECT 'admin', 'Administrator', true
+    WHERE NOT EXISTS (SELECT 1 FROM public.user_roles WHERE LOWER(role_name) = 'admin');
+  `);
+  await pool.query(`
+    INSERT INTO public.user_roles (role_name, description, is_active)
+    SELECT 'teacher', 'Teacher', true
+    WHERE NOT EXISTS (SELECT 1 FROM public.user_roles WHERE LOWER(role_name) = 'teacher');
+  `);
+  await pool.query(`
+    INSERT INTO public.user_roles (role_name, description, is_active)
+    SELECT 'student', 'Student', true
+    WHERE NOT EXISTS (SELECT 1 FROM public.user_roles WHERE LOWER(role_name) = 'student');
+  `);
+}
+
 // Lazy-loaded SQL template for tenant provisioning. Kept in memory after first read.
 let cachedTemplateSql = null;
 function getTemplateSql() {
@@ -214,6 +237,8 @@ async function createTenantDatabase(dbName) {
     const templateSql = getTemplateSql();
     await tenantPool.query('BEGIN');
     await tenantPool.query(templateSql);
+
+    await ensureTenantDefaultRoles(tenantPool);
 
     const tableCheck = await tenantPool.query(
       `SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users' LIMIT 1`
@@ -286,7 +311,7 @@ async function createHeadmasterUserInTenant(dbName, adminName, adminEmail, admin
     const roleRes = await pool.query(
       `
       SELECT id
-      FROM user_roles
+      FROM public.user_roles
       WHERE LOWER(role_name) = 'admin'
       LIMIT 1
       `
@@ -307,7 +332,7 @@ async function createHeadmasterUserInTenant(dbName, adminName, adminEmail, admin
 
     const userRes = await pool.query(
       `
-      INSERT INTO users (username, email, password_hash, role_id, first_name, last_name, is_active)
+      INSERT INTO public.users (username, email, password_hash, role_id, first_name, last_name, is_active)
       VALUES ($1, $2, $3, $4, $5, $6, true)
       RETURNING id
       `,
@@ -319,7 +344,7 @@ async function createHeadmasterUserInTenant(dbName, adminName, adminEmail, admin
       const employeeCode = `HM-${String(instituteNumber || '').trim() || dbName}`.toUpperCase();
       await pool.query(
         `
-        INSERT INTO staff (user_id, employee_code, first_name, last_name, is_active)
+        INSERT INTO public.staff (user_id, employee_code, first_name, last_name, is_active)
         VALUES ($1, $2, $3, $4, true)
         `,
         [userId, employeeCode, firstName, lastName]
