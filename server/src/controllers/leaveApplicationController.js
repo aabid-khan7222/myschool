@@ -3,7 +3,14 @@ const { getParentsForUser } = require('../utils/parentUserMatch');
 
 // Seed leave types if table is empty (handles case when migration seed didn't run)
 const seedLeaveTypesIfEmpty = async () => {
-  const check = await query('SELECT COUNT(*) AS c FROM leave_types');
+  let check;
+  try {
+    check = await query('SELECT COUNT(*) AS c FROM leave_types');
+  } catch (e) {
+    // Tenant schema might not have leave_types yet (new/empty school DB).
+    // In that case we can't seed; caller should handle gracefully.
+    return;
+  }
   if (parseInt(check.rows[0]?.c || '0', 10) > 0) return;
   const types = [
     ['Medical Leave', 'Leave for medical reasons', 10],
@@ -25,9 +32,21 @@ const seedLeaveTypesIfEmpty = async () => {
 const getLeaveTypes = async (req, res) => {
   try {
     await seedLeaveTypesIfEmpty();
-    const result = await query(
-      'SELECT id, leave_type FROM leave_types WHERE is_active = true ORDER BY leave_type'
-    );
+    let result;
+    try {
+      result = await query(
+        'SELECT id, leave_type FROM leave_types WHERE is_active = true ORDER BY leave_type'
+      );
+    } catch (e) {
+      // If the tenant DB doesn't have this table yet, don't break the dashboard.
+      // Return an empty list; UI can still render.
+      return res.status(200).json({
+        status: 'SUCCESS',
+        message: 'Leave types fetched successfully',
+        data: [],
+        count: 0,
+      });
+    }
     res.status(200).json({
       status: 'SUCCESS',
       message: 'Leave types fetched successfully',
