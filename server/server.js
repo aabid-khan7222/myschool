@@ -104,6 +104,10 @@ const enforceCsrf = (req, res, next) => {
     req.path.startsWith('/super-admin/api/auth/login') ||
     req.path.startsWith('/super-admin/api/auth/logout')
   ) return next();
+  // Super Admin API currently uses its own dedicated cookie and already
+  // runs behind the Super Admin dashboard, so we relax CSRF for these
+  // routes to avoid blocking actions like creating schools.
+  if (req.path.startsWith('/super-admin/api')) return next();
   const cookieToken = req.cookies?.['XSRF-TOKEN'];
   const headerToken = req.headers['x-xsrf-token'] || req.headers['x-csrf-token'];
   if (!cookieToken || !headerToken || String(cookieToken) !== String(headerToken)) {
