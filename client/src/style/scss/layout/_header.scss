@@ -145,8 +145,14 @@
             @include mixins.respond-below(lg) {
                 text-align: center;
                 width: 100%;
+                justify-content: center;
+                -webkit-justify-content: center;
+                -ms-flex-pack: center;
                 .logo-icon, img {
                     width: 32px;
+                }
+                .logo-school-name {
+                    display: none; // avoid overlap on very small screens; mobile shows badge with name+code
                 }
             }
         }
@@ -183,7 +189,15 @@
         }
         @include mixins.respond-below(lg) {
             position: absolute;
-            width:100%;
+            left: 0;
+            right: 0;
+            width: 100%;
+            padding-left: 70px;  // leave space for hamburger (60px) + gap
+            padding-right: 70px; // leave space for 3-dots menu (60px) + gap
+            justify-content: center;
+            -webkit-justify-content: center;
+            -ms-flex-pack: center;
+            border-right: 0;
         }
     }
 
@@ -833,9 +847,10 @@
         position: absolute;
         top: 50%;
         right: 70px; // leave space for the 3-dots menu (60px) + gap
-        left: 70px;  // leave space for the hamburger (60px) + gap
+        left: auto;
+        max-width: calc(100% - 140px); // 60px hamburger + 60px 3-dots + gaps
         transform: translateY(-50%);
-        text-align: center;
+        text-align: right;
         pointer-events: none; // avoid blocking header clicks
         .badge {
             max-width: 100%;
@@ -843,6 +858,7 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            font-size: 12px;
         }
         @include mixins.respond-below(lg) {
             display: block;

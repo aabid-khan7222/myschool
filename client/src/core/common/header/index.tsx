@@ -152,7 +152,14 @@ const Header = () => {
               className={isMillatLogo ? "logo-icon--large" : undefined}
             />
           </Link>
-          <Link id="toggle_btn" to="#" onClick={handleToggleMiniSidebar}>
+          <Link
+            id="toggle_btn"
+            to="#"
+            onClick={(e) => {
+              e.preventDefault();
+              handleToggleMiniSidebar();
+            }}
+          >
             <i className="ti ti-menu-deep" />
           </Link>
         </div>
