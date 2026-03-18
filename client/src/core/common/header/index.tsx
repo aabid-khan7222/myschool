@@ -10,6 +10,7 @@ import ImageWithBasePath from "../imageWithBasePath";
 import {
   setExpandMenu,
   setMobileSidebar,
+  toggleMiniSidebar,
 } from "../../data/redux/sidebarSlice";
 import { useState, useEffect } from "react";
 import { all_routes } from "../../../feature-module/router/all_routes";
@@ -68,18 +69,22 @@ const Header = () => {
   };
 
   const onMouseEnter = () => {
-    dispatch(setExpandMenu(true));
+    if (dataLayout === "mini_layout") dispatch(setExpandMenu(true));
   };
   const onMouseLeave = () => {
-    dispatch(setExpandMenu(false));
+    if (dataLayout === "mini_layout") dispatch(setExpandMenu(false));
   };
   const handleToggleMiniSidebar = () => {
-    if (dataLayout === "mini_layout") {
-      dispatch(setDataLayout("default_layout"));
-      localStorage.setItem("dataLayout", "default_layout");
-    } else {
-      dispatch(setDataLayout("mini_layout"));
-      localStorage.setItem("dataLayout", "mini_layout");
+    // Desktop-only: collapse/expand sidebar without changing page-wrapper width.
+    // We explicitly do NOT toggle mini_layout here (mini_layout changes content width and uses hover-expand).
+    dispatch(setExpandMenu(false));
+    if (dataLayout === "mini_layout") dispatch(setDataLayout("default_layout"));
+    dispatch(toggleMiniSidebar());
+    try {
+      const prev = localStorage.getItem("miniSidebar") === "true";
+      localStorage.setItem("miniSidebar", String(!prev));
+    } catch {
+      // ignore
     }
   };
 

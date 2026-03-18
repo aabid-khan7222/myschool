@@ -80,6 +80,7 @@ const Sidebar = () => {
   };
   const location = useLocation();
   const dispatch = useDispatch();
+  const dataLayout = useSelector((state: any) => state.themeSetting.dataLayout);
   const previousLocation = usePreviousRoute();
 
   useEffect(() => {
@@ -129,10 +130,10 @@ const Sidebar = () => {
   }, [Location.pathname]);
 
   const onMouseEnter = () => {
-    dispatch(setExpandMenu(true));
+    if (dataLayout === "mini_layout") dispatch(setExpandMenu(true));
   };
   const onMouseLeave = () => {
-    dispatch(setExpandMenu(false));
+    if (dataLayout === "mini_layout") dispatch(setExpandMenu(false));
   };
   return (
     <>

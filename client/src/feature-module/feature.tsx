@@ -25,6 +25,7 @@ const Feature = () => {
     (state: any) => state.sidebarSlice.mobileSidebar
   );
 
+  const miniSidebar = useSelector((state: any) => state.sidebarSlice.miniSidebar);
   const expandMenu = useSelector((state: any) => state.sidebarSlice.expandMenu);
 
   const dataLayout = useSelector((state: any) => state.themeSetting.dataLayout);
@@ -195,6 +196,7 @@ const Feature = () => {
     const unwanted = ['default-layout', 'expand-menu'];
     unwanted.forEach(cls => document.body.classList.remove(cls));
     let bodyClass = layoutClass;
+    if (miniSidebar) bodyClass += " sidebar-collapsed";
     if (dataTheme === "dark_data_theme") {
       bodyClass += " dark-data-theme";
     }
@@ -216,7 +218,7 @@ const Feature = () => {
       "data-sidebarbg",
       sidebarBgMap[dataSidebarBg] || ""
     );
-  }, [layoutClass, dataSidebarBg, dataLayout, expandMenu, dataTheme]);
+  }, [layoutClass, miniSidebar, dataSidebarBg, dataLayout, expandMenu, dataTheme]);
 
   if (accountDisabled) {
     return (

@@ -153,8 +153,8 @@
                 }
                 .logo-school-name {
                     display: inline-block;
-                    font-size: 14px;
-                    font-weight: 700;
+                    font-size: 16px;
+                    font-weight: 800;
                     max-width: 160px;
                     overflow: hidden;
                     text-overflow: ellipsis;
@@ -851,9 +851,9 @@
         display: none;
         position: absolute;
         top: 50%;
-        right: 60px; // sit just left of 3-dots (60px)
+        right: 64px; // sit just left of 3-dots (60px) with small gap
         left: auto;
-        max-width: calc(100% - 140px); // 60px hamburger + 60px 3-dots + gaps
+        max-width: calc(100% - 160px); // keep it compact on small screens
         transform: translateY(-50%);
         text-align: right;
         pointer-events: none; // avoid blocking header clicks
@@ -864,7 +864,10 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            font-size: 12px;
+            font-size: 11px;
+            padding: 0.25rem 0.45rem;
+            border-radius: 8px;
+            line-height: 1.1;
         }
         @include mixins.respond-below(lg) {
             display: block;

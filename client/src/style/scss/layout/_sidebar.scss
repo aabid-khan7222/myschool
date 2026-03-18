@@ -660,6 +660,13 @@
 
 
 @include mixins.respond-above(lg) {
+    // Desktop: collapse sidebar via click toggle without affecting main content width.
+    // Keeps .page-wrapper margin stable; only slides the sidebar out of view.
+    body.sidebar-collapsed {
+        .sidebar {
+            transform: translateX(-252px);
+        }
+    }
     .mini-sidebar {
         .page-wrapper {
             margin-left: 80px;
