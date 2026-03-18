@@ -874,6 +874,29 @@
         }
     }
 }
+
+// Desktop: when sidebar is collapsed (click toggle),
+// also collapse the header-left "school logo + name" area.
+@include mixins.respond-above(lg) {
+    body.sidebar-collapsed {
+        .header {
+            .header-left {
+                width: 60px;
+                padding: 0;
+                justify-content: center;
+                border-right: 0;
+                .logo,
+                .logo-small {
+                    display: none !important;
+                }
+                #toggle_btn {
+                    display: flex;
+                    opacity: 1;
+                }
+            }
+        }
+    }
+}
 .logo-small img {
     width: 30px;
 }

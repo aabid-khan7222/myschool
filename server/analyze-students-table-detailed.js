@@ -9,6 +9,7 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD || 'password',
 });
 
+
 async function analyzeStudentsTable() {
   try {
     console.log('🔍 Analyzing students table structure...\n');

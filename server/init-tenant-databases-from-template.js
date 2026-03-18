@@ -1,3 +1,4 @@
+
 /**
  * Initialize tenant databases (millat_db, iqra_db) from the existing school_db
  * using PostgreSQL TEMPLATE feature.
