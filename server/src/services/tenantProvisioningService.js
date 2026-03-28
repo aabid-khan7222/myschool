@@ -8,10 +8,9 @@ require('dotenv').config();
 /** Application root (the `server` folder that contains `sql/`). */
 const SERVER_APP_ROOT = path.resolve(__dirname, '../..');
 
-// Provisioning creates an empty tenant DB and then imports schema/data
-// from a local SQL file (template_schema.sql). This avoids relying on
-// CREATE DATABASE ... TEMPLATE behaviour on Neon or external pg_dump/psql
-// binaries, and makes provisioning deterministic and version-agnostic.
+// Default: create empty DB + import template_schema.sql (batched queries for fewer round-trips).
+// Optional fast path (production): PROVISIONING_USE_DB_TEMPLATE_CLONE=true + PROVISIONING_TEMPLATE_DB_NAME
+// uses CREATE DATABASE ... TEMPLATE on Neon when a dedicated template DB is maintained.
 
 // Reuse SSL mode rules similar to database.js
 let sslConfig = { rejectUnauthorized: false };
@@ -48,6 +47,43 @@ function getTemplateDbName() {
  * Admin pool for CREATE DATABASE. Uses TENANT_ADMIN_DATABASE_URL, else DATABASE_URL, else local.
  * Must connect to the main application DB (e.g. neondb), never to the template DB (school_template).
  */
+/** DB name from TENANT_ADMIN_DATABASE_URL / DATABASE_URL (for clone safety checks). */
+function getAdminUrlDatabaseName() {
+  const adminUrl = (process.env.TENANT_ADMIN_DATABASE_URL || process.env.DATABASE_URL || '').toString().trim();
+  if (!adminUrl) return '';
+  try {
+    const u = new URL(adminUrl);
+    return (u.pathname || '/').replace(/^\//, '').split('?')[0].trim();
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * When true, new tenants are created with CREATE DATABASE ... TEMPLATE (fast on Neon).
+ * Requires PROVISIONING_TEMPLATE_DB_NAME pointing to a dedicated DB (e.g. school_template), not the app DB.
+ */
+function shouldUseTemplateDbClone() {
+  if (String(process.env.PROVISIONING_USE_DB_TEMPLATE_CLONE || '').toLowerCase() !== 'true') {
+    return false;
+  }
+  const tpl = (process.env.PROVISIONING_TEMPLATE_DB_NAME || '').toString().trim();
+  if (!tpl) {
+    console.warn(
+      '[provisioning] PROVISIONING_USE_DB_TEMPLATE_CLONE=true needs PROVISIONING_TEMPLATE_DB_NAME (e.g. school_template); using SQL file import instead.'
+    );
+    return false;
+  }
+  const adminDb = getAdminUrlDatabaseName();
+  if (adminDb && tpl.toLowerCase() === adminDb.toLowerCase()) {
+    console.warn(
+      `[provisioning] Template DB "${tpl}" cannot match the admin connection database; using SQL file import instead.`
+    );
+    return false;
+  }
+  return true;
+}
+
 function getAdminPool() {
   if (adminPool) return adminPool;
 
@@ -394,8 +430,7 @@ function getSplitTemplateStatements(sqlText) {
 
 /**
  * Run template SQL with fewer round-trips to the DB (critical on Neon / remote Postgres).
- * Previously: one pool.query() per statement → thousands of network RTTs (~minutes).
- * Now: batches of small statements in a single query (PostgreSQL simple-query multi-statement).
+ * Batches small statements into one query (PostgreSQL simple-query multi-statement).
  * Large COPY / data blocks are always sent alone. Semantics and transaction unchanged.
  *
  * Escape hatch: PROVISIONING_SQL_BATCH_SIZE=1 restores one-statement-per-query behaviour.
@@ -404,7 +439,7 @@ async function executeTemplateStatements(pool, sqlText) {
   const statements = getSplitTemplateStatements(sqlText);
   const batchSize = Math.max(
     1,
-    parseInt(process.env.PROVISIONING_SQL_BATCH_SIZE || '45', 10) || 45
+    parseInt(process.env.PROVISIONING_SQL_BATCH_SIZE || '96', 10) || 96
   );
   const largeStmtChars = Math.max(
     65536,
@@ -511,15 +546,32 @@ function getTemplateSql() {
 async function createTenantDatabase(dbName, schoolName = null) {
   const pool = getAdminPool();
   const checkRes = await pool.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName]);
-  if (checkRes.rowCount > 0) {
+  const dbAlreadyExists = checkRes.rowCount > 0;
+  const useTemplateClone = shouldUseTemplateDbClone();
+  const templateDbName = (process.env.PROVISIONING_TEMPLATE_DB_NAME || '').toString().trim();
+
+  if (dbAlreadyExists) {
     // If the database already exists, we treat this as an idempotent
     // provisioning call and simply reuse the existing DB instead of
     // failing the whole Create School flow.
     console.warn(
       `createTenantDatabase: database "${dbName}" already exists, reusing existing database and re-running template import.`
     );
+  } else if (useTemplateClone && templateDbName) {
+    try {
+      await pool.query(
+        `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`,
+        [templateDbName]
+      );
+      await new Promise((r) => setTimeout(r, 400));
+      await pool.query(`CREATE DATABASE "${dbName}" TEMPLATE "${templateDbName}"`);
+    } catch (err) {
+      throw new Error(
+        `Failed to create tenant database "${dbName}" from template "${templateDbName}": ${err.message}. ` +
+          'Ensure the template DB exists and is not in use, or set PROVISIONING_USE_DB_TEMPLATE_CLONE=false to use SQL import.'
+      );
+    }
   } else {
-    // 1) Create an empty tenant database (no TEMPLATE dependency).
     try {
       await pool.query(`CREATE DATABASE "${dbName}"`);
     } catch (err) {
@@ -527,12 +579,18 @@ async function createTenantDatabase(dbName, schoolName = null) {
     }
   }
 
-  // 2) Connect to the new DB and import schema/reference data from template_schema.sql.
+  // Import from SQL file when we did not clone, or when reusing an existing DB (re-sync schema).
+  const usedSqlFileImport = dbAlreadyExists || !useTemplateClone;
+
   const tenantPool = createPoolForTenantDb(dbName);
   try {
-    const templateSql = getTemplateSql();
     await tenantPool.query('BEGIN');
-    await executeTemplateStatements(tenantPool, templateSql);
+    if (usedSqlFileImport) {
+      const templateSql = getTemplateSql();
+      await executeTemplateStatements(tenantPool, templateSql);
+    } else {
+      getTemplateSql();
+    }
 
     await ensureTenantDefaultRoles(tenantPool);
 
