@@ -258,8 +258,8 @@ const SuperAdminDashboard = () => {
   };
 
   return (
-    <div>
-      <h3 className="mb-4">Super Admin Dashboard</h3>
+    <div className="super-admin-dashboard">
+      <h3 className="mb-4 text-body">Super Admin Dashboard</h3>
       {statsLoading && <p>Loading statistics...</p>}
       {statsError && !statsLoading && (
         <div className="alert alert-danger" role="alert">
@@ -269,7 +269,7 @@ const SuperAdminDashboard = () => {
       {stats && !statsLoading && !statsError && (
         <div className="row">
           <div className="col-md-4 mb-3">
-            <div className="card">
+            <div className="card shadow-sm border-secondary bg-body">
               <div className="card-body">
                 <h6 className="text-muted">Total Schools</h6>
                 <h3>{stats.total_schools}</h3>
@@ -277,7 +277,7 @@ const SuperAdminDashboard = () => {
             </div>
           </div>
           <div className="col-md-4 mb-3">
-            <div className="card">
+            <div className="card shadow-sm border-secondary bg-body">
               <div className="card-body">
                 <h6 className="text-muted">Active Schools</h6>
                 <h3>{stats.total_active_schools}</h3>
@@ -295,7 +295,7 @@ const SuperAdminDashboard = () => {
         </div>
       )}
       <div className="d-flex justify-content-between align-items-center mt-4 mb-2">
-        <h5 className="mb-0">Schools</h5>
+        <h5 className="mb-0 text-body">Schools</h5>
         <button
           type="button"
           className="btn btn-primary"
@@ -307,15 +307,15 @@ const SuperAdminDashboard = () => {
           Create New School
         </button>
       </div>
-      {schoolsLoading && <p>Loading schools...</p>}
+      {schoolsLoading && <p className="text-body-secondary">Loading schools...</p>}
       {schoolsError && !schoolsLoading && (
         <div className="alert alert-danger" role="alert">
           {schoolsError}
         </div>
       )}
       {!schoolsLoading && !schoolsError && (
-        <div className="table-responsive">
-          <table className="table table-striped align-middle">
+        <div className="table-responsive rounded border border-secondary">
+          <table className="table table-striped table-hover align-middle mb-0">
             <thead>
               <tr>
                 <th>ID</th>
@@ -480,10 +480,10 @@ const SuperAdminDashboard = () => {
                     </div>
                   </form>
                 </div>
-                <div className="modal-footer">
+                <div className="modal-footer border-secondary">
                   <button
                     type="button"
-                    className="btn btn-light"
+                    className="btn btn-outline-secondary"
                     onClick={() => setShowCreateModal(false)}
                     disabled={creating}
                   >

@@ -46,13 +46,13 @@ const SuperAdminLogin = () => {
   };
 
   return (
-    <div className="container-fuild">
-      <div className="w-100 overflow-hidden position-relative flex-wrap d-block vh-100">
-        <div className="row justify-content-center align-items-center h-100">
+    <div className="super-admin-login-wrap min-vh-100 bg-body text-body d-flex align-items-center py-4">
+      <div className="container-fluid w-100">
+        <div className="row justify-content-center">
           <div className="col-md-6 col-lg-4">
-            <div className="card shadow-sm">
+            <div className="card shadow-sm border-secondary bg-body">
               <div className="card-body">
-                <h4 className="mb-3 text-center">Super Admin Login</h4>
+                <h4 className="mb-3 text-center text-body">Super Admin Login</h4>
                 <p className="text-muted text-center mb-4">
                   Platform-level access for managing all schools.
                 </p>

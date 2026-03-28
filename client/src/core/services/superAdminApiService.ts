@@ -162,6 +162,20 @@ class SuperAdminApiService {
     }
   }
 
+  async changePassword(currentPassword: string, newPassword: string, confirmPassword: string) {
+    return this.makeRequest('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+    });
+  }
+
+  async updateProfile(username: string, currentPassword: string) {
+    return this.makeRequest('/auth/profile', {
+      method: 'PATCH',
+      body: JSON.stringify({ username, currentPassword }),
+    });
+  }
+
   // Schools
   async listSchools(status?: string) {
     const qs = status ? `?status=${encodeURIComponent(status)}` : '';

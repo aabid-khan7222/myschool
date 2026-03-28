@@ -42,6 +42,15 @@ const superAdminAuthSlice = createSlice({
       state.isAuthenticated = false;
       state.authChecked = true;
     },
+    /** Sync username/email from API after profile or password update (JWT may still carry old username until re-login). */
+    patchSuperAdminProfile: (
+      state,
+      action: PayloadAction<{ username?: string; email?: string }>
+    ) => {
+      if (!state.user) return;
+      if (action.payload.username != null) state.user.username = action.payload.username;
+      if (action.payload.email != null) state.user.email = action.payload.email;
+    },
   },
 });
 
@@ -50,6 +59,7 @@ export const {
   setSuperAdminAuthFromSession,
   setSuperAdminAuthChecked,
   clearSuperAdminAuth,
+  patchSuperAdminProfile,
 } = superAdminAuthSlice.actions;
 
 export const selectSuperAdminUser = (state: { superAdminAuth: SuperAdminAuthState }) =>

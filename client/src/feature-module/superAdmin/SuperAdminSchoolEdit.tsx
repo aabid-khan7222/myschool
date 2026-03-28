@@ -128,9 +128,9 @@ const SuperAdminSchoolEdit = () => {
   };
 
   return (
-    <div>
+    <div className="super-admin-school-edit">
       <div className="d-flex align-items-center justify-content-between mb-3">
-        <h3 className="mb-0">Edit School</h3>
+        <h3 className="mb-0 text-body">Edit School</h3>
         <button
           type="button"
           className="btn btn-outline-secondary"
@@ -140,7 +140,7 @@ const SuperAdminSchoolEdit = () => {
         </button>
       </div>
 
-      {loading && <p>Loading school...</p>}
+      {loading && <p className="text-body-secondary">Loading school...</p>}
       {error && !loading && (
         <div className="alert alert-danger" role="alert">
           {error}
@@ -148,7 +148,7 @@ const SuperAdminSchoolEdit = () => {
       )}
 
       {!loading && !error && (
-        <div className="card">
+        <div className="card shadow-sm border-secondary bg-body">
           <div className="card-body">
             {saveError && (
               <div className="alert alert-danger" role="alert">
@@ -207,7 +207,7 @@ const SuperAdminSchoolEdit = () => {
               <div className="mt-4 d-flex justify-content-end">
                 <button
                   type="button"
-                  className="btn btn-light me-2"
+                  className="btn btn-outline-secondary me-2"
                   onClick={() => navigate('/super-admin/dashboard')}
                   disabled={saving}
                 >

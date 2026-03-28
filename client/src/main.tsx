@@ -9,6 +9,7 @@ import { clearAuth } from "./core/data/redux/authSlice";
 import { clearSuperAdminAuth } from "./core/data/redux/superAdminAuthSlice";
 import { AuthBootstrap } from "./core/components/AuthBootstrap";
 import { SuperAdminAuthBootstrap } from "./core/components/SuperAdminAuthBootstrap";
+import { SuperAdminThemeSync } from "./core/components/SuperAdminThemeSync";
 import "../src/style/icon/boxicons/boxicons/css/boxicons.min.css";
 import "../src/style/icon/weather/weathericons.css";
 import "../src/style/icon/typicons/typicons.css";
@@ -53,6 +54,7 @@ createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <Provider store={store}>
         <BrowserRouter basename={base_path}>
+          <SuperAdminThemeSync />
           <AuthBootstrap />
           <SuperAdminAuthBootstrap />
           <ALLRoutes />
