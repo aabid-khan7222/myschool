@@ -24,7 +24,7 @@ const SuperAdminLayout = () => {
           <header className="d-flex justify-content-end align-items-center py-2 px-3 border-bottom bg-white">
             <button
               type="button"
-              className="btn btn-outline-secondary btn-lg px-4 fw-semibold"
+              className="btn btn-primary btn-lg px-4 fw-semibold text-white shadow-sm"
               onClick={handleLogout}
             >
               Logout
