@@ -1,4 +1,10 @@
-const { masterQuery, runWithTenant, query } = require('../config/database');
+const {
+  masterQuery,
+  runWithTenant,
+  query,
+  getPrimaryDbName,
+  closeTenantPoolForDb,
+} = require('../config/database');
 const { success, error: errorResponse } = require('../utils/responseHelper');
 const {
   generateTenantDbName,
@@ -401,7 +407,8 @@ const requestSchoolDeleteToken = async (req, res) => {
     const adminId = req.superAdmin?.id;
     const pwdOk = await verifySuperAdminPassword(adminId, password);
     if (!pwdOk) {
-      return errorResponse(res, 401, 'Invalid credentials');
+      // 403 — not "session expired" (401); client must not clear Super Admin login
+      return errorResponse(res, 403, 'Sorry, that password is incorrect.', 'WRONG_PASSWORD');
     }
 
     const schoolRes = await masterQuery(
@@ -446,7 +453,7 @@ const requestSchoolDeleteToken = async (req, res) => {
 };
 
 /**
- * Step 2: confirm with password + token; soft-delete (no automatic DB drop — data retained for ops).
+ * Step 2: confirm with password + token; soft-delete in master, then drop tenant DB when safe.
  */
 const confirmDeleteSchool = async (req, res) => {
   try {
@@ -471,7 +478,7 @@ const confirmDeleteSchool = async (req, res) => {
 
     const pwdOk = await verifySuperAdminPassword(req.superAdmin.id, password);
     if (!pwdOk) {
-      return errorResponse(res, 401, 'Invalid credentials');
+      return errorResponse(res, 403, 'Sorry, that password is incorrect.', 'WRONG_PASSWORD');
     }
 
     const schoolRes = await masterQuery(
@@ -495,6 +502,9 @@ const confirmDeleteSchool = async (req, res) => {
       return errorResponse(res, 400, 'Cannot remove primary template school');
     }
 
+    const tenantDbName = schoolRes.rows[0].db_name;
+    const primaryAppDb = getPrimaryDbName();
+
     const upd = await masterQuery(
       `
       UPDATE schools
@@ -506,19 +516,55 @@ const confirmDeleteSchool = async (req, res) => {
       [id]
     );
 
+    let tenantDbDropped = false;
+    let tenantDbDropError = null;
+    let tenantDbDropSkippedReason = null;
+
+    await closeTenantPoolForDb(tenantDbName);
+
+    if (tenantDbName === primaryAppDb) {
+      tenantDbDropSkippedReason = 'primary_application_database';
+    } else {
+      try {
+        await dropTenantDatabaseIfExists(tenantDbName);
+        tenantDbDropped = true;
+      } catch (dropErr) {
+        console.error('Super Admin confirmDeleteSchool: tenant DB drop failed:', dropErr);
+        tenantDbDropError = dropErr.message || String(dropErr);
+      }
+    }
+
     await writeSuperAdminAudit({
       superAdminId: req.superAdmin.id,
-      action: 'school_soft_deleted',
+      action: 'school_deleted',
       resourceType: 'school',
       resourceId: String(id),
       details: {
         school_name: schoolRes.rows[0].school_name,
-        db_name: schoolRes.rows[0].db_name,
+        db_name: tenantDbName,
+        tenant_db_dropped: tenantDbDropped,
+        tenant_db_drop_skipped_reason: tenantDbDropSkippedReason,
+        tenant_db_drop_error: tenantDbDropError,
       },
       req,
     });
 
-    return success(res, 200, 'School removed from the platform', upd.rows[0]);
+    const row = upd.rows[0];
+    const message =
+      tenantDbDropped
+        ? 'School and tenant database removed successfully'
+        : tenantDbDropSkippedReason === 'primary_application_database'
+          ? 'School removed from the platform (application primary database was not dropped)'
+          : tenantDbDropError
+            ? 'School removed from the platform, but the tenant database could not be dropped automatically. Check server logs.'
+            : 'School removed from the platform';
+
+    return success(res, 200, message, {
+      ...row,
+      tenant_db_dropped: tenantDbDropped,
+      tenant_db_drop_skipped_reason: tenantDbDropSkippedReason,
+      tenant_db_drop_error: tenantDbDropError,
+    });
   } catch (err) {
     console.error('Super Admin confirmDeleteSchool error:', err);
     return errorResponse(res, 500, 'Failed to remove school');

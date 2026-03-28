@@ -250,6 +250,19 @@ function getCurrentTenantDbName() {
   return primaryDbName;
 }
 
+/**
+ * End and remove a cached tenant pool (e.g. before DROP DATABASE for that tenant).
+ * Never touches the primary application database pool.
+ */
+function closeTenantPoolForDb(dbName) {
+  const key = (dbName || '').toString().trim();
+  if (!key || key === primaryDbName) return;
+  const p = tenantPools.get(key);
+  if (!p) return;
+  tenantPools.delete(key);
+  return p.end().catch(() => {});
+}
+
 function getTenantPool(dbName) {
   const key = dbName || primaryDbName;
   if (provisioningTemplateDbName && key === provisioningTemplateDbName) {
@@ -347,5 +360,7 @@ module.exports = {
   closePool,
   runWithTenant,
   getCurrentTenantDbName,
+  getPrimaryDbName,
+  closeTenantPoolForDb,
 };
 

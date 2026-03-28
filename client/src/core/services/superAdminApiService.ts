@@ -79,10 +79,23 @@ class SuperAdminApiService {
       if (!response.ok) {
         const text = await response.text();
         if (isDev) console.error('[SuperAdmin] Error response:', text);
+        let apiMessage = text || `HTTP error ${response.status}`;
+        try {
+          const j = JSON.parse(text) as { message?: string };
+          if (j && typeof j.message === 'string' && j.message.trim()) {
+            apiMessage = j.message.trim();
+          }
+        } catch {
+          /* use raw text */
+        }
+        // 401 = missing/expired Super Admin session — clear client auth.
+        // 403 = wrong password / forbidden action — must NOT log the user out.
         if (response.status === 401) {
           window.dispatchEvent(new CustomEvent('super-admin:sessionInvalid'));
         }
-        throw new Error(text || `HTTP error ${response.status}`);
+        const err = new Error(apiMessage) as Error & { status?: number };
+        err.status = response.status;
+        throw err;
       }
 
       const text = await response.text();

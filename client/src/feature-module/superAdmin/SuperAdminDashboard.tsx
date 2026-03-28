@@ -193,64 +193,59 @@ const SuperAdminDashboard = () => {
   };
 
   const handleDelete = async (school: School) => {
-    const confirm = await MySwal.fire({
+    const result = await MySwal.fire({
       icon: 'warning',
-      title: 'Remove School from Platform?',
+      title: 'Delete school',
       html: `
-        <p class="mb-1"><strong>${school.school_name}</strong> (Institute: <strong>${school.institute_number}</strong>)</p>
-        <p class="mb-1">Database: <code>${school.db_name}</code></p>
-        <p class="mb-0 text-danger">The school will be disabled and hidden. Tenant data is not destroyed automatically — contact operations for physical database removal if required.</p>
+        <p class="mb-2 text-start"><strong>${school.school_name}</strong><br/>
+        Institute: <strong>${school.institute_number}</strong></p>
+        <p class="mb-2 text-start">Tenant database: <code>${school.db_name}</code></p>
+        <p class="mb-0 text-start text-danger small">This removes the school from the platform and drops its tenant database (when the server is allowed to). Enter your Super Admin password to continue.</p>
       `,
+      input: 'password',
+      inputLabel: 'Super Admin password',
+      inputPlaceholder: 'Password',
       showCancelButton: true,
-      confirmButtonText: 'Continue',
+      confirmButtonText: 'Delete school',
       cancelButtonText: 'Cancel',
       confirmButtonColor: '#d33',
       cancelButtonColor: '#6c757d',
-      focusCancel: true,
-    });
-
-    if (!confirm.isConfirmed) return;
-
-    const pwd = await MySwal.fire({
-      title: 'Super Admin password',
-      input: 'password',
-      inputLabel: 'Enter your password to confirm removal',
-      inputPlaceholder: 'Password',
-      showCancelButton: true,
-      confirmButtonText: 'Remove school',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#d33',
+      focusCancel: false,
       inputAttributes: {
         autocapitalize: 'off',
         autocorrect: 'off',
       },
+      preConfirm: async (password) => {
+        const pwd = String(password || '').trim();
+        if (!pwd) {
+          Swal.showValidationMessage('Password is required');
+          return false;
+        }
+        try {
+          await superAdminApiService.deleteSchool(school.id, pwd);
+          return true;
+        } catch (e: unknown) {
+          const err = e as Error & { status?: number };
+          if (err?.status === 403) {
+            Swal.showValidationMessage('Sorry, that password is incorrect.');
+            return false;
+          }
+          Swal.showValidationMessage(err?.message || 'Could not remove school. Please try again.');
+          return false;
+        }
+      },
     });
 
-    if (!pwd.isConfirmed || !pwd.value?.trim()) return;
+    if (!result.isConfirmed || result.value !== true) return;
 
-    try {
-      const res = await superAdminApiService.deleteSchool(school.id, pwd.value);
-      if (res.status === 'SUCCESS') {
-        setSchools((prev) => prev.filter((s) => s.id !== school.id));
-        await refreshAll();
-        await MySwal.fire({
-          icon: 'success',
-          title: 'School Removed',
-          text: 'The school has been removed from the platform list.',
-          confirmButtonText: 'OK',
-        });
-      } else {
-        setSchoolsError(res.message || 'Failed to remove school');
-      }
-    } catch (e: any) {
-      setSchoolsError(e?.message || 'Failed to remove school');
-      await MySwal.fire({
-        icon: 'error',
-        title: 'Remove Failed',
-        text: e?.message || 'Failed to remove school. Please check backend logs.',
-        confirmButtonText: 'OK',
-      });
-    }
+    setSchools((prev) => prev.filter((s) => s.id !== school.id));
+    await refreshAll();
+    await MySwal.fire({
+      icon: 'success',
+      title: 'School removed',
+      text: 'The school has been removed and you are still signed in.',
+      confirmButtonText: 'OK',
+    });
   };
 
   return (
