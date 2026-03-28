@@ -458,14 +458,24 @@ function getTemplateSql() {
     throw new Error('Template SQL file is empty');
   }
 
+  // Git stores LF; Windows checkouts often use CRLF. Hash must match logical content, not raw bytes,
+  // or production (Linux) and local (CRLF) disagree and PROVISIONING_TEMPLATE_SQL_SHA256 always fails.
+  sql = sql.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
   const expectedSha = (process.env.PROVISIONING_TEMPLATE_SQL_SHA256 || '').toString().trim().toLowerCase();
   const requireChecksum = String(process.env.PROVISIONING_REQUIRE_TEMPLATE_CHECKSUM || '').toLowerCase() === 'true';
   const actualSha = crypto.createHash('sha256').update(sql, 'utf8').digest('hex');
 
   if (expectedSha) {
     if (actualSha !== expectedSha) {
-      console.error('[provisioning] template SQL SHA256 mismatch');
-      throw new Error('Template SQL integrity check failed');
+      console.error(
+        '[provisioning] template SQL SHA256 mismatch (expected env vs normalized file). ' +
+          `actual=${actualSha} — run: npm run provisioning:template-hash — then set PROVISIONING_TEMPLATE_SQL_SHA256 on the host.`
+      );
+      throw new Error(
+        'Template SQL integrity check failed: PROVISIONING_TEMPLATE_SQL_SHA256 does not match template (or template was edited). ' +
+          `Update the env var to ${actualSha} after verifying the file, or remove PROVISIONING_TEMPLATE_SQL_SHA256 to skip check (not recommended).`
+      );
     }
   } else if (requireChecksum) {
     throw new Error('PROVISIONING_TEMPLATE_SQL_SHA256 is required when PROVISIONING_REQUIRE_TEMPLATE_CHECKSUM=true');
