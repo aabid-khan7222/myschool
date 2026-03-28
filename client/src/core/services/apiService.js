@@ -106,6 +106,8 @@ class ApiService {
         mode: 'cors',
         credentials: 'include',
         ...options,
+        // Required when API returns ETag/304 or intermediaries cache; 304 is not response.ok and breaks JSON auth flows
+        cache: options.cache !== undefined ? options.cache : 'no-store',
       });
 
       if (isDev) {

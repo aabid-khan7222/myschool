@@ -70,6 +70,7 @@ class SuperAdminApiService {
         headers,
         credentials: 'include',
         ...options,
+        cache: options.cache !== undefined ? options.cache : 'no-store',
       });
 
       if (isDev) {

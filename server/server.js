@@ -63,6 +63,8 @@ const { requireActiveAccount } = require('./src/middleware/requireActiveAccount'
 
 // Create Express app
 const app = express();
+// Avoid 304 + empty body on API GETs (breaks fetch().ok and JSON parse for /auth/me, etc.)
+app.set('etag', false);
 
 // When running behind a proxy/load balancer (Render, Nginx, etc.),
 // trust the X-Forwarded-* headers so express-rate-limit can identify
@@ -120,10 +122,28 @@ const corsOptions = {
   ],
 };
 app.use(cors(corsOptions));
+
+// Never cache authenticated JSON API (CDN/browser 304 caused GET /api/auth/me to fail clients)
+app.use((req, res, next) => {
+  const p = req.path || '';
+  if (p.startsWith('/api') || p.startsWith('/super-admin/api')) {
+    res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+  }
+  next();
+});
+
 if (isProduction) {
   const { secureCookieBase } = require('./src/utils/cookiePolicy');
   const cp = secureCookieBase();
-  console.log(`[cookies] SameSite=${cp.sameSite} Secure=${cp.secure} (COOKIE_SAME_SITE / CORS_ORIGIN affect session cookies)`);
+  console.log(`[cookies] SameSite=${cp.sameSite} Secure=${cp.secure} (COOKIE_SAME_SITE / CORS_ORIGIN / ALLOW_CROSS_SITE_COOKIES)`);
+  if (!String(process.env.CORS_ORIGIN || '').trim()) {
+    console.warn(
+      '[cookies] CORS_ORIGIN is empty. If your React app uses config.json apiUrl pointing at another hostname ' +
+        '(e.g. SPA on my-school-dsps.onrender.com but API on my-school-c50t.onrender.com), the browser will not send ' +
+        'session cookies unless CORS_ORIGIN lists the SPA origin AND SameSite=None (set CORS_ORIGIN or COOKIE_SAME_SITE=none + ALLOW_CROSS_SITE_COOKIES=true).'
+    );
+  }
 }
 const bodyLimit = process.env.REQUEST_BODY_LIMIT || '2mb';
 app.use(express.json({ limit: bodyLimit }));
@@ -266,7 +286,7 @@ const startServer = async () => {
       }
       if (allowedOrigins.length === 0) {
         console.warn(
-          '⚠️  CORS_ORIGIN is empty. If the SPA runs on another domain (e.g. Vercel), set CORS_ORIGIN to that origin or requests will fail. Same-origin deployments can ignore this.'
+          '⚠️  CORS_ORIGIN is empty. Cross-host SPAs (different Render service URL than this API) will get CORS errors or 401 on every call after login because auth cookies are not sent. Set CORS_ORIGIN=https://your-spa-host on this API service.'
         );
       }
     }
