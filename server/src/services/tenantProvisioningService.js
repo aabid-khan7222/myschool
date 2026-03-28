@@ -200,11 +200,151 @@ const DISALLOWED_SQL_PATTERNS = [
   /\bDO\s+\$\$/i,
 ];
 
+/**
+ * Split dump SQL into statements for sequential pool.query().
+ * Naive split on ";\n" breaks:
+ * 1) PL/pgSQL / function bodies ($$ ... $$) — semicolons inside are not terminators.
+ * 2) COPY ... FROM stdin — data lines until "\." must stay one statement with the COPY line.
+ */
 function splitSqlStatements(sqlText) {
-  return sqlText
-    .split(/;\s*(?:\r?\n|$)/g)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const statements = [];
+  const len = sqlText.length;
+  let i = 0;
+  let start = 0;
+  let inSingle = false;
+  let inDouble = false;
+  let dollarTag = null;
+  let inLineComment = false;
+  let inBlockComment = false;
+  let inCopyStdin = false;
+
+  const pushRange = (endExclusive) => {
+    const s = sqlText.slice(start, endExclusive).trim();
+    if (s) statements.push(s);
+    start = endExclusive;
+  };
+
+  while (i < len) {
+    const c = sqlText[i];
+    const c2 = i + 1 < len ? sqlText[i + 1] : '';
+
+    if (inCopyStdin) {
+      if (c === '\\' && c2 === '.') {
+        const atLineStart = i === 0 || sqlText[i - 1] === '\n' || sqlText[i - 1] === '\r';
+        if (atLineStart) {
+          let j = i + 2;
+          while (j < len && sqlText[j] !== '\n' && sqlText[j] !== '\r') j += 1;
+          if (j < len && sqlText[j] === '\r') j += 1;
+          if (j < len && sqlText[j] === '\n') j += 1;
+          i = j;
+          pushRange(i);
+          inCopyStdin = false;
+          continue;
+        }
+      }
+      i += 1;
+      continue;
+    }
+
+    if (inLineComment) {
+      if (c === '\n') inLineComment = false;
+      i += 1;
+      continue;
+    }
+    if (inBlockComment) {
+      if (c === '*' && c2 === '/') {
+        i += 2;
+        inBlockComment = false;
+        continue;
+      }
+      i += 1;
+      continue;
+    }
+
+    if (dollarTag !== null) {
+      if (sqlText.startsWith(dollarTag, i)) {
+        i += dollarTag.length;
+        dollarTag = null;
+        continue;
+      }
+      i += 1;
+      continue;
+    }
+
+    if (inSingle) {
+      if (c === "'" && c2 === "'") {
+        i += 2;
+        continue;
+      }
+      if (c === "'") inSingle = false;
+      i += 1;
+      continue;
+    }
+    if (inDouble) {
+      if (c === '"' && c2 === '"') {
+        i += 2;
+        continue;
+      }
+      if (c === '"') inDouble = false;
+      i += 1;
+      continue;
+    }
+
+    if (c === '-' && c2 === '-') {
+      inLineComment = true;
+      i += 2;
+      continue;
+    }
+    if (c === '/' && c2 === '*') {
+      inBlockComment = true;
+      i += 2;
+      continue;
+    }
+
+    if (c === "'") {
+      inSingle = true;
+      i += 1;
+      continue;
+    }
+    if (c === '"') {
+      inDouble = true;
+      i += 1;
+      continue;
+    }
+
+    if (c === '$') {
+      const rest = sqlText.slice(i);
+      const m = rest.match(/^\$([a-zA-Z_0-9]*)\$/);
+      if (m) {
+        dollarTag = m[0];
+        i += dollarTag.length;
+        continue;
+      }
+    }
+
+    if (c === ';') {
+      const after = sqlText.slice(i + 1);
+      const atStmtBoundary = after.length === 0 || /^\s/.test(after);
+      if (atStmtBoundary) {
+        const stmtSoFar = sqlText.slice(start, i + 1);
+        if (/COPY[\s\S]+FROM\s+stdin\s*;/i.test(stmtSoFar)) {
+          inCopyStdin = true;
+          i += 1;
+          continue;
+        }
+        i += 1;
+        while (i < len && /\s/.test(sqlText[i])) i += 1;
+        pushRange(i);
+        continue;
+      }
+    }
+
+    i += 1;
+  }
+
+  const tail = sqlText.slice(start).trim();
+  if (tail) statements.push(tail);
+  return statements;
 }
 
 function validateTemplateSql(sqlText) {
