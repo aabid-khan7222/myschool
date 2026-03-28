@@ -355,11 +355,75 @@ function validateTemplateSql(sqlText) {
   }
 }
 
-async function executeTemplateStatements(pool, sqlText) {
-  const statements = splitSqlStatements(sqlText);
-  for (const stmt of statements) {
-    await pool.query(stmt);
+// Same template string is reused for every school; splitting is CPU-heavy on a 7k+ line dump.
+let cachedTemplateSqlRef = null;
+let cachedSplitStatements = null;
+
+function getSplitTemplateStatements(sqlText) {
+  if (cachedTemplateSqlRef === sqlText && cachedSplitStatements) {
+    return cachedSplitStatements;
   }
+  cachedTemplateSqlRef = sqlText;
+  cachedSplitStatements = splitSqlStatements(sqlText);
+  return cachedSplitStatements;
+}
+
+/**
+ * Run template SQL with fewer round-trips to the DB (critical on Neon / remote Postgres).
+ * Previously: one pool.query() per statement → thousands of network RTTs (~minutes).
+ * Now: batches of small statements in a single query (PostgreSQL simple-query multi-statement).
+ * Large COPY / data blocks are always sent alone. Semantics and transaction unchanged.
+ *
+ * Escape hatch: PROVISIONING_SQL_BATCH_SIZE=1 restores one-statement-per-query behaviour.
+ */
+async function executeTemplateStatements(pool, sqlText) {
+  const statements = getSplitTemplateStatements(sqlText);
+  const batchSize = Math.max(
+    1,
+    parseInt(process.env.PROVISIONING_SQL_BATCH_SIZE || '45', 10) || 45
+  );
+  const largeStmtChars = Math.max(
+    65536,
+    parseInt(process.env.PROVISIONING_SQL_LARGE_STMT_CHARS || String(384 * 1024), 10) || 393216
+  );
+  const maxBatchChars = Math.max(
+    largeStmtChars,
+    parseInt(process.env.PROVISIONING_SQL_BATCH_MAX_CHARS || String(900 * 1024), 10) || 921600
+  );
+
+  let batch = [];
+  let batchChars = 0;
+
+  const flushBatch = async () => {
+    if (batch.length === 0) return;
+    const text = batch.join('\n');
+    batch = [];
+    batchChars = 0;
+    await pool.query(text);
+  };
+
+  for (const stmt of statements) {
+    if (!stmt) continue;
+
+    if (stmt.length >= largeStmtChars) {
+      await flushBatch();
+      await pool.query(stmt);
+      continue;
+    }
+
+    if (batch.length > 0 && batchChars + stmt.length > maxBatchChars) {
+      await flushBatch();
+    }
+
+    batch.push(stmt);
+    batchChars += stmt.length;
+
+    if (batch.length >= batchSize) {
+      await flushBatch();
+    }
+  }
+
+  await flushBatch();
 }
 
 function getTemplateSql() {
