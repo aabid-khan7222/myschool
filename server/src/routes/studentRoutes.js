@@ -13,6 +13,7 @@ const {
   getStudentLoginDetails,
   getStudentExamResults,
 } = require('../controllers/studentController');
+const { downloadBonafide } = require('../controllers/bonafideController');
 const { validate } = require('../utils/validate');
 const { createStudentSchema, updateStudentSchema } = require('../validations/studentValidation');
 
@@ -33,6 +34,9 @@ router.get('/class/:classId', requireRole(STUDENT_LIST_ALL_ROLES), getStudentsBy
 // Get login details (usernames) for a student
 // Auth is handled by protectApi globally; controller enforces ownership (admin / student / parent / guardian)
 router.get('/:id/login-details', requireRole(ALL_AUTHENTICATED_ROLES), getStudentLoginDetails);
+
+// Download dynamic Bonafide certificate (PDF)
+router.get('/:id/bonafide', requireRole(ALL_AUTHENTICATED_ROLES), downloadBonafide);
 
 // Get student attendance
 router.get('/:studentId/attendance', requireRole(ALL_AUTHENTICATED_ROLES), getStudentAttendance);

@@ -1,5 +1,5 @@
 # Render Blueprint: Backend as Docker (required for Create School / tenant provisioning)
-# Create School needs pg_dump/psql; they are installed only when using this Docker setup.
+# Tenant provisioning uses controlled SQL import inside the app runtime.
 # Add env vars in Render Dashboard → Environment (DATABASE_URL, PROVISIONING_SOURCE_DATABASE_URL, etc.)
 
 services:

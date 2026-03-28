@@ -57,6 +57,7 @@ const eventsRoutes = require('./src/routes/eventsRoutes');
 const feeRoutes = require('./src/routes/feeRoutes');
 const superAdminAuthRoutes = require('./src/routes/superAdminAuthRoutes');
 const superAdminRoutes = require('./src/routes/superAdminRoutes');
+const schoolProfileRoutes = require('./src/routes/schoolProfileRoutes');
 const { protectApi } = require('./src/middleware/authMiddleware');
 const { requireActiveAccount } = require('./src/middleware/requireActiveAccount');
 
@@ -70,20 +71,39 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Middleware
-app.use(helmet()); // Security headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      defaultSrc: ["'self'"],
+      connectSrc: ["'self'", 'https:'],
+      imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https:'],
+      frameAncestors: ["'none'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+    },
+  },
+  frameguard: { action: 'deny' },
+  noSniff: true,
+  referrerPolicy: { policy: 'no-referrer' },
+})); // Security headers
 app.use(cookieParser());
-// Logging: use 'dev' (shorter), skip OPTIONS to reduce noise
-app.use(morgan('dev', { skip: (req) => req.method === 'OPTIONS' }));
+const isProduction = process.env.NODE_ENV === 'production';
+// Logging: quieter and safer in production.
+app.use(morgan(isProduction ? 'combined' : 'dev', { skip: (req) => req.method === 'OPTIONS' }));
 // CORS: production = explicit origins from CORS_ORIGIN, dev = localhost
 const defaultDevOrigins = ['http://localhost:3000', 'http://localhost:5173'];
-const isProduction = process.env.NODE_ENV === 'production';
 const allowedOrigins = serverConfig.corsOrigin
   ? serverConfig.corsOrigin.split(',').map((s) => s.trim()).filter(Boolean)
   : [];
+const devOrigins = Array.from(new Set([...defaultDevOrigins, ...allowedOrigins]));
 const corsOptions = {
   origin: isProduction
     ? (allowedOrigins.length > 0 ? allowedOrigins : false)
-    : (allowedOrigins.length > 0 ? allowedOrigins : defaultDevOrigins),
+    : devOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-XSRF-TOKEN', 'X-CSRF-TOKEN'],
@@ -100,14 +120,8 @@ const enforceCsrf = (req, res, next) => {
   // Public auth endpoints are exempt (login establishes cookies).
   if (
     req.path.startsWith('/api/auth/login') ||
-    req.path.startsWith('/api/auth/logout') ||
-    req.path.startsWith('/super-admin/api/auth/login') ||
-    req.path.startsWith('/super-admin/api/auth/logout')
+    req.path.startsWith('/super-admin/api/auth/login')
   ) return next();
-  // Super Admin API currently uses its own dedicated cookie and already
-  // runs behind the Super Admin dashboard, so we relax CSRF for these
-  // routes to avoid blocking actions like creating schools.
-  if (req.path.startsWith('/super-admin/api')) return next();
   const cookieToken = req.cookies?.['XSRF-TOKEN'];
   const headerToken = req.headers['x-xsrf-token'] || req.headers['x-csrf-token'];
   if (!cookieToken || !headerToken || String(cookieToken) !== String(headerToken)) {
@@ -126,6 +140,7 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.use('/api/auth/login', loginLimiter);
+app.use('/super-admin/api/auth/login', loginLimiter);
 
 // Global API rate limiting
 const limiter = rateLimit({
@@ -137,6 +152,7 @@ const limiter = rateLimit({
   skip: (req) => req.path === '/api/health' || req.path === '/api/health/database'
 });
 app.use('/api', limiter);
+app.use('/super-admin/api', limiter);
 
 // Auth routes - public, no token needed
 app.use('/api/auth', authRoutes);
@@ -186,6 +202,7 @@ app.use('/api/class-syllabus', syllabusRoutes);
 app.use('/api/notice-board', noticeBoardRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/fees', feeRoutes);
+app.use('/api/school/profile', schoolProfileRoutes);
 
 // Lightweight public health check (no DB, no auth, always 200)
 app.get('/health', (req, res) => {
@@ -226,15 +243,37 @@ const startServer = async () => {
         console.error('❌ Production requires DATABASE_URL. Add it in Render → Environment.');
         process.exit(1);
       }
-      if (!process.env.JWT_SECRET) {
-        console.error('❌ Production requires JWT_SECRET. Add it in Render → Environment.');
+      // Align with serverConfig: user token may use JWT_SECRET_USER or legacy JWT_SECRET; super-admin must be explicit.
+      const userSecretLen = (process.env.JWT_SECRET_USER || process.env.JWT_SECRET || '').length;
+      const superSecretLen = (process.env.JWT_SECRET_SUPER_ADMIN || '').length;
+      if (userSecretLen < 32 || superSecretLen < 32) {
+        console.error(
+          '❌ Production requires strong JWT secrets: JWT_SECRET_SUPER_ADMIN (32+ chars) and JWT_SECRET_USER or JWT_SECRET (32+ chars).'
+        );
         process.exit(1);
       }
+      if (allowedOrigins.length === 0) {
+        console.warn(
+          '⚠️  CORS_ORIGIN is empty. If the SPA runs on another domain (e.g. Vercel), set CORS_ORIGIN to that origin or requests will fail. Same-origin deployments can ignore this.'
+        );
+      }
+    }
+    if (!serverConfig.jwtUserSecret || !serverConfig.jwtSuperAdminSecret) {
+      console.error('❌ JWT secrets are required for startup.');
+      process.exit(1);
+    }
+    if (serverConfig.jwtUserSecret.length < 32 || serverConfig.jwtSuperAdminSecret.length < 32) {
+      console.error('❌ JWT secrets must be at least 32 characters long.');
+      process.exit(1);
     }
 
-    // Test database connection (exits with 1 on failure)
+    // Test database connection (without crashing from health path behavior).
     console.log('🔍 Testing database connection...');
-    await testConnection();
+    const dbConnected = await testConnection();
+    if (!dbConnected && nodeEnv === 'production') {
+      console.error('❌ Startup database connectivity check failed.');
+      process.exit(1);
+    }
 
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
@@ -289,6 +328,14 @@ process.on('SIGTERM', () => {
 process.on('SIGINT', () => {
   console.log('SIGINT received. Shutting down gracefully...');
   process.exit(0);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection:', reason instanceof Error ? reason.message : reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err?.message || 'Unknown error');
 });
 
 // Start the server

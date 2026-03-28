@@ -33,7 +33,7 @@ const requireActiveAccount = async (req, res, next) => {
     }
   } catch (err) {
     console.error('requireActiveAccount error:', err);
-    return next();
+    return errorResponse(res, 503, 'Unable to validate account status');
   }
   next();
 };

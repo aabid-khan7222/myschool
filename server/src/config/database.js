@@ -250,18 +250,16 @@ const runWithTenant = (dbName, fn) => {
 const testConnection = async () => {
   try {
     await primaryPool.query('SELECT NOW()');
-    console.log(`✅ Primary database connection successful (${primaryDbName})`);
     // Master DB might not exist in very early setups, so treat failure separately
     try {
       await masterPool.query('SELECT NOW()');
-      console.log(`✅ Master database connection successful (${masterDbName})`);
     } catch (e) {
-      console.warn(`⚠️  Master database "${masterDbName}" not reachable yet. Run init-master-database if needed.`);
+      console.warn(`Master database "${masterDbName}" not reachable yet.`);
     }
     return true;
   } catch (error) {
-    console.error('❌ Database connection failed:', error);
-    process.exit(1);
+    console.error('Database connection failed:', error.message);
+    return false;
   }
 };
 

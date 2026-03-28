@@ -4,30 +4,31 @@ const bcrypt = require('bcryptjs');
 const serverConfig = require('../config/server');
 const { success, error: errorResponse } = require('../utils/responseHelper');
 const crypto = require('crypto');
+const { secureCookieBase } = require('../utils/cookiePolicy');
 
 const AUTH_COOKIE_NAME = 'auth_token';
 const SESSION_COOKIE_NAME = 'sid';
 
 /** Cookie options for HTTP-only auth cookie. SameSite=None for cross-origin (e.g. Render frontend/backend). */
 const getAuthCookieOptions = () => {
-  const isProd = process.env.NODE_ENV === 'production';
+  const { sameSite, secure } = secureCookieBase();
   const maxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 days
   return {
     httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? 'none' : 'lax',
+    secure,
+    sameSite,
     maxAge: maxAgeMs,
     path: '/',
   };
 };
 
 const getSessionCookieOptions = () => {
-  const isProd = process.env.NODE_ENV === 'production';
+  const { sameSite, secure } = secureCookieBase();
   const maxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 days
   return {
     httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? 'none' : 'lax',
+    secure,
+    sameSite,
     maxAge: maxAgeMs,
     path: '/',
   };
@@ -35,11 +36,11 @@ const getSessionCookieOptions = () => {
 
 // Double-submit CSRF cookie (readable by JS; paired with X-XSRF-TOKEN header)
 const getCsrfCookieOptions = () => {
-  const isProd = process.env.NODE_ENV === 'production';
+  const { sameSite, secure } = secureCookieBase();
   return {
     httpOnly: false,
-    secure: isProd,
-    sameSite: isProd ? 'none' : 'lax',
+    secure,
+    sameSite,
     path: '/',
   };
 };
@@ -95,7 +96,7 @@ const login = async (req, res) => {
       return errorResponse(res, 400, 'Username and password are required');
     }
 
-    if (!serverConfig.jwtSecret) {
+    if (!serverConfig.jwtUserSecret) {
       return errorResponse(res, 500, 'Server configuration error');
     }
 
@@ -178,7 +179,7 @@ const login = async (req, res) => {
 
       const token = jwt.sign(
         payload,
-        serverConfig.jwtSecret,
+        serverConfig.jwtUserSecret,
         { expiresIn: serverConfig.jwtExpiresIn || '7d' }
       );
 
@@ -246,8 +247,6 @@ const login = async (req, res) => {
       res.cookie('XSRF-TOKEN', csrfToken, getCsrfCookieOptions());
 
       success(res, 200, 'Login successful', {
-        // Token is returned for backward compatibility; frontend uses cookies only.
-        token,
         user: {
           id: user.id,
           username: user.username,

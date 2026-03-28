@@ -1,4 +1,4 @@
-const { testConnection, query } = require('../config/database');
+const { testConnection } = require('../config/database');
 const { Pool } = require('pg');
 
 function shouldUseSsl(connectionString) {
@@ -51,23 +51,12 @@ async function testDbUrl(label, connectionString) {
 
 const healthCheck = async (req, res) => {
   try {
-    // Test database connection
-    const dbConnected = await testConnection();
-    
-    // Get server uptime
     const uptime = process.uptime();
-    
-    // Get memory usage
     const memoryUsage = process.memoryUsage();
-    
-    const healthStatus = {
+    return res.status(200).json({
       status: 'OK',
       timestamp: new Date().toISOString(),
       uptime: `${Math.floor(uptime / 60)} minutes ${Math.floor(uptime % 60)} seconds`,
-      database: {
-        connected: dbConnected,
-        status: dbConnected ? 'Connected' : 'Disconnected'
-      },
       memory: {
         rss: `${Math.round(memoryUsage.rss / 1024 / 1024)} MB`,
         heapTotal: `${Math.round(memoryUsage.heapTotal / 1024 / 1024)} MB`,
@@ -75,12 +64,10 @@ const healthCheck = async (req, res) => {
         external: `${Math.round(memoryUsage.external / 1024 / 1024)} MB`
       },
       environment: process.env.NODE_ENV || 'development'
-    };
-
-    res.status(200).json(healthStatus);
+    });
   } catch (error) {
     console.error('Health check error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       status: 'ERROR',
       message: 'Health check failed'
     });
@@ -89,20 +76,22 @@ const healthCheck = async (req, res) => {
 
 const databaseTest = async (req, res) => {
   try {
-    // Test a simple query
-    const result = await query('SELECT NOW() as current_time, version() as postgres_version');
-    
-    res.status(200).json({
-      status: 'SUCCESS',
-      message: 'Database connection and query test successful',
-      data: {
-        currentTime: result.rows[0].current_time,
-        postgresVersion: result.rows[0].postgres_version
+    const isProd = process.env.NODE_ENV === 'production';
+    if (isProd) {
+      const expected = (process.env.TENANT_HEALTH_TOKEN || '').toString().trim();
+      const got = (req.headers['x-tenant-health-token'] || '').toString().trim();
+      if (!expected || got !== expected) {
+        return res.status(401).json({ status: 'ERROR', message: 'Unauthorized' });
       }
+    }
+    const ok = await testConnection();
+    return res.status(ok ? 200 : 503).json({
+      status: 'SUCCESS',
+      message: ok ? 'Database connectivity verified' : 'Database connectivity degraded'
     });
   } catch (error) {
     console.error('Database test error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       status: 'ERROR',
       message: 'Database test failed'
     });
@@ -161,14 +150,14 @@ const tenantDatabaseTest = async (req, res) => {
     }
 
     const allOk = Object.values(results).every((r) => r && r.ok === true);
-    res.status(allOk ? 200 : 500).json({
+    return res.status(allOk ? 200 : 500).json({
       status: allOk ? 'SUCCESS' : 'ERROR',
       data: results,
       environment: process.env.NODE_ENV || 'development',
     });
   } catch (error) {
     console.error('Tenant DB test error:', error);
-    res.status(500).json({ status: 'ERROR', message: 'Tenant DB test failed' });
+    return res.status(500).json({ status: 'ERROR', message: 'Tenant DB test failed' });
   }
 };
 

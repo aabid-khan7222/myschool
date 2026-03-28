@@ -189,6 +189,39 @@ async function ensureTenantDefaultRoles(pool) {
 
 // Lazy-loaded SQL template for tenant provisioning. Kept in memory after first read.
 let cachedTemplateSql = null;
+const DISALLOWED_SQL_PATTERNS = [
+  /\bCOPY\b[\s\S]*\bPROGRAM\b/i,
+  /\bALTER\s+SYSTEM\b/i,
+  /\bCREATE\s+ROLE\b/i,
+  /\bALTER\s+ROLE\b/i,
+  /\bDROP\s+ROLE\b/i,
+  /\bCREATE\s+DATABASE\b/i,
+  /\bDROP\s+DATABASE\b/i,
+  /\bDO\s+\$\$/i,
+];
+
+function splitSqlStatements(sqlText) {
+  return sqlText
+    .split(/;\s*(?:\r?\n|$)/g)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function validateTemplateSql(sqlText) {
+  for (const pattern of DISALLOWED_SQL_PATTERNS) {
+    if (pattern.test(sqlText)) {
+      throw new Error(`Template SQL contains disallowed statement pattern: ${pattern}`);
+    }
+  }
+}
+
+async function executeTemplateStatements(pool, sqlText) {
+  const statements = splitSqlStatements(sqlText);
+  for (const stmt of statements) {
+    await pool.query(stmt);
+  }
+}
+
 function getTemplateSql() {
   if (cachedTemplateSql) return cachedTemplateSql;
   const templatePath =
@@ -208,11 +241,12 @@ function getTemplateSql() {
       `Template SQL file at "${templatePath}" is empty. Export schema/data from your template DB before creating schools.`
     );
   }
+  validateTemplateSql(sql);
   cachedTemplateSql = sql;
   return cachedTemplateSql;
 }
 
-async function createTenantDatabase(dbName) {
+async function createTenantDatabase(dbName, schoolName = null) {
   const pool = getAdminPool();
   const checkRes = await pool.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName]);
   if (checkRes.rowCount > 0) {
@@ -236,7 +270,7 @@ async function createTenantDatabase(dbName) {
   try {
     const templateSql = getTemplateSql();
     await tenantPool.query('BEGIN');
-    await tenantPool.query(templateSql);
+    await executeTemplateStatements(tenantPool, templateSql);
 
     await ensureTenantDefaultRoles(tenantPool);
 
@@ -250,6 +284,20 @@ async function createTenantDatabase(dbName) {
     }
 
     await tenantPool.query('TRUNCATE TABLE public.users RESTART IDENTITY CASCADE');
+    await tenantPool.query(`
+      CREATE TABLE IF NOT EXISTS public.school_profile (
+        id SERIAL PRIMARY KEY,
+        school_name VARCHAR(255) NOT NULL,
+        logo_url TEXT NULL,
+        created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await tenantPool.query('TRUNCATE TABLE public.school_profile RESTART IDENTITY');
+    await tenantPool.query(
+      'INSERT INTO public.school_profile (school_name, logo_url) VALUES ($1, NULL)',
+      [String(schoolName || '').trim() || 'School']
+    );
     await tenantPool.query('COMMIT');
   } catch (err) {
     await tenantPool.query('ROLLBACK').catch(() => {});

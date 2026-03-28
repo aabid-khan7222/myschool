@@ -78,7 +78,7 @@ const authenticate = (req, res, next) => {
       if (!token) {
         return errorResponse(res, 401, 'Access denied. No token provided.');
       }
-      if (!serverConfig.jwtSecret) {
+      if (!serverConfig.jwtUserSecret) {
         return errorResponse(res, 500, 'Server configuration error');
       }
 
@@ -87,10 +87,16 @@ const authenticate = (req, res, next) => {
         return errorResponse(res, 401, 'Session expired. Please login again.');
       }
 
-      const decoded = jwt.verify(token, serverConfig.jwtSecret);
+      const decoded = jwt.verify(token, serverConfig.jwtUserSecret);
 
       // Enforce session binding: user id + tenant must match master_db session record.
       if (decoded?.id == null || String(decoded.id) !== String(session.tenant_user_id)) {
+        return errorResponse(res, 401, 'Authentication failed');
+      }
+      if (decoded?.school_id != null && String(decoded.school_id) !== String(session.school_id)) {
+        return errorResponse(res, 401, 'Authentication failed');
+      }
+      if (decoded?.institute_number && String(decoded.institute_number) !== String(session.institute_number)) {
         return errorResponse(res, 401, 'Authentication failed');
       }
 

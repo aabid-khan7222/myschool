@@ -5,25 +5,26 @@ const serverConfig = require('../config/server');
 const { success, error: errorResponse } = require('../utils/responseHelper');
 const { SUPER_ADMIN_COOKIE_NAME } = require('../middleware/superAdminAuthMiddleware');
 const crypto = require('crypto');
+const { secureCookieBase } = require('../utils/cookiePolicy');
 
 const getSuperAdminCookieOptions = () => {
-  const isProd = process.env.NODE_ENV === 'production';
+  const { sameSite, secure } = secureCookieBase();
   const maxAgeMs = 24 * 60 * 60 * 1000; // 1 day
   return {
     httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? 'none' : 'lax',
+    secure,
+    sameSite,
     maxAge: maxAgeMs,
     path: '/',
   };
 };
 
 const getCsrfCookieOptions = () => {
-  const isProd = process.env.NODE_ENV === 'production';
+  const { sameSite, secure } = secureCookieBase();
   return {
     httpOnly: false,
-    secure: isProd,
-    sameSite: isProd ? 'none' : 'lax',
+    secure,
+    sameSite,
     path: '/',
   };
 };
@@ -40,7 +41,7 @@ const superAdminLogin = async (req, res) => {
       return errorResponse(res, 400, 'Email/username and password are required');
     }
 
-    if (!serverConfig.jwtSecret) {
+    if (!serverConfig.jwtSuperAdminSecret) {
       return errorResponse(res, 500, 'Server configuration error');
     }
 
@@ -110,7 +111,7 @@ const superAdminLogin = async (req, res) => {
 
     const token = jwt.sign(
       payload,
-      serverConfig.jwtSecret,
+      serverConfig.jwtSuperAdminSecret,
       { expiresIn: serverConfig.jwtExpiresIn || '1d' }
     );
 
@@ -120,7 +121,6 @@ const superAdminLogin = async (req, res) => {
     res.cookie('XSRF-TOKEN', csrfToken, getCsrfCookieOptions());
 
     return success(res, 200, 'Super Admin login successful', {
-      token,
       user: {
         id: admin.id,
         username: admin.username,

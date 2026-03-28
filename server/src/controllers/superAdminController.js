@@ -1,4 +1,4 @@
-const { masterQuery } = require('../config/database');
+const { masterQuery, runWithTenant, query } = require('../config/database');
 const { success, error: errorResponse } = require('../utils/responseHelper');
 const {
   generateTenantDbName,
@@ -211,7 +211,7 @@ const createSchool = async (req, res) => {
   const dbName = generateTenantDbName(name, institute, existingDbNames);
 
   try {
-    await createTenantDatabase(dbName);
+    await createTenantDatabase(dbName, name);
   } catch (err) {
     console.error('Super Admin createSchool: tenant DB creation failed:', err);
     return errorResponse(res, 500, err.message || 'Failed to create tenant database');
@@ -315,6 +315,32 @@ const updateSchoolMetadata = async (req, res) => {
       `,
       [nextName, nextInstitute, id]
     );
+
+    // Keep tenant-local school_profile in sync for certificate/template reads.
+    try {
+      await runWithTenant(current.db_name, async () => {
+        await query(`
+          CREATE TABLE IF NOT EXISTS school_profile (
+            id SERIAL PRIMARY KEY,
+            school_name VARCHAR(255) NOT NULL,
+            logo_url TEXT NULL,
+            created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+        const exists = await query('SELECT id FROM school_profile ORDER BY id ASC LIMIT 1');
+        if (!exists.rows || exists.rows.length === 0) {
+          await query('INSERT INTO school_profile (school_name, logo_url) VALUES ($1, NULL)', [nextName]);
+        } else {
+          await query(
+            'UPDATE school_profile SET school_name = $1, updated_at = NOW() WHERE id = $2',
+            [nextName, exists.rows[0].id]
+          );
+        }
+      });
+    } catch (syncErr) {
+      console.warn('Super Admin updateSchoolMetadata: tenant school_profile sync failed:', syncErr.message);
+    }
 
     return success(res, 200, 'School updated successfully', updateRes.rows[0]);
   } catch (err) {

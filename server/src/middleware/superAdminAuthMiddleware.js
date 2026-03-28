@@ -14,7 +14,7 @@ const authenticateSuperAdmin = (req, res, next) => {
     const cookieToken = req.cookies?.[SUPER_ADMIN_COOKIE_NAME] || null;
     const authHeader = req.headers.authorization;
     const bearerToken =
-      authHeader && authHeader.startsWith('Bearer ')
+      serverConfig.allowSuperAdminBearerAuth && authHeader && authHeader.startsWith('Bearer ')
         ? authHeader.slice(7)
         : null;
     const token = cookieToken || bearerToken;
@@ -23,11 +23,11 @@ const authenticateSuperAdmin = (req, res, next) => {
       return errorResponse(res, 401, 'Access denied. No super admin token provided.');
     }
 
-    if (!serverConfig.jwtSecret) {
+    if (!serverConfig.jwtSuperAdminSecret) {
       return errorResponse(res, 500, 'Server configuration error');
     }
 
-    const decoded = jwt.verify(token, serverConfig.jwtSecret);
+    const decoded = jwt.verify(token, serverConfig.jwtSuperAdminSecret);
 
     if (!decoded || decoded.role !== 'super_admin') {
       return errorResponse(res, 403, 'Forbidden. Super Admin access required.');

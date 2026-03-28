@@ -275,6 +275,23 @@ class ApiService {
     return this.makeRequest(`/students/${id}`);
   }
 
+  async downloadStudentBonafide(studentId) {
+    const base = await getApiBaseUrl();
+    const url = `${base}/students/${studentId}/bonafide`.replace(/([^:]\/)\/+/g, '$1');
+    const response = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        Accept: 'application/pdf',
+      },
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to download bonafide (${response.status}): ${errorText}`);
+    }
+    return await response.blob();
+  }
+
   async getStudentLoginDetails(studentId) {
     return this.makeRequest(`/students/${studentId}/login-details`);
   }
@@ -1169,6 +1186,35 @@ class ApiService {
     return this.makeRequest(`/class-syllabus/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  // School Profile
+  async getSchoolProfile() {
+    return this.makeRequest('/school/profile');
+  }
+
+  async updateSchoolProfile(payload) {
+    return this.makeRequest('/school/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async uploadSchoolLogo(file) {
+    const base = await getApiBaseUrl();
+    const url = `${base}/school/profile/logo`.replace(/([^:]\/)\/+/g, '$1');
+    const form = new FormData();
+    form.append('logo', file);
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      body: form,
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Logo upload failed (${response.status}): ${errorText}`);
+    }
+    return await response.json();
   }
 }
 
