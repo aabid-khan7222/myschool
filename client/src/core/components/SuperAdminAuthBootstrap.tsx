@@ -4,12 +4,14 @@ import { useDispatch } from 'react-redux';
 import { superAdminApiService } from '../services/superAdminApiService';
 import {
   setSuperAdminAuthFromSession,
-  setSuperAdminAuthChecked,
+  clearSuperAdminAuth,
 } from '../data/redux/superAdminAuthSlice';
 
 /**
  * Hydrates Super Admin auth state from HTTP-only cookie when on /super-admin routes.
  * Calls /super-admin/api/me and sets Redux on success.
+ * On failure or when leaving /super-admin, clears client state so UI never shows
+ * "authenticated" without a valid session (avoids dashboard API calls with no cookie).
  */
 export const SuperAdminAuthBootstrap = () => {
   const dispatch = useDispatch();
@@ -21,7 +23,7 @@ export const SuperAdminAuthBootstrap = () => {
 
     const bootstrap = async () => {
       if (!isSuperAdminPath) {
-        if (!cancelled) dispatch(setSuperAdminAuthChecked());
+        if (!cancelled) dispatch(clearSuperAdminAuth());
         return;
       }
       try {
@@ -40,10 +42,10 @@ export const SuperAdminAuthBootstrap = () => {
             })
           );
         } else {
-          dispatch(setSuperAdminAuthChecked());
+          dispatch(clearSuperAdminAuth());
         }
       } catch {
-        if (!cancelled) dispatch(setSuperAdminAuthChecked());
+        if (!cancelled) dispatch(clearSuperAdminAuth());
       }
     };
 

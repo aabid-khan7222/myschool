@@ -79,6 +79,9 @@ class SuperAdminApiService {
       if (!response.ok) {
         const text = await response.text();
         if (isDev) console.error('[SuperAdmin] Error response:', text);
+        if (response.status === 401) {
+          window.dispatchEvent(new CustomEvent('super-admin:sessionInvalid'));
+        }
         throw new Error(text || `HTTP error ${response.status}`);
       }
 
@@ -112,7 +115,10 @@ class SuperAdminApiService {
   }
 
   async logout() {
-    return this.makeRequest('/auth/logout', { method: 'POST' });
+    return this.makeRequest('/auth/logout', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
   }
 
   // Schools

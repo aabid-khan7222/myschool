@@ -6,6 +6,7 @@ import "../src/index.scss";
 import store from "./core/data/redux/store";
 import { Provider } from "react-redux";
 import { clearAuth } from "./core/data/redux/authSlice";
+import { clearSuperAdminAuth } from "./core/data/redux/superAdminAuthSlice";
 import { AuthBootstrap } from "./core/components/AuthBootstrap";
 import { SuperAdminAuthBootstrap } from "./core/components/SuperAdminAuthBootstrap";
 import "../src/style/icon/boxicons/boxicons/css/boxicons.min.css";
@@ -35,7 +36,13 @@ document.addEventListener('hide.bs.modal', (e: Event) => {
 // Handle session expiry (401) - clear auth and redirect to login
 window.addEventListener('auth:sessionExpired', () => {
   store.dispatch(clearAuth());
+  store.dispatch(clearSuperAdminAuth());
   window.location.href = `${base_path}login`;
+});
+
+// Super Admin API returned 401 — clear client state so protected routes redirect cleanly
+window.addEventListener('super-admin:sessionInvalid', () => {
+  store.dispatch(clearSuperAdminAuth());
 });
 
 createRoot(document.getElementById('root')!).render(

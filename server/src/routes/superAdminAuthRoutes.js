@@ -1,7 +1,6 @@
 const express = require('express');
 const Joi = require('joi');
 const { superAdminLogin, superAdminLogout } = require('../controllers/superAdminAuthController');
-const { authenticateSuperAdmin, requireSuperAdmin } = require('../middleware/superAdminAuthMiddleware');
 const { validate } = require('../utils/validate');
 
 const router = express.Router();
@@ -13,8 +12,9 @@ const superAdminLoginSchema = Joi.object({
 
 router.post('/login', validate(superAdminLoginSchema), superAdminLogin);
 
-// Super Admin logout clears its own cookie; allow calling even if token is expired
-router.post('/logout', authenticateSuperAdmin, requireSuperAdmin, superAdminLogout);
+// Logout clears cookie only (like tenant /api/auth/logout). No auth required so expired
+// sessions can still clear the httpOnly cookie; CSRF double-submit still applies.
+router.post('/logout', superAdminLogout);
 
 module.exports = router;
 

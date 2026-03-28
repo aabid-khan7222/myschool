@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { superAdminApiService } from '../../core/services/superAdminApiService';
+import {
+  selectSuperAdminAuthChecked,
+  selectSuperAdminIsAuthenticated,
+} from '../../core/data/redux/superAdminAuthSlice';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 
@@ -21,6 +26,8 @@ interface School {
 
 const SuperAdminDashboard = () => {
   const navigate = useNavigate();
+  const authChecked = useSelector(selectSuperAdminAuthChecked);
+  const isAuthenticated = useSelector(selectSuperAdminIsAuthenticated);
 
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -90,7 +97,7 @@ const SuperAdminDashboard = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authChecked, isAuthenticated]);
 
   const refreshAll = async () => {
     // refresh stats and schools in parallel

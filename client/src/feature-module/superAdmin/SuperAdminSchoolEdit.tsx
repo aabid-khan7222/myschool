@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { superAdminApiService } from '../../core/services/superAdminApiService';
+import {
+  selectSuperAdminAuthChecked,
+  selectSuperAdminIsAuthenticated,
+} from '../../core/data/redux/superAdminAuthSlice';
 
 interface School {
   id: number;
@@ -14,6 +19,8 @@ interface School {
 const SuperAdminSchoolEdit = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const authChecked = useSelector(selectSuperAdminAuthChecked);
+  const isAuthenticated = useSelector(selectSuperAdminIsAuthenticated);
   const schoolId = Number(id);
 
   const [loading, setLoading] = useState(true);
@@ -32,6 +39,7 @@ const SuperAdminSchoolEdit = () => {
   });
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     if (!schoolId) {
       setError('Invalid school id');
       setLoading(false);
@@ -68,7 +76,7 @@ const SuperAdminSchoolEdit = () => {
     return () => {
       cancelled = true;
     };
-  }, [schoolId]);
+  }, [schoolId, authChecked, isAuthenticated]);
 
   const onChange = (key: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
