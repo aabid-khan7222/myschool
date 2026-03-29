@@ -224,6 +224,10 @@ const masterPool = (() => {
       `ALTER TABLE schools ADD COLUMN IF NOT EXISTS type VARCHAR(512) NULL;`
     );
 
+    await masterPool.query(
+      `ALTER TABLE schools ADD COLUMN IF NOT EXISTS logo TEXT NULL;`
+    );
+
     await masterPool.query(`
       CREATE TABLE IF NOT EXISTS super_admin_audit_log (
         id SERIAL PRIMARY KEY,

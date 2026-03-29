@@ -11,6 +11,8 @@ interface AuthUser {
   accountDisabled?: boolean;
   school_name?: string;
   school_type?: string;
+  /** Public URL or app-relative path from master_db.schools.logo */
+  school_logo?: string | null;
   institute_number?: string;
 }
 
@@ -43,6 +45,11 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.authChecked = true;
     },
+    patchAuthUser: (state, action: PayloadAction<Partial<AuthUser>>) => {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+      }
+    },
     setAuthChecked: (state) => {
       state.authChecked = true;
     },
@@ -55,7 +62,8 @@ const authSlice = createSlice({
   },
 });
 
-export const { setAuth, setAuthFromSession, setAuthChecked, clearAuth } = authSlice.actions;
+export const { setAuth, setAuthFromSession, setAuthChecked, clearAuth, patchAuthUser } =
+  authSlice.actions;
 export const selectToken = (state: { auth: AuthState }) => state.auth.token;
 export const selectUser = (state: { auth: AuthState }) => state.auth.user;
 export const selectIsAuthenticated = (state: { auth: AuthState }) => state.auth.isAuthenticated;

@@ -12,6 +12,7 @@ import {
   setDataLayout,
 } from "../../data/redux/themeSettingSlice";
 import usePreviousRoute from "./usePreviousRoute";
+import { getSchoolLogoSrc, isMillatStyleLogoPath } from "../../utils/schoolLogo";
 
 import "../../../../node_modules/react-perfect-scrollbar/dist/css/styles.css";
 import PerfectScrollbar from "react-perfect-scrollbar";
@@ -23,13 +24,8 @@ const Sidebar = () => {
   const role = user?.role || "Admin";
   const SidebarData = useMemo(() => getSidebarDataForRole(role), [role]);
 
-  const schoolLogoSrc = useMemo(() => {
-    const name = (user?.school_name || "").toString().trim().toLowerCase();
-    if (name.includes("millat")) return "assets/img/icons/millat-logo.png";
-    if (name.includes("iqra")) return "assets/img/icons/iqra-logo.bmp";
-    return "assets/img/icons/global-img.svg";
-  }, [user?.school_name]);
-  const isMillatLogo = schoolLogoSrc.includes("millat-logo");
+  const schoolLogoSrc = useMemo(() => getSchoolLogoSrc(user), [user?.school_logo, user?.school_name]);
+  const isMillatLogo = isMillatStyleLogoPath(schoolLogoSrc);
 
   const [subOpen, setSubopen] = useState<any>("");
   const [subsidebar, setSubsidebar] = useState("");

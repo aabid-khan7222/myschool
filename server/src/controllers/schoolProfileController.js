@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { query } = require('../config/database');
+const { query, masterQuery } = require('../config/database');
 const { validateImageFileAtPath } = require('../utils/imageMagic');
 const { success, error: errorResponse } = require('../utils/responseHelper');
 const { getSchoolProfile, ensureSchoolProfile } = require('../services/schoolProfileService');
@@ -69,8 +69,18 @@ const uploadLogo = async (req, res) => {
     await ensureSchoolProfile(req.user?.school_name || null);
     const logoUrl = normalizeLogoUrl(req.file.path);
     if (!logoUrl) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch {
+        /* ignore */
+      }
       return errorResponse(res, 400, 'Invalid logo path');
     }
+
+    const prevRes = await query(
+      `SELECT logo_url FROM school_profile ORDER BY id ASC LIMIT 1`
+    );
+    const previousLogoUrl = prevRes.rows?.[0]?.logo_url ?? null;
 
     const updated = await query(
       `UPDATE school_profile
@@ -79,6 +89,49 @@ const uploadLogo = async (req, res) => {
        RETURNING id, school_name, logo_url, created_at, updated_at`,
       [logoUrl]
     );
+
+    const schoolId = req.user?.school_id;
+    if (schoolId == null) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch {
+        /* ignore */
+      }
+      await query(
+        `UPDATE school_profile SET logo_url = $1, updated_at = NOW()
+         WHERE id = (SELECT id FROM school_profile ORDER BY id ASC LIMIT 1)`,
+        [previousLogoUrl]
+      );
+      return errorResponse(res, 500, 'Invalid session: missing school scope');
+    }
+
+    try {
+      await masterQuery(`UPDATE schools SET logo = $1 WHERE id = $2 AND deleted_at IS NULL`, [
+        logoUrl,
+        schoolId,
+      ]);
+    } catch (e) {
+      console.error('School logo: failed to sync master_db.schools.logo:', e);
+      try {
+        await query(
+          `UPDATE school_profile SET logo_url = $1, updated_at = NOW()
+           WHERE id = (SELECT id FROM school_profile ORDER BY id ASC LIMIT 1)`,
+          [previousLogoUrl]
+        );
+      } catch (revertErr) {
+        console.error('School logo: revert school_profile after master failure:', revertErr);
+      }
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch {
+        /* ignore */
+      }
+      return errorResponse(
+        res,
+        500,
+        'Could not save logo to the platform registry. Your previous logo was restored.'
+      );
+    }
 
     return success(res, 200, 'School logo uploaded', updated.rows[0] || null);
   } catch (err) {

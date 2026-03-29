@@ -3,10 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import { all_routes } from "../../router/all_routes";
 import { OverlayTrigger, Tooltip } from "react-bootstrap";
 import { apiService } from "../../../core/services/apiService";
+import { useDispatch } from "react-redux";
+import { patchAuthUser } from "../../../core/data/redux/authSlice";
 import { useCurrentUser } from "../../../core/hooks/useCurrentUser";
 
 const SchoolSettings = () => {
   const route = all_routes;
+  const dispatch = useDispatch();
   const { user } = useCurrentUser();
   const role = (user?.role || "").toString().toLowerCase();
   const isAdmin = useMemo(() => role === "admin", [role]);
@@ -64,6 +67,14 @@ const SchoolSettings = () => {
       const res = await apiService.uploadSchoolLogo(file);
       const updated = res?.data || {};
       setLogoUrl(updated.logo_url || "");
+      try {
+        const me = await apiService.getMe();
+        if (me?.status === "SUCCESS" && me.data && me.data.school_logo !== undefined) {
+          dispatch(patchAuthUser({ school_logo: me.data.school_logo ?? null }));
+        }
+      } catch {
+        /* sidebar refreshes on next navigation / me */
+      }
       setMessage("School logo uploaded successfully.");
     } catch (err) {
       setError((err as Error)?.message || "Failed to upload school logo");

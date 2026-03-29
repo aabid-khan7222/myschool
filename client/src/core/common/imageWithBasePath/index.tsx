@@ -1,6 +1,14 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { img_path} from '../../../environment';
+
+function resolveInitialSrc(raw: string): string {
+  const s = (raw || '').trim();
+  if (!s) return `${img_path}`;
+  if (/^https?:\/\//i.test(s)) return s;
+  if (s.startsWith('/')) return s;
+  return `${img_path}${s}`;
+}
 
 interface Image {
   className?: string;
@@ -13,8 +21,13 @@ interface Image {
 }
 
 const ImageWithBasePath = (props: Image) => {
-  const [imgSrc, setImgSrc] = useState(`${img_path}${props.src}`);
+  const [imgSrc, setImgSrc] = useState(() => resolveInitialSrc(props.src));
   const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+    setImgSrc(resolveInitialSrc(props.src));
+  }, [props.src]);
 
   // Function to get default avatar based on gender
   const getDefaultAvatar = (gender?: string) => {

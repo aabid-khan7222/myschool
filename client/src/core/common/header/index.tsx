@@ -15,6 +15,7 @@ import {
 import { useState, useEffect, useRef } from "react";
 import { all_routes } from "../../../feature-module/router/all_routes";
 import { getDashboardForRole } from "../../utils/roleUtils";
+import { getSchoolLogoSrc, isMillatStyleLogoPath } from "../../utils/schoolLogo";
 import { useAcademicYears } from "../../hooks/useAcademicYears";
 const Header = () => {
   const routes = all_routes;
@@ -151,13 +152,8 @@ const Header = () => {
     }
   };
 
-  const schoolLogoSrc = (() => {
-    const name = (user?.school_name || "").toString().trim().toLowerCase();
-    if (name.includes("millat")) return "assets/img/icons/millat-logo.png";
-    if (name.includes("iqra")) return "assets/img/icons/iqra-logo.bmp";
-    return "assets/img/logo-small.svg";
-  })();
-  const isMillatLogo = schoolLogoSrc.includes("millat-logo");
+  const schoolLogoSrc = getSchoolLogoSrc(user);
+  const isMillatLogo = isMillatStyleLogoPath(schoolLogoSrc);
 
   return (
     <>

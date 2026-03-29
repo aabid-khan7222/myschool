@@ -91,6 +91,7 @@ const Profile = () => {
             accountDisabled: d.account_disabled === true,
             school_name: d.school_name,
             school_type: d.school_type,
+            school_logo: d.school_logo ?? null,
             institute_number: d.institute_number,
           },
         })

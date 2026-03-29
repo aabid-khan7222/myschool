@@ -71,7 +71,7 @@ const login = async (req, res) => {
     let school;
     try {
       const schoolRes = await masterQuery(
-        `SELECT id, school_name, type, institute_number, db_name, status, deleted_at
+        `SELECT id, school_name, type, logo, institute_number, db_name, status, deleted_at
          FROM schools
          WHERE institute_number = $1 AND deleted_at IS NULL
          LIMIT 1`,
@@ -174,6 +174,7 @@ const login = async (req, res) => {
         school_id: school.id,
         school_name: school.school_name,
         school_type: school.type,
+        school_logo: school.logo || null,
         institute_number: school.institute_number,
       };
 
@@ -258,6 +259,7 @@ const login = async (req, res) => {
           accountDisabled,
           school_name: school.school_name,
           school_type: school.type,
+          school_logo: school.logo || null,
           institute_number: school.institute_number,
         },
       };
@@ -339,6 +341,21 @@ const login = async (req, res) => {
       displayName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || 'User';
       displayRole = user.role_name || 'User';
     }
+    let schoolLogo = tokenUser.school_logo != null ? tokenUser.school_logo : null;
+    if (tokenUser.school_id != null) {
+      try {
+        const logoRes = await masterQuery(
+          `SELECT logo FROM schools WHERE id = $1 AND deleted_at IS NULL LIMIT 1`,
+          [tokenUser.school_id]
+        );
+        if (logoRes.rows?.[0] && Object.prototype.hasOwnProperty.call(logoRes.rows[0], 'logo')) {
+          schoolLogo = logoRes.rows[0].logo;
+        }
+      } catch (e) {
+        console.warn('getMe: could not load school logo from master_db:', e.message);
+      }
+    }
+
     const userData = {
       ...user,
       display_name: displayName,
@@ -346,6 +363,7 @@ const login = async (req, res) => {
       account_disabled: accountDisabled,
       school_name: tokenUser.school_name,
       school_type: tokenUser.school_type,
+      school_logo: schoolLogo,
       institute_number: tokenUser.institute_number,
     };
     success(res, 200, 'User fetched', userData);

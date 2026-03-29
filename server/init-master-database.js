@@ -57,6 +57,7 @@ async function ensureSchoolsTable() {
         db_name VARCHAR(100) NOT NULL UNIQUE,
         status VARCHAR(20) NOT NULL DEFAULT 'active',
         type VARCHAR(512) NULL,
+        logo TEXT NULL,
         created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -72,18 +73,24 @@ async function ensureSchoolsTable() {
       ADD COLUMN IF NOT EXISTS type VARCHAR(512) NULL;
     `);
 
+    await masterPool.query(`
+      ALTER TABLE schools
+      ADD COLUMN IF NOT EXISTS logo TEXT NULL;
+    `);
+
     // Upsert three schools
     await masterPool.query(
       `
-      INSERT INTO schools (id, school_name, institute_number, db_name, type)
+      INSERT INTO schools (id, school_name, institute_number, db_name, type, logo)
       VALUES
-        (1, 'Existing School', '1111', 'school_db', NULL),
-        (2, 'Millat',         '2222', 'millat_db', 'High school and junior college'),
-        (3, 'Iqra',           '3333', 'iqra_db', 'College arts and science')
+        (1, 'Existing School', '1111', 'school_db', NULL, 'assets/img/logo-small.svg'),
+        (2, 'Millat',         '2222', 'millat_db', 'High school and junior college', 'assets/img/icons/millat-logo.png'),
+        (3, 'Iqra',           '3333', 'iqra_db', 'College arts and science', 'assets/img/icons/iqra-logo.bmp')
       ON CONFLICT (institute_number) DO UPDATE
         SET school_name = EXCLUDED.school_name,
             db_name = EXCLUDED.db_name,
-            type = COALESCE(EXCLUDED.type, schools.type)
+            type = COALESCE(EXCLUDED.type, schools.type),
+            logo = COALESCE(EXCLUDED.logo, schools.logo)
       `
     );
 
