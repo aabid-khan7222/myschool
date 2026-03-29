@@ -1,6 +1,9 @@
 import { createRoot } from 'react-dom/client'
 import { base_path } from "./environment";
 import "../node_modules/bootstrap/dist/css/bootstrap.min.css";
+// Single Bootstrap JS entry: registers Dropdown/Modal data-api once on `document`.
+// Do not `import { X } from "bootstrap"` in app code — a second copy registers duplicate listeners and every dropdown toggles twice (open then instant close).
+import "../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js";
 import "../src/style/css/feather.css";
 import "../src/index.scss";
 import store from "./core/data/redux/store";
@@ -18,7 +21,6 @@ import "../src/style/icon/fontawesome/css/all.min.css";
 import "../src/style/icon/ionic/ionicons.css";
 import "../src/style/icon/tabler-icons/webfont/tabler-icons.css";
 import ALLRoutes from "./feature-module/router/router";
-import "../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js";
 import { BrowserRouter } from 'react-router';
 import React from 'react';
 import ErrorBoundary from './core/components/ErrorBoundary';

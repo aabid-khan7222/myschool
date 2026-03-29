@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Modal } from "bootstrap";
 import ImageWithBasePath from "../../../core/common/imageWithBasePath";
 import { all_routes } from "../../router/all_routes";
 import { OverlayTrigger, Tooltip } from "react-bootstrap";
@@ -171,8 +170,8 @@ const Profile = () => {
       setPwd({ currentPassword: "", newPassword: "", confirmPassword: "" });
       await showPasswordSuccessAlert("Your password was updated successfully.");
       const modalEl = document.getElementById("change_password");
-      if (modalEl) {
-        Modal.getOrCreateInstance(modalEl).hide();
+      if (modalEl && window.bootstrap?.Modal) {
+        window.bootstrap.Modal.getOrCreateInstance(modalEl).hide();
       }
     } catch (e: unknown) {
       const msg = extractMessageFromApiError(e);
