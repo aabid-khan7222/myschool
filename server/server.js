@@ -322,43 +322,47 @@ const startServer = async () => {
       process.exit(1);
     }
 
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
+    const PORT = Number(process.env.PORT) || 5000;
+    // Render/Docker/Kubernetes: must listen on all interfaces. Binding only to localhost
+    // leaves no reachable port for the platform health check → "No open ports detected" / deploy timeout.
+    const BIND_HOST = process.env.BIND_HOST || '0.0.0.0';
+    app.listen(PORT, BIND_HOST, () => {
       console.log('🚀 Server is running!');
-      console.log(`📍 Server running on port ${PORT}`);
+      console.log(`📍 Listening on ${BIND_HOST}:${PORT} (use PORT from environment on PaaS)`);
       console.log(`🌍 Environment: ${serverConfig.nodeEnv}`);
       console.log('📋 Available endpoints:');
-      console.log(`   GET  http://localhost:${serverConfig.port}/`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/health`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/health/database`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/academic-years`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/academic-years/:id`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/classes`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/classes/:id`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/sections`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/sections/:id`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/subjects`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/subjects/:id`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/subjects/class/:classId`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/teachers`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/teachers/:id`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/teachers/class/:classId`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/students`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/students/:id`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/students/class/:classId`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/blood-groups`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/blood-groups/:id`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/religions`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/religions/:id`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/casts`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/casts/:id`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/mother-tongues`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/mother-tongues/:id`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/houses`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/houses/:id`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/addresses`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/addresses/:id`);
-      console.log(`   GET  http://localhost:${serverConfig.port}/api/addresses/user/:userId`);
+      const base = `http://127.0.0.1:${PORT}`;
+      console.log(`   GET  ${base}/`);
+      console.log(`   GET  ${base}/api/health`);
+      console.log(`   GET  ${base}/api/health/database`);
+      console.log(`   GET  ${base}/api/academic-years`);
+      console.log(`   GET  ${base}/api/academic-years/:id`);
+      console.log(`   GET  ${base}/api/classes`);
+      console.log(`   GET  ${base}/api/classes/:id`);
+      console.log(`   GET  ${base}/api/sections`);
+      console.log(`   GET  ${base}/api/sections/:id`);
+      console.log(`   GET  ${base}/api/subjects`);
+      console.log(`   GET  ${base}/api/subjects/:id`);
+      console.log(`   GET  ${base}/api/subjects/class/:classId`);
+      console.log(`   GET  ${base}/api/teachers`);
+      console.log(`   GET  ${base}/api/teachers/:id`);
+      console.log(`   GET  ${base}/api/teachers/class/:classId`);
+      console.log(`   GET  ${base}/api/students`);
+      console.log(`   GET  ${base}/api/students/:id`);
+      console.log(`   GET  ${base}/api/students/class/:classId`);
+      console.log(`   GET  ${base}/api/blood-groups`);
+      console.log(`   GET  ${base}/api/blood-groups/:id`);
+      console.log(`   GET  ${base}/api/religions`);
+      console.log(`   GET  ${base}/api/religions/:id`);
+      console.log(`   GET  ${base}/api/casts`);
+      console.log(`   GET  ${base}/api/casts/:id`);
+      console.log(`   GET  ${base}/api/mother-tongues`);
+      console.log(`   GET  ${base}/api/mother-tongues/:id`);
+      console.log(`   GET  ${base}/api/houses`);
+      console.log(`   GET  ${base}/api/houses/:id`);
+      console.log(`   GET  ${base}/api/addresses`);
+      console.log(`   GET  ${base}/api/addresses/:id`);
+      console.log(`   GET  ${base}/api/addresses/user/:userId`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
