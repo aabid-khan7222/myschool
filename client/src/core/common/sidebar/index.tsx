@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { selectUser } from "../../data/redux/authSlice";
 import { getSidebarDataForRole } from "../../data/json/sidebarDataUtils";
-import ImageWithBasePath from "../imageWithBasePath";
+import SchoolLogoImage from "../schoolLogoImage";
 import "../../../style/icon/tabler-icons/webfont/tabler-icons.css";
 import { setExpandMenu } from "../../data/redux/sidebarSlice";
 import { useDispatch } from "react-redux";
@@ -175,7 +175,7 @@ const Sidebar = () => {
                       aria-label="Change school logo"
                       style={{ cursor: logoUploading ? "wait" : "pointer" }}
                     >
-                      <ImageWithBasePath
+                      <SchoolLogoImage
                         src={schoolLogoSrc}
                         className="avatar avatar-md img-fluid rounded"
                         alt="School Logo"
@@ -190,7 +190,7 @@ const Sidebar = () => {
                       to={dashboardLink || all_routes.adminDashboard}
                       className="school-card d-flex align-items-center border bg-white rounded p-2 mb-4"
                     >
-                      <ImageWithBasePath
+                      <SchoolLogoImage
                         src={schoolLogoSrc}
                         className="avatar avatar-md img-fluid rounded"
                         alt="School Logo"

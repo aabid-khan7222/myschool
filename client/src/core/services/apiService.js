@@ -10,7 +10,8 @@ const isProd = import.meta.env.PROD;
 
 let cachedBaseUrl = null;
 
-async function getApiBaseUrl() {
+/** Exported for school logo and other assets that must target the API host (split SPA/API). */
+export async function getApiBaseUrl() {
   if (cachedBaseUrl) return cachedBaseUrl;
   if (!isProd) {
     cachedBaseUrl = BUILD_API_URL;

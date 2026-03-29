@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type CSSProperties } from 'react';
 import { img_path} from '../../../environment';
 
 function resolveInitialSrc(raw: string): string {
@@ -18,6 +18,7 @@ interface Image {
   width?: number;
   id?:string;
   gender?: string;
+  style?: CSSProperties;
 }
 
 const ImageWithBasePath = (props: Image) => {
@@ -56,6 +57,7 @@ const ImageWithBasePath = (props: Image) => {
       alt={props.alt}
       width={props.width}
       id={props.id}
+      style={props.style}
       onError={handleImageError}
     />
   );

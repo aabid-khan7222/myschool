@@ -7,6 +7,7 @@ import {
 import { clearAuth, selectUser } from "../../data/redux/authSlice";
 import { setSelectedAcademicYear, selectSelectedAcademicYearId } from "../../data/redux/academicYearSlice";
 import ImageWithBasePath from "../imageWithBasePath";
+import SchoolLogoImage from "../schoolLogoImage";
 import {
   setExpandMenu,
   setMobileSidebar,
@@ -197,7 +198,7 @@ const Header = () => {
                   aria-label="Change school logo"
                   style={{ cursor: logoUploading ? "wait" : "pointer" }}
                 >
-                  <ImageWithBasePath
+                  <SchoolLogoImage
                     src={schoolLogoSrc}
                     alt="School Logo"
                     className={`logo-icon ${isMillatLogo ? "logo-icon--large" : ""}`}
@@ -220,7 +221,7 @@ const Header = () => {
                   aria-label="Change school logo"
                   style={{ cursor: logoUploading ? "wait" : "pointer" }}
                 >
-                  <ImageWithBasePath
+                  <SchoolLogoImage
                     src={schoolLogoSrc}
                     alt="School Logo"
                     className={isMillatLogo ? "logo-icon--large" : undefined}
@@ -234,7 +235,7 @@ const Header = () => {
                 to={dashboardRoute}
                 className={`logo ${dataTheme === "default_data_theme" ? "logo-normal" : "dark-logo"} d-flex align-items-center`}
               >
-                <ImageWithBasePath
+                <SchoolLogoImage
                   src={schoolLogoSrc}
                   alt="School Logo"
                   className={`logo-icon ${isMillatLogo ? "logo-icon--large" : ""}`}
@@ -242,7 +243,7 @@ const Header = () => {
                 <span className="logo-school-name">{user?.school_name || "PreSkool"}</span>
               </Link>
               <Link to={dashboardRoute} className="logo-small">
-                <ImageWithBasePath
+                <SchoolLogoImage
                   src={schoolLogoSrc}
                   alt="School Logo"
                   className={isMillatLogo ? "logo-icon--large" : undefined}

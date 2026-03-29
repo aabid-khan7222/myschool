@@ -7,6 +7,7 @@ import { useDispatch } from "react-redux";
 import { patchAuthUser } from "../../../core/data/redux/authSlice";
 import { useCurrentUser } from "../../../core/hooks/useCurrentUser";
 import { alertLogoUploadError, alertLogoUploadSuccess } from "../../../core/utils/schoolLogoUploadAlerts";
+import SchoolLogoImage from "../../../core/common/schoolLogoImage";
 
 const SchoolSettings = () => {
   const route = all_routes;
@@ -202,7 +203,7 @@ const SchoolSettings = () => {
                                 <h6>School Logo</h6>
                                 <p>Used in generated documents like Bonafide Certificate</p>
                                 {logoUrl ? (
-                                  <img
+                                  <SchoolLogoImage
                                     src={logoUrl}
                                     alt="School Logo"
                                     style={{ maxHeight: 80, objectFit: "contain", marginTop: 8 }}
