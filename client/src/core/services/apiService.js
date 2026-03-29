@@ -1278,6 +1278,14 @@ class ApiService {
   }
 
   async uploadSchoolLogo(file) {
+    const maxBytes = 5 * 1024 * 1024;
+    if (file && file.size > maxBytes) {
+      const err = new Error(
+        `File is too large (${Math.round(file.size / 1024)} KB). Maximum size is 5 MB. Compress the image or choose a smaller file.`
+      );
+      err.code = 'CLIENT_FILE_TOO_LARGE';
+      throw err;
+    }
     const base = await getApiBaseUrl();
     const url = `${base}/school/profile/logo`.replace(/([^:]\/)\/+/g, '$1');
     const form = new FormData();
@@ -1294,11 +1302,31 @@ class ApiService {
       headers: uploadHeaders,
       body: form,
     });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Logo upload failed (${response.status}): ${errorText}`);
+    const text = await response.text();
+    let body = null;
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch {
+      body = null;
     }
-    return await response.json();
+    if (!response.ok) {
+      const apiMsg =
+        body && typeof body.message === 'string' && body.message.trim()
+          ? body.message.trim()
+          : text && text.length > 0 && text.length < 800
+            ? text
+            : `Upload failed (HTTP ${response.status})`;
+      const err = new Error(apiMsg);
+      err.status = response.status;
+      err.code = body && body.code;
+      throw err;
+    }
+    if (body && body.status && body.status !== 'SUCCESS') {
+      const err = new Error(body.message || 'Upload did not succeed');
+      err.status = response.status;
+      throw err;
+    }
+    return body;
   }
 }
 

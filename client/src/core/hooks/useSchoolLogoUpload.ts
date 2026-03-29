@@ -2,6 +2,16 @@ import { useCallback, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { apiService } from "../services/apiService";
 import { patchAuthUser, selectUser } from "../data/redux/authSlice";
+import { alertLogoUploadError, alertLogoUploadSuccess } from "../utils/schoolLogoUploadAlerts";
+
+function isUserHeadmaster(user: ReturnType<typeof selectUser>): boolean {
+  if (!user) return false;
+  const role = (user.role ?? "").toString().trim().toLowerCase();
+  if (role === "admin") return true;
+  const u = user as { user_role_id?: number; role_id?: number };
+  const rid = Number(u.user_role_id ?? u.role_id);
+  return Number.isFinite(rid) && rid === 1;
+}
 
 /**
  * Headmaster (Admin) can upload a new school logo from anywhere this hook is used.
@@ -10,7 +20,7 @@ import { patchAuthUser, selectUser } from "../data/redux/authSlice";
 export function useSchoolLogoUpload() {
   const dispatch = useDispatch();
   const user = useSelector(selectUser);
-  const isHeadmaster = (user?.role ?? "").toString().trim().toLowerCase() === "admin";
+  const isHeadmaster = isUserHeadmaster(user);
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -26,14 +36,23 @@ export function useSchoolLogoUpload() {
       if (!file) return;
       setUploading(true);
       try {
-        await apiService.uploadSchoolLogo(file);
-        const me = await apiService.getMe();
-        if (me?.status === "SUCCESS" && me.data && me.data.school_logo !== undefined) {
-          dispatch(patchAuthUser({ school_logo: me.data.school_logo ?? null }));
+        const uploadRes = await apiService.uploadSchoolLogo(file);
+        const fromUpload = (uploadRes as { data?: { logo_url?: string } })?.data?.logo_url;
+        try {
+          const me = await apiService.getMe();
+          if (me?.status === "SUCCESS" && me.data && me.data.school_logo !== undefined) {
+            dispatch(patchAuthUser({ school_logo: me.data.school_logo ?? null }));
+          } else if (fromUpload) {
+            dispatch(patchAuthUser({ school_logo: fromUpload }));
+          }
+        } catch {
+          if (fromUpload) {
+            dispatch(patchAuthUser({ school_logo: fromUpload }));
+          }
         }
+        await alertLogoUploadSuccess();
       } catch (err) {
-        const msg = (err as Error)?.message || "Failed to upload school logo";
-        window.alert(msg);
+        await alertLogoUploadError(err);
       } finally {
         setUploading(false);
         e.target.value = "";

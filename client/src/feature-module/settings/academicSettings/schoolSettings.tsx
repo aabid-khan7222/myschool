@@ -6,13 +6,21 @@ import { apiService } from "../../../core/services/apiService";
 import { useDispatch } from "react-redux";
 import { patchAuthUser } from "../../../core/data/redux/authSlice";
 import { useCurrentUser } from "../../../core/hooks/useCurrentUser";
+import { alertLogoUploadError, alertLogoUploadSuccess } from "../../../core/utils/schoolLogoUploadAlerts";
 
 const SchoolSettings = () => {
   const route = all_routes;
   const dispatch = useDispatch();
   const { user } = useCurrentUser();
   const role = (user?.role || "").toString().toLowerCase();
-  const isAdmin = useMemo(() => role === "admin", [role]);
+  const isAdmin = useMemo(() => {
+    if (role === "admin") return true;
+    const rid = Number(
+      (user as { user_role_id?: number; role_id?: number } | null)?.user_role_id ??
+        (user as { role_id?: number } | null)?.role_id
+    );
+    return Number.isFinite(rid) && rid === 1;
+  }, [role, user]);
   const [schoolName, setSchoolName] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [loading, setLoading] = useState(true);
@@ -67,17 +75,23 @@ const SchoolSettings = () => {
       const res = await apiService.uploadSchoolLogo(file);
       const updated = res?.data || {};
       setLogoUrl(updated.logo_url || "");
+      const fromUpload = updated.logo_url || "";
       try {
         const me = await apiService.getMe();
         if (me?.status === "SUCCESS" && me.data && me.data.school_logo !== undefined) {
           dispatch(patchAuthUser({ school_logo: me.data.school_logo ?? null }));
+        } else if (fromUpload) {
+          dispatch(patchAuthUser({ school_logo: fromUpload }));
         }
       } catch {
-        /* sidebar refreshes on next navigation / me */
+        if (fromUpload) {
+          dispatch(patchAuthUser({ school_logo: fromUpload }));
+        }
       }
-      setMessage("School logo uploaded successfully.");
+      await alertLogoUploadSuccess();
     } catch (err) {
       setError((err as Error)?.message || "Failed to upload school logo");
+      await alertLogoUploadError(err);
     } finally {
       setUploading(false);
       e.target.value = "";

@@ -23,10 +23,14 @@ const logoStorage = multer.diskStorage({
 
 const upload = multer({
   storage: logoStorage,
-  limits: { fileSize: 2 * 1024 * 1024 },
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ok = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.mimetype);
-    if (!ok) return cb(new Error('Only PNG/JPG/WEBP images are allowed'));
+    if (!ok) {
+      const err = new Error('Only PNG, JPG, or WEBP images are allowed.');
+      err.statusCode = 400;
+      return cb(err);
+    }
     cb(null, true);
   },
 });

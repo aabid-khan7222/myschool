@@ -1,9 +1,31 @@
 const path = require('path');
 const fs = require('fs');
+const sharp = require('sharp');
 const { query, masterQuery } = require('../config/database');
 const { validateImageFileAtPath } = require('../utils/imageMagic');
 const { success, error: errorResponse } = require('../utils/responseHelper');
 const { getSchoolProfile, ensureSchoolProfile } = require('../services/schoolProfileService');
+
+/** Resize large logos to fit within 512×512 (keeps aspect ratio); reduces upload failures and layout issues. */
+async function optimizeSchoolLogoInPlace(filePath) {
+  const tmpPath = `${filePath}.opt`;
+  const pipeline = sharp(filePath).rotate().resize(512, 512, {
+    fit: 'inside',
+    withoutEnlargement: true,
+  });
+  const meta = await sharp(filePath).metadata();
+  const fmt = meta.format;
+  if (fmt === 'png') {
+    await pipeline.png({ compressionLevel: 9 }).toFile(tmpPath);
+  } else if (fmt === 'jpeg') {
+    await pipeline.jpeg({ quality: 88, mozjpeg: true }).toFile(tmpPath);
+  } else if (fmt === 'webp') {
+    await pipeline.webp({ quality: 88 }).toFile(tmpPath);
+  } else {
+    await pipeline.png().toFile(tmpPath);
+  }
+  fs.renameSync(tmpPath, filePath);
+}
 
 function normalizeLogoUrl(filePath) {
   const normalized = String(filePath || '').replace(/\\/g, '/');
@@ -64,6 +86,31 @@ const uploadLogo = async (req, res) => {
         /* ignore */
       }
       return errorResponse(res, 400, 'File content is not a valid PNG, JPEG, or WEBP image');
+    }
+
+    try {
+      await optimizeSchoolLogoInPlace(req.file.path);
+    } catch (optErr) {
+      console.error('School logo optimize error:', optErr);
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch {
+        /* ignore */
+      }
+      return errorResponse(
+        res,
+        400,
+        'This image could not be processed. Try another PNG, JPG, or WEBP (max 5 MB). If it still fails, use a smaller resolution.'
+      );
+    }
+
+    if (!validateImageFileAtPath(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch {
+        /* ignore */
+      }
+      return errorResponse(res, 400, 'Processed file is not a valid image');
     }
 
     await ensureSchoolProfile(req.user?.school_name || null);
