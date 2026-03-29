@@ -56,6 +56,7 @@ const Login = () => {
         dispatch(
           setAuth({
             user: res.data.user,
+            token: res.data.accessToken ?? undefined,
           })
         );
         const role = res.data.user?.role || "Admin";

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { apiService } from '../services/apiService';
+import { apiService, clearTenantBearerToken } from '../services/apiService';
 import { setAuthFromSession, setAuthChecked, clearAuth } from '../data/redux/authSlice';
 
 /** Paths where we skip /auth/me (avoids 401 loop and logout spam on login page) */
@@ -66,6 +66,7 @@ export const AuthBootstrap = () => {
         if (!cancelled) {
           const msg = String((err instanceof Error && err.message) || err || '');
           if (msg.includes('401')) {
+            clearTenantBearerToken();
             dispatch(clearAuth());
           }
           dispatch(setAuthChecked());

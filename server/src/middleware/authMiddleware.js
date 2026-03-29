@@ -10,6 +10,40 @@ function sha256Hex(s) {
   return crypto.createHash('sha256').update(String(s)).digest('hex');
 }
 
+/**
+ * Bearer auth: JWT is signed; bind tenant via master_db.schools (not raw client-supplied db_name alone).
+ */
+async function resolveBearerTenantContext(bearerRaw) {
+  const decoded = jwt.verify(bearerRaw, serverConfig.jwtUserSecret);
+  if (decoded?.school_id == null || !decoded?.db_name) {
+    const e = new Error('Invalid token payload');
+    e.name = 'JsonWebTokenError';
+    throw e;
+  }
+  const schoolRes = await masterQuery(
+    `SELECT id, db_name, status, deleted_at
+     FROM schools
+     WHERE id = $1 AND deleted_at IS NULL
+     LIMIT 1`,
+    [decoded.school_id]
+  );
+  const row = schoolRes.rows?.[0];
+  if (!row || String(row.db_name) !== String(decoded.db_name)) {
+    const e = new Error('School mismatch');
+    e.name = 'JsonWebTokenError';
+    throw e;
+  }
+  if (row.status && String(row.status).toLowerCase() === 'disabled') {
+    const e = new Error('School disabled');
+    e.name = 'JsonWebTokenError';
+    throw e;
+  }
+  return {
+    decoded,
+    dbName: decoded.db_name,
+  };
+}
+
 async function resolveTenantFromSession(req) {
   const sid = req.cookies?.[SESSION_COOKIE_NAME] || null;
   if (!sid) return null;
@@ -61,54 +95,78 @@ const protectApi = (req, res, next) => {
 };
 
 /**
- * Verify JWT token and attach user to request.
- * Accepts token from: (1) HTTP-only cookie auth_token, (2) Authorization: Bearer <token>
+ * Verify JWT and attach user.
+ * (1) Cookie auth_token + sid session (preferred when cookies work).
+ * (2) Authorization: Bearer when TENANT_BEARER_AUTH (prod) or ALLOW_LEGACY_BEARER_AUTH (dev) — for split SPA/API.
  */
 const authenticate = (req, res, next) => {
   (async () => {
     try {
-      const cookieToken = req.cookies?.auth_token || null;
-      const authHeader = req.headers.authorization;
-      const bearerToken =
-        serverConfig.allowLegacyBearerAuth && authHeader && authHeader.startsWith('Bearer ')
-          ? authHeader.slice(7)
-          : null;
-      const token = cookieToken || bearerToken;
-
-      if (!token) {
-        return errorResponse(res, 401, 'Access denied. No token provided.');
-      }
       if (!serverConfig.jwtUserSecret) {
         return errorResponse(res, 500, 'Server configuration error');
       }
 
-      const session = await resolveTenantFromSession(req);
-      if (!session) {
-        return errorResponse(res, 401, 'Session expired. Please login again.');
+      const authHeader = req.headers.authorization || '';
+      const bearerRaw =
+        authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+      const allowBearer =
+        !!bearerRaw &&
+        (serverConfig.tenantBearerAuthInProduction || serverConfig.allowLegacyBearerAuth);
+
+      const cookieToken = req.cookies?.auth_token || null;
+      const sid = req.cookies?.[SESSION_COOKIE_NAME] || null;
+
+      // Prefer cookie + sid when both exist so a stale sessionStorage Bearer does not block valid cookies.
+      if (cookieToken && sid) {
+        const session = await resolveTenantFromSession(req);
+        if (!session) {
+          return errorResponse(res, 401, 'Session expired. Please login again.');
+        }
+        const decoded = jwt.verify(cookieToken, serverConfig.jwtUserSecret);
+        if (decoded?.id == null || String(decoded.id) !== String(session.tenant_user_id)) {
+          return errorResponse(res, 401, 'Authentication failed');
+        }
+        if (decoded?.school_id != null && String(decoded.school_id) !== String(session.school_id)) {
+          return errorResponse(res, 401, 'Authentication failed');
+        }
+        if (decoded?.institute_number && String(decoded.institute_number) !== String(session.institute_number)) {
+          return errorResponse(res, 401, 'Authentication failed');
+        }
+        req.user = decoded;
+        req.tenant = {
+          school_id: session.school_id,
+          institute_number: session.institute_number,
+          db_name: session.db_name,
+        };
+        return runWithTenant(session.db_name, () => next());
       }
 
-      const decoded = jwt.verify(token, serverConfig.jwtUserSecret);
-
-      // Enforce session binding: user id + tenant must match master_db session record.
-      if (decoded?.id == null || String(decoded.id) !== String(session.tenant_user_id)) {
-        return errorResponse(res, 401, 'Authentication failed');
+      if (allowBearer) {
+        try {
+          const { decoded, dbName } = await resolveBearerTenantContext(bearerRaw);
+          req.user = decoded;
+          req.tenant = {
+            school_id: decoded.school_id,
+            institute_number: decoded.institute_number,
+            db_name: dbName,
+          };
+          req.authViaBearer = true;
+          return runWithTenant(dbName, () => next());
+        } catch (err) {
+          if (err?.name === 'TokenExpiredError') {
+            return errorResponse(res, 401, 'Token expired. Please login again.');
+          }
+          if (err?.name === 'JsonWebTokenError') {
+            return errorResponse(res, 401, 'Invalid token.');
+          }
+          return errorResponse(res, 401, 'Authentication failed');
+        }
       }
-      if (decoded?.school_id != null && String(decoded.school_id) !== String(session.school_id)) {
-        return errorResponse(res, 401, 'Authentication failed');
-      }
-      if (decoded?.institute_number && String(decoded.institute_number) !== String(session.institute_number)) {
-        return errorResponse(res, 401, 'Authentication failed');
-      }
 
-      req.user = decoded;
-      req.tenant = {
-        school_id: session.school_id,
-        institute_number: session.institute_number,
-        db_name: session.db_name,
-      };
-
-      // Bind downstream handlers to the tenant DB derived from the server-side session.
-      return runWithTenant(session.db_name, () => next());
+      if (!cookieToken) {
+        return errorResponse(res, 401, 'Access denied. No token provided.');
+      }
+      return errorResponse(res, 401, 'Session expired. Please login again.');
     } catch (err) {
       if (err?.name === 'TokenExpiredError') {
         return errorResponse(res, 401, 'Token expired. Please login again.');

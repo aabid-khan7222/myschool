@@ -246,7 +246,7 @@ const login = async (req, res) => {
       const csrfToken = crypto.randomBytes(16).toString('base64url');
       res.cookie('XSRF-TOKEN', csrfToken, getCsrfCookieOptions());
 
-      success(res, 200, 'Login successful', {
+      const responseData = {
         csrfToken,
         user: {
           id: user.id,
@@ -259,8 +259,13 @@ const login = async (req, res) => {
           school_name: school.school_name,
           school_type: school.type,
           institute_number: school.institute_number,
-        }
-      });
+        },
+      };
+      // Split SPA/API: client sends Authorization Bearer when cookies do not cross origins.
+      if (serverConfig.tenantBearerAuthInProduction || serverConfig.allowLegacyBearerAuth) {
+        responseData.accessToken = token;
+      }
+      success(res, 200, 'Login successful', responseData);
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -354,7 +359,26 @@ const login = async (req, res) => {
  * Logout - clear HTTP-only auth cookie
  */
 const logout = (req, res) => {
-  // Best-effort server-side session revocation (logout invalidation).
+  // Bearer sessions: revoke all active DB rows for this user+school (stateless JWT has no single sid).
+  if (serverConfig.tenantBearerAuthInProduction) {
+    const authz = req.headers.authorization || '';
+    if (authz.startsWith('Bearer ')) {
+      try {
+        const raw = authz.slice(7).trim();
+        const dec = jwt.verify(raw, serverConfig.jwtUserSecret);
+        if (dec?.id != null && dec?.school_id != null) {
+          masterQuery(
+            `UPDATE tenant_sessions SET revoked_at = NOW()
+             WHERE tenant_user_id = $1 AND school_id = $2 AND revoked_at IS NULL`,
+            [dec.id, dec.school_id]
+          ).catch(() => {});
+        }
+      } catch (_) {
+        /* ignore invalid bearer on logout */
+      }
+    }
+  }
+  // Best-effort server-side session revocation (cookie flow).
   const sid = req.cookies?.[SESSION_COOKIE_NAME] || null;
   if (sid) {
     const sessionHash = sha256Hex(sid);

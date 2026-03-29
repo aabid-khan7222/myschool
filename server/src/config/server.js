@@ -12,9 +12,12 @@ const serverConfig = {
   // In production we require an explicit allowlist (no implicit localhost fallback).
   corsOrigin: isProduction ? (process.env.CORS_ORIGIN || '') : (process.env.CORS_ORIGIN || 'http://localhost:5173'),
   logLevel: process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug'),
-  // Bearer tokens in headers are disabled in production (cookie-only) regardless of env flags.
+  // Dev-only: Authorization Bearer for tenant API (testing).
   allowLegacyBearerAuth:
     !isProduction && String(process.env.ALLOW_LEGACY_BEARER_AUTH || '').toLowerCase() === 'true',
+  // Production: split SPA/API (different origins). Cookies may not attach; signed JWT in Authorization + master_db school check.
+  tenantBearerAuthInProduction:
+    isProduction && String(process.env.TENANT_BEARER_AUTH || '').toLowerCase() === 'true',
   allowSuperAdminBearerAuth:
     !isProduction && String(process.env.ALLOW_SUPER_ADMIN_BEARER_AUTH || '').toLowerCase() === 'true',
 };

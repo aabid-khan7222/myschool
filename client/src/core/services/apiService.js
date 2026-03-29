@@ -31,6 +31,32 @@ async function getApiBaseUrl() {
   return cachedBaseUrl;
 }
 
+/** SessionStorage key for split SPA/API (TENANT_BEARER_AUTH on server). */
+const TENANT_BEARER_KEY = 'myschool_tenant_bearer';
+
+export function getTenantBearerToken() {
+  if (typeof sessionStorage === 'undefined') return null;
+  try {
+    return sessionStorage.getItem(TENANT_BEARER_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setTenantBearerToken(token) {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    if (token) sessionStorage.setItem(TENANT_BEARER_KEY, token);
+    else sessionStorage.removeItem(TENANT_BEARER_KEY);
+  } catch {
+    /* private / disabled storage */
+  }
+}
+
+export function clearTenantBearerToken() {
+  setTenantBearerToken(null);
+}
+
 // Request deduplication: track ongoing requests to prevent duplicate simultaneous calls
 const pendingRequests = new Map();
 
@@ -89,7 +115,13 @@ class ApiService {
       ...(options.headers || {}),
     };
 
-    // Cookie-only auth:
+    const existingAuth = headers['Authorization'] || headers['authorization'];
+    if (!existingAuth) {
+      const tb = getTenantBearerToken();
+      if (tb) headers['Authorization'] = `Bearer ${tb}`;
+    }
+
+    // Cookie + optional Bearer (split-host); CSRF for unsafe when cookie mode:
     // - auth session is stored in httpOnly cookies (not accessible to JS)
     // - CSRF uses double-submit cookie (readable) + header for unsafe methods
     const method = (options.method || 'GET').toUpperCase();
@@ -851,6 +883,9 @@ class ApiService {
     });
     const token = data?.data?.csrfToken;
     if (token) setCachedCsrfToken(token);
+    const access = data?.data?.accessToken;
+    if (access) setTenantBearerToken(access);
+    else clearTenantBearerToken();
     return data;
   }
 
@@ -863,6 +898,7 @@ class ApiService {
         method: 'GET',
         credentials: 'include',
         mode: 'cors',
+        cache: 'no-store',
         headers: { Accept: 'application/json' },
       });
       const text = await res.text();
@@ -1245,9 +1281,16 @@ class ApiService {
     const url = `${base}/school/profile/logo`.replace(/([^:]\/)\/+/g, '$1');
     const form = new FormData();
     form.append('logo', file);
+    const uploadHeaders = {};
+    const csrf = resolveCsrfTokenForRequest();
+    if (csrf) uploadHeaders['X-XSRF-TOKEN'] = csrf;
+    const tb = getTenantBearerToken();
+    if (tb) uploadHeaders['Authorization'] = `Bearer ${tb}`;
     const response = await fetch(url, {
       method: 'POST',
       credentials: 'include',
+      cache: 'no-store',
+      headers: uploadHeaders,
       body: form,
     });
     if (!response.ok) {

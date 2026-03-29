@@ -137,6 +137,11 @@ if (isProduction) {
   const { secureCookieBase } = require('./src/utils/cookiePolicy');
   const cp = secureCookieBase();
   console.log(`[cookies] SameSite=${cp.sameSite} Secure=${cp.secure} (COOKIE_SAME_SITE / CORS_ORIGIN / ALLOW_CROSS_SITE_COOKIES)`);
+  if (String(process.env.TENANT_BEARER_AUTH || '').toLowerCase() === 'true') {
+    console.log(
+      '[auth] TENANT_BEARER_AUTH=true — tenant API accepts Authorization: Bearer from login accessToken; CSRF double-submit skipped for those requests. Prefer HTTPS + CSP; treat tokens like passwords.'
+    );
+  }
   if (!String(process.env.CORS_ORIGIN || '').trim()) {
     console.warn(
       '[cookies] CORS_ORIGIN is empty. If your React app uses config.json apiUrl pointing at another hostname ' +
@@ -159,6 +164,12 @@ const enforceCsrf = (req, res, next) => {
     req.path.startsWith('/api/auth/login') ||
     req.path.startsWith('/super-admin/api/auth/login')
   ) return next();
+  // Split SPA/API: XSRF cookie often does not attach cross-origin; Bearer auth does not need double-submit CSRF.
+  const tenantBearerMode = String(process.env.TENANT_BEARER_AUTH || '').toLowerCase() === 'true';
+  const authz = req.headers.authorization || '';
+  if (tenantBearerMode && authz.startsWith('Bearer ') && req.path.startsWith('/api/')) {
+    return next();
+  }
   const cookieToken = req.cookies?.['XSRF-TOKEN'];
   const headerToken = req.headers['x-xsrf-token'] || req.headers['x-csrf-token'];
   if (!cookieToken || !headerToken || String(cookieToken) !== String(headerToken)) {

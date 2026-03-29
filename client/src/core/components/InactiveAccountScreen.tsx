@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import { all_routes } from "../../feature-module/router/all_routes";
 import { clearAuth } from "../data/redux/authSlice";
+import { clearTenantBearerToken } from "../services/apiService";
 
 const INACTIVE_MESSAGE =
   "Your account is disabled by headmaster. Kindly contact school headmaster for browsing application.";
@@ -44,6 +45,7 @@ const InactiveAccountScreen = () => {
           type="button"
           className="btn btn-primary px-4"
           onClick={() => {
+            clearTenantBearerToken();
             dispatch(clearAuth());
             navigate(all_routes.login, { replace: true });
           }}
