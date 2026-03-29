@@ -8,6 +8,7 @@ import {
 interface School {
   id: number;
   school_name: string;
+  type?: string | null;
   institute_number: string;
   db_name: string;
   status: string;
@@ -23,6 +24,7 @@ const SuperAdminSchools = () => {
   const [createError, setCreateError] = useState<string | null>(null);
   const [form, setForm] = useState({
     school_name: '',
+    type: '',
     institute_number: '',
     admin_name: '',
     admin_email: '',
@@ -59,6 +61,7 @@ const SuperAdminSchools = () => {
     setCreateError(null);
     if (
       !form.school_name.trim() ||
+      !form.type.trim() ||
       !form.institute_number.trim() ||
       !form.admin_name.trim() ||
       !form.admin_email.trim() ||
@@ -76,6 +79,7 @@ const SuperAdminSchools = () => {
     try {
       const res = await superAdminApiService.createSchool({
         school_name: form.school_name.trim(),
+        type: form.type.trim(),
         institute_number: form.institute_number.trim(),
         admin_name: form.admin_name.trim(),
         admin_email: form.admin_email.trim(),
@@ -85,6 +89,7 @@ const SuperAdminSchools = () => {
         await loadSchools();
         setForm({
           school_name: '',
+          type: '',
           institute_number: '',
           admin_name: '',
           admin_email: '',
@@ -157,6 +162,19 @@ const SuperAdminSchools = () => {
                   disabled={creating}
                 />
               </div>
+              <div className="col-md-6">
+                <label className="form-label">School type</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={form.type}
+                  onChange={(e) => onChange('type', e.target.value)}
+                  disabled={creating}
+                  placeholder="e.g. High school and junior college"
+                  maxLength={512}
+                  autoComplete="off"
+                />
+              </div>
               <div className="col-md-3">
                 <label className="form-label">Admin Name</label>
                 <input
@@ -216,6 +234,7 @@ const SuperAdminSchools = () => {
               <tr>
                 <th>ID</th>
                 <th>Name</th>
+                <th>Type</th>
                 <th>Institute No.</th>
                 <th>DB Name</th>
                 <th>Status</th>
@@ -227,6 +246,7 @@ const SuperAdminSchools = () => {
                 <tr key={school.id}>
                   <td>{school.id}</td>
                   <td>{school.school_name}</td>
+                  <td className="text-secondary small">{school.type || '—'}</td>
                   <td>{school.institute_number}</td>
                   <td>{school.db_name}</td>
                   <td>
@@ -254,7 +274,7 @@ const SuperAdminSchools = () => {
               ))}
               {schools.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center">
+                  <td colSpan={7} className="text-center">
                     No schools found.
                   </td>
                 </tr>

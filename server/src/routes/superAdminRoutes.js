@@ -26,6 +26,7 @@ router.get('/schools/:id', getSchoolById);
 
 const createSchoolSchema = Joi.object({
   school_name: Joi.string().trim().min(2).max(255).required(),
+  type: Joi.string().trim().min(2).max(512).required(),
   institute_number: Joi.string().trim().min(1).max(50).required(),
   admin_name: Joi.string().trim().min(2).max(255).required(),
   admin_email: Joi.string().trim().email().max(255).required(),
@@ -41,6 +42,9 @@ router.post(
 const updateSchoolSchema = Joi.object({
   school_name: Joi.string().trim().min(2).max(255).optional(),
   institute_number: Joi.string().trim().min(1).max(50).optional(),
+  type: Joi.alternatives()
+    .try(Joi.string().trim().min(2).max(512), Joi.string().valid(''), Joi.valid(null))
+    .optional(),
 }).min(1);
 
 router.patch(

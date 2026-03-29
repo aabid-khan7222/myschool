@@ -199,6 +199,7 @@ class SuperAdminApiService {
     payload: {
       school_name?: string;
       institute_number?: string;
+      type?: string | null;
     }
   ) {
     return this.makeRequest(`/schools/${id}`, {
@@ -227,6 +228,7 @@ class SuperAdminApiService {
 
   async createSchool(payload: {
     school_name: string;
+    type: string;
     institute_number: string;
     admin_name: string;
     admin_email: string;

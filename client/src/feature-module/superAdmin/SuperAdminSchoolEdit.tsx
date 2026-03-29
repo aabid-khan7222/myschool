@@ -10,6 +10,7 @@ import {
 interface School {
   id: number;
   school_name: string;
+  type?: string | null;
   institute_number: string;
   db_name: string;
   status: string;
@@ -33,6 +34,7 @@ const SuperAdminSchoolEdit = () => {
   const [original, setOriginal] = useState<School | null>(null);
   const [form, setForm] = useState({
     school_name: '',
+    type: '',
     institute_number: '',
     db_name: '',
     status: 'active',
@@ -58,6 +60,7 @@ const SuperAdminSchoolEdit = () => {
           setOriginal(s);
           setForm({
             school_name: s.school_name,
+            type: s.type ?? '',
             institute_number: s.institute_number,
             db_name: s.db_name,
             status: s.status || 'active',
@@ -91,12 +94,21 @@ const SuperAdminSchoolEdit = () => {
     setSaving(true);
 
     try {
-      const metadataPayload: { school_name?: string; institute_number?: string } = {};
+      const metadataPayload: {
+        school_name?: string;
+        institute_number?: string;
+        type?: string | null;
+      } = {};
       if (form.school_name.trim() !== original.school_name) {
         metadataPayload.school_name = form.school_name.trim();
       }
       if (form.institute_number.trim() !== original.institute_number) {
         metadataPayload.institute_number = form.institute_number.trim();
+      }
+      const origType = (original.type ?? '').trim();
+      const nextType = form.type.trim();
+      if (nextType !== origType) {
+        metadataPayload.type = nextType === '' ? null : nextType;
       }
 
       if (Object.keys(metadataPayload).length > 0) {
@@ -181,6 +193,20 @@ const SuperAdminSchoolEdit = () => {
                     onChange={(e) => onChange('institute_number', e.target.value)}
                     disabled={saving}
                   />
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label">School type</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={form.type}
+                    onChange={(e) => onChange('type', e.target.value)}
+                    disabled={saving}
+                    placeholder="e.g. High school and junior college"
+                    maxLength={512}
+                    autoComplete="off"
+                  />
+                  <div className="form-text">Optional to clear: delete text and save (stores NULL).</div>
                 </div>
                 <div className="col-md-6">
                   <label className="form-label">Database Name</label>

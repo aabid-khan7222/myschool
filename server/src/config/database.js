@@ -220,6 +220,10 @@ const masterPool = (() => {
       `CREATE INDEX IF NOT EXISTS idx_schools_deleted_at ON schools(deleted_at);`
     );
 
+    await masterPool.query(
+      `ALTER TABLE schools ADD COLUMN IF NOT EXISTS type VARCHAR(512) NULL;`
+    );
+
     await masterPool.query(`
       CREATE TABLE IF NOT EXISTS super_admin_audit_log (
         id SERIAL PRIMARY KEY,

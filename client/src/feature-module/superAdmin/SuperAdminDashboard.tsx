@@ -22,6 +22,7 @@ interface PlatformStats {
 interface School {
   id: number;
   school_name: string;
+  type?: string | null;
   institute_number: string;
   db_name: string;
   status: string;
@@ -46,6 +47,7 @@ const SuperAdminDashboard = () => {
   const [createError, setCreateError] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState({
     school_name: '',
+    type: '',
     institute_number: '',
     admin_name: '',
     admin_email: '',
@@ -139,6 +141,7 @@ const SuperAdminDashboard = () => {
     setCreateError(null);
     if (
       !createForm.school_name.trim() ||
+      !createForm.type.trim() ||
       !createForm.institute_number.trim() ||
       !createForm.admin_name.trim() ||
       !createForm.admin_email.trim() ||
@@ -156,6 +159,7 @@ const SuperAdminDashboard = () => {
     try {
       const res = await superAdminApiService.createSchool({
         school_name: createForm.school_name.trim(),
+        type: createForm.type.trim(),
         institute_number: createForm.institute_number.trim(),
         admin_name: createForm.admin_name.trim(),
         admin_email: createForm.admin_email.trim(),
@@ -166,6 +170,7 @@ const SuperAdminDashboard = () => {
         setShowCreateModal(false);
         setCreateForm({
           school_name: '',
+          type: '',
           institute_number: '',
           admin_name: '',
           admin_email: '',
@@ -205,8 +210,9 @@ const SuperAdminDashboard = () => {
     const result = await MySwal.fire({
       icon: 'warning',
       title: 'Delete school',
-      html: `
+        html: `
         <p class="mb-2 text-start"><strong>${school.school_name}</strong><br/>
+        ${school.type ? `Type: <strong>${school.type}</strong><br/>` : ''}
         Institute: <strong>${school.institute_number}</strong></p>
         <p class="mb-2 text-start">Tenant database: <code>${school.db_name}</code></p>
         <p class="mb-0 text-start text-danger small">This removes the school from the platform and drops its tenant database (when the server is allowed to). Enter your Super Admin password to continue.</p>
@@ -320,6 +326,7 @@ const SuperAdminDashboard = () => {
               <tr>
                 <th>ID</th>
                 <th>School Name</th>
+                <th>Type</th>
                 <th>Institute No.</th>
                 <th>DB Name</th>
                 <th>Status</th>
@@ -335,6 +342,7 @@ const SuperAdminDashboard = () => {
                 >
                   <td>{school.id}</td>
                   <td>{school.school_name}</td>
+                  <td className="text-body-secondary small">{school.type || '—'}</td>
                   <td>{school.institute_number}</td>
                   <td>{school.db_name}</td>
                   <td>
@@ -391,7 +399,7 @@ const SuperAdminDashboard = () => {
               ))}
               {schools.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center">
+                  <td colSpan={7} className="text-center">
                     No schools found.
                   </td>
                 </tr>
@@ -443,6 +451,22 @@ const SuperAdminDashboard = () => {
                           onChange={(e) => onCreateChange('institute_number', e.target.value)}
                           disabled={creating}
                         />
+                      </div>
+                      <div className="col-12">
+                        <label className="form-label">School type</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={createForm.type}
+                          onChange={(e) => onCreateChange('type', e.target.value)}
+                          disabled={creating}
+                          placeholder="e.g. High school and junior college, College arts and science"
+                          maxLength={512}
+                          autoComplete="off"
+                        />
+                        <div className="form-text">
+                          Stored in master database (<code>schools.type</code>) and used on certificates and login context.
+                        </div>
                       </div>
                       <div className="col-md-6">
                         <label className="form-label">Admin Name</label>

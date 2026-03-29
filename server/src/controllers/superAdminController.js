@@ -43,6 +43,7 @@ const listSchools = async (req, res) => {
         SELECT
           id,
           school_name,
+          type,
           institute_number,
           db_name,
           status,
@@ -76,6 +77,7 @@ const getSchoolById = async (req, res) => {
         SELECT
           id,
           school_name,
+          type,
           institute_number,
           db_name,
           status,
@@ -124,6 +126,7 @@ const updateSchoolStatus = async (req, res) => {
         RETURNING
           id,
           school_name,
+          type,
           institute_number,
           db_name,
           status,
@@ -191,17 +194,23 @@ const getPlatformStats = async (req, res) => {
  * - Create initial Headmaster user in tenant DB
  */
 const createSchool = async (req, res) => {
-  const { school_name, institute_number, admin_name, admin_email, admin_password } = req.body || {};
+  const { school_name, type, institute_number, admin_name, admin_email, admin_password } =
+    req.body || {};
 
-  if (!school_name || !institute_number || !admin_name || !admin_email || !admin_password) {
+  if (!school_name || !type || !institute_number || !admin_name || !admin_email || !admin_password) {
     return errorResponse(res, 400, 'Missing required fields');
   }
 
   const institute = String(institute_number).trim();
   const name = String(school_name).trim();
+  const schoolType = String(type).trim();
 
   if (!institute) {
     return errorResponse(res, 400, 'Institute number is required');
+  }
+
+  if (!schoolType) {
+    return errorResponse(res, 400, 'School type is required');
   }
 
   let existing;
@@ -248,11 +257,11 @@ const createSchool = async (req, res) => {
   try {
     const insertRes = await masterQuery(
       `
-      INSERT INTO schools (school_name, institute_number, db_name, status)
-      VALUES ($1, $2, $3, 'active')
-      RETURNING id, school_name, institute_number, db_name, status, created_at
+      INSERT INTO schools (school_name, type, institute_number, db_name, status)
+      VALUES ($1, $2, $3, $4, 'active')
+      RETURNING id, school_name, type, institute_number, db_name, status, created_at
       `,
-      [name, institute, dbName]
+      [name, schoolType, institute, dbName]
     );
     schoolRow = insertRes.rows[0];
   } catch (err) {
@@ -298,7 +307,11 @@ const createSchool = async (req, res) => {
     action: 'school_created',
     resourceType: 'school',
     resourceId: String(schoolRow.id),
-    details: { school_name: schoolRow.school_name, institute_number: schoolRow.institute_number },
+    details: {
+      school_name: schoolRow.school_name,
+      type: schoolRow.type,
+      institute_number: schoolRow.institute_number,
+    },
     req,
   });
 
@@ -316,15 +329,15 @@ const updateSchoolMetadata = async (req, res) => {
       return errorResponse(res, 400, 'Invalid school id');
     }
 
-    const { school_name, institute_number } = req.body || {};
+    const { school_name, institute_number, type } = req.body || {};
 
-    if (!school_name && !institute_number) {
+    if (school_name === undefined && institute_number === undefined && type === undefined) {
       return errorResponse(res, 400, 'No fields to update');
     }
 
     const currentRes = await masterQuery(
       `
-      SELECT id, school_name, institute_number, db_name, status, created_at
+      SELECT id, school_name, type, institute_number, db_name, status, created_at
       FROM schools
       WHERE id = $1 AND deleted_at IS NULL
       LIMIT 1
@@ -336,8 +349,22 @@ const updateSchoolMetadata = async (req, res) => {
     }
     const current = currentRes.rows[0];
 
-    const nextName = school_name ? String(school_name).trim() : current.school_name;
-    const nextInstitute = institute_number ? String(institute_number).trim() : current.institute_number;
+    const nextName = school_name !== undefined ? String(school_name).trim() : current.school_name;
+    const nextInstitute =
+      institute_number !== undefined ? String(institute_number).trim() : current.institute_number;
+
+    let nextType = current.type;
+    if (type !== undefined) {
+      if (type === null || type === '') {
+        nextType = null;
+      } else {
+        const t = String(type).trim();
+        if (t.length < 2) {
+          return errorResponse(res, 400, 'School type must be at least 2 characters or left empty');
+        }
+        nextType = t;
+      }
+    }
 
     if (!nextInstitute) {
       return errorResponse(res, 400, 'Institute number is required');
@@ -362,11 +389,12 @@ const updateSchoolMetadata = async (req, res) => {
       `
       UPDATE schools
       SET school_name = $1,
-          institute_number = $2
-      WHERE id = $3 AND deleted_at IS NULL
-      RETURNING id, school_name, institute_number, db_name, status, created_at
+          institute_number = $2,
+          type = $3
+      WHERE id = $4 AND deleted_at IS NULL
+      RETURNING id, school_name, type, institute_number, db_name, status, created_at
       `,
-      [nextName, nextInstitute, id]
+      [nextName, nextInstitute, nextType, id]
     );
 
     await writeSuperAdminAudit({
@@ -374,7 +402,7 @@ const updateSchoolMetadata = async (req, res) => {
       action: 'school_metadata_updated',
       resourceType: 'school',
       resourceId: String(id),
-      details: { school_name: nextName, institute_number: nextInstitute },
+      details: { school_name: nextName, institute_number: nextInstitute, type: nextType },
       req,
     });
 
@@ -531,7 +559,7 @@ const confirmDeleteSchool = async (req, res) => {
       SET deleted_at = NOW(),
           status = 'disabled'
       WHERE id = $1 AND deleted_at IS NULL
-      RETURNING id, school_name, institute_number, db_name, status, created_at, deleted_at
+      RETURNING id, school_name, type, institute_number, db_name, status, created_at, deleted_at
       `,
       [id]
     );
