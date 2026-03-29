@@ -520,7 +520,7 @@ const Header = () => {
                   </span>
                 </button>
                 <div
-                  className={`dropdown-menu dropdown-menu-end${userProfileMenuOpen ? " show" : ""}`}
+                  className={`dropdown-menu dropdown-menu-end dropdown-menu-profile${userProfileMenuOpen ? " show" : ""}`}
                   role="menu"
                 >
                   <div className="d-block">

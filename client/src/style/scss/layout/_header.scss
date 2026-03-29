@@ -156,6 +156,25 @@
         @include mixins.transform(translateY(0));
         @include mixins.transition(all 0.4s ease);
     }
+
+    // User avatar menu: must sit under the toggle. Global rule above uses top:85px for legacy header dropdowns;
+    // that value is wrong for small .dropdown parents (positions far below the avatar).
+    .dropdown-menu.dropdown-menu-profile {
+        @include mixins.respond-above(lg) {
+            top: calc(100% + 0.35rem) !important;
+            left: auto !important;
+            right: 0 !important;
+            margin-top: 0 !important;
+            transform: none !important;
+            z-index: 1055;
+        }
+    }
+    .dropdown-menu.dropdown-menu-profile.show {
+        @include mixins.respond-above(lg) {
+            margin-top: 0 !important;
+            transform: none !important;
+        }
+    }
     .header-left {
         display: -webkit-box;
         display: -ms-flexbox;
