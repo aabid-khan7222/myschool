@@ -17,6 +17,7 @@ import { all_routes } from "../../../feature-module/router/all_routes";
 import { getDashboardForRole } from "../../utils/roleUtils";
 import { getSchoolLogoSrc, isMillatStyleLogoPath } from "../../utils/schoolLogo";
 import { useAcademicYears } from "../../hooks/useAcademicYears";
+import { useSchoolLogoUpload } from "../../hooks/useSchoolLogoUpload";
 const Header = () => {
   const routes = all_routes;
   const dispatch = useDispatch();
@@ -154,6 +155,13 @@ const Header = () => {
 
   const schoolLogoSrc = getSchoolLogoSrc(user);
   const isMillatLogo = isMillatStyleLogoPath(schoolLogoSrc);
+  const {
+    isHeadmaster: canChangeSchoolLogo,
+    uploading: logoUploading,
+    inputRef: logoFileInputRef,
+    openFilePicker: openSchoolLogoPicker,
+    onFileChange: onSchoolLogoFileChange,
+  } = useSchoolLogoUpload();
 
   return (
     <>
@@ -165,24 +173,83 @@ const Header = () => {
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
         >
-          <Link
-            to={dashboardRoute}
-            className={`logo ${dataTheme === "default_data_theme" ? "logo-normal" : "dark-logo"} d-flex align-items-center`}
-          >
-            <ImageWithBasePath
-              src={schoolLogoSrc}
-              alt="School Logo"
-              className={`logo-icon ${isMillatLogo ? "logo-icon--large" : ""}`}
+          {canChangeSchoolLogo && (
+            <input
+              ref={logoFileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              className="d-none"
+              onChange={onSchoolLogoFileChange}
+              aria-hidden
             />
-            <span className="logo-school-name">{user?.school_name || "PreSkool"}</span>
-          </Link>
-          <Link to={dashboardRoute} className="logo-small">
-            <ImageWithBasePath
-              src={schoolLogoSrc}
-              alt="School Logo"
-              className={isMillatLogo ? "logo-icon--large" : undefined}
-            />
-          </Link>
+          )}
+          {canChangeSchoolLogo ? (
+            <>
+              <div
+                className={`logo ${dataTheme === "default_data_theme" ? "logo-normal" : "dark-logo"} d-flex align-items-center`}
+              >
+                <button
+                  type="button"
+                  className="btn p-0 border-0 bg-transparent shadow-none d-flex align-items-center"
+                  onClick={openSchoolLogoPicker}
+                  disabled={logoUploading}
+                  title="Change school logo"
+                  aria-label="Change school logo"
+                  style={{ cursor: logoUploading ? "wait" : "pointer" }}
+                >
+                  <ImageWithBasePath
+                    src={schoolLogoSrc}
+                    alt="School Logo"
+                    className={`logo-icon ${isMillatLogo ? "logo-icon--large" : ""}`}
+                  />
+                </button>
+                <Link
+                  to={dashboardRoute}
+                  className="logo-school-name text-decoration-none text-reset ms-0"
+                >
+                  {user?.school_name || "PreSkool"}
+                </Link>
+              </div>
+              <div className="logo-small">
+                <button
+                  type="button"
+                  className="btn p-0 border-0 bg-transparent shadow-none w-100 d-flex justify-content-center"
+                  onClick={openSchoolLogoPicker}
+                  disabled={logoUploading}
+                  title="Change school logo"
+                  aria-label="Change school logo"
+                  style={{ cursor: logoUploading ? "wait" : "pointer" }}
+                >
+                  <ImageWithBasePath
+                    src={schoolLogoSrc}
+                    alt="School Logo"
+                    className={isMillatLogo ? "logo-icon--large" : undefined}
+                  />
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Link
+                to={dashboardRoute}
+                className={`logo ${dataTheme === "default_data_theme" ? "logo-normal" : "dark-logo"} d-flex align-items-center`}
+              >
+                <ImageWithBasePath
+                  src={schoolLogoSrc}
+                  alt="School Logo"
+                  className={`logo-icon ${isMillatLogo ? "logo-icon--large" : ""}`}
+                />
+                <span className="logo-school-name">{user?.school_name || "PreSkool"}</span>
+              </Link>
+              <Link to={dashboardRoute} className="logo-small">
+                <ImageWithBasePath
+                  src={schoolLogoSrc}
+                  alt="School Logo"
+                  className={isMillatLogo ? "logo-icon--large" : undefined}
+                />
+              </Link>
+            </>
+          )}
           <Link
             id="toggle_btn"
             to="#"
