@@ -1,8 +1,8 @@
 import { FormEvent, useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { apiService } from "../../../../../core/services/apiService";
-import { useCurrentUser } from "../../../../../core/hooks/useCurrentUser";
-import { getSchoolLogoSrc } from "../../../../../core/utils/schoolLogo";
+import { apiService } from "../../../../core/services/apiService";
+import { useCurrentUser } from "../../../../core/hooks/useCurrentUser";
+import { getSchoolLogoSrc } from "../../../../core/utils/schoolLogo";
 import BonafideCertificateLayout from "./BonafideCertificateLayout";
 import "./bonafide.css";
 

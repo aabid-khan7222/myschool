@@ -1,4 +1,4 @@
-import SchoolLogoImage from "../../../../../core/common/schoolLogoImage";
+import SchoolLogoImage from "../../../../core/common/schoolLogoImage";
 
 type BonafideCertificateLayoutProps = {
   schoolName: string;
