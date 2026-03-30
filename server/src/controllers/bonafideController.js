@@ -29,17 +29,28 @@ function isAllowedBonafideRole(req) {
 }
 
 function resolveLogoPathOrUrl(logoUrl) {
-  const value = String(logoUrl || '').trim();
+  let value = String(logoUrl || '').trim();
   if (!value) return null;
+
+  // If an absolute URL is stored (https://.../api/school/profile/logo/...),
+  // use only the pathname so PDF resolves from local filesystem.
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      value = new URL(value).pathname || value;
+    } catch {
+      // Keep raw value if URL parsing fails.
+    }
+  }
+
   if (value.startsWith('/api/school/profile/logo/')) {
     const parts = value.split('/').filter(Boolean);
     const tenant = (parts[4] || '').replace(/[^a-zA-Z0-9_-]/g, '');
     const file = (parts[5] || '').replace(/[^a-zA-Z0-9._-]/g, '');
     if (!tenant || !file) return null;
-    return path.join(__dirname, '../../uploads/school-logos', tenant, file);
+    return path.join(process.cwd(), 'uploads', 'school-logos', tenant, file);
   }
   if (value.startsWith('/uploads/school-logos/')) {
-    return path.join(__dirname, '../../', value.replace(/^\/+/, ''));
+    return path.join(process.cwd(), value.replace(/^\/+/, ''));
   }
   return null;
 }
@@ -155,11 +166,26 @@ function drawCertificateLayout(doc, data) {
   doc.text(`Date: ${safeText(data.issueDate)}`, rightLineX, footerLineY + 6, { width: lineWidth, align: 'right' });
 
   // Center-bottom blank area reserved for physical school seal.
-  const sealBoxW = 130;
-  const sealBoxH = 110;
+  const sealBoxW = 100;
+  const sealBoxH = 60;
   const sealBoxX = centerX - sealBoxW / 2;
   const sealBoxY = footerLineY + 30; // Signature -> Seal exact spacing
-  doc.save().lineWidth(0.3).strokeColor('#ffffff').rect(sealBoxX, sealBoxY, sealBoxW, sealBoxH).stroke().restore();
+  doc
+    .save()
+    .lineWidth(1)
+    .strokeColor('#000000')
+    .rect(sealBoxX, sealBoxY, sealBoxW, sealBoxH)
+    .stroke()
+    .restore();
+
+  doc
+    .fillColor(textColor)
+    .font('Helvetica')
+    .fontSize(10)
+    .text('School Seal', sealBoxX, sealBoxY + sealBoxH + 5, {
+      width: sealBoxW,
+      align: 'center',
+    });
 }
 
 const downloadBonafide = async (req, res) => {
