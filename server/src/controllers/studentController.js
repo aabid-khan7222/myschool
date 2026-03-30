@@ -367,13 +367,7 @@ const updateStudent = async (req, res) => {
       });
     }
 
-    const grNormUpdate = (gr_number != null ? String(gr_number) : '').trim();
-    if (!grNormUpdate) {
-      return res.status(400).json({
-        status: 'ERROR',
-        message: 'GR number is required'
-      });
-    }
+    let grNormUpdate = (gr_number != null ? String(gr_number) : '').trim();
 
     const hasParentInfo = father_name || father_email || father_phone || father_occupation ||
       mother_name || mother_email || mother_phone || mother_occupation;
@@ -397,6 +391,23 @@ const updateStudent = async (req, res) => {
 
       if (existingStudent.rows.length > 0) {
         const err = new Error('Student with this admission number already exists');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      // Backward-safe behavior for older clients/forms:
+      // if GR is missing in request, keep existing student's GR.
+      if (!grNormUpdate) {
+        const currentGrRes = await client.query(
+          'SELECT gr_number FROM students WHERE id = $1 LIMIT 1',
+          [id]
+        );
+        if (currentGrRes.rows.length > 0) {
+          grNormUpdate = (currentGrRes.rows[0].gr_number || '').toString().trim();
+        }
+      }
+      if (!grNormUpdate) {
+        const err = new Error('GR number is required');
         err.statusCode = 400;
         throw err;
       }
