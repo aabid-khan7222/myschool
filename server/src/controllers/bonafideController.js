@@ -218,9 +218,10 @@ const downloadBonafide = async (req, res) => {
     const profile = await getSchoolProfile(req.user?.school_name || null);
     const tenantDbName = getCurrentTenantDbName();
     let fullSchoolNameFromMaster = null;
+    let logoUrlFromMaster = null;
     try {
       const masterSchool = await masterQuery(
-        `SELECT school_name, type
+        `SELECT school_name, type, logo
          FROM schools
          WHERE db_name = $1
          ORDER BY id ASC
@@ -231,14 +232,21 @@ const downloadBonafide = async (req, res) => {
       const schoolTypePart = safeText(masterSchool?.rows?.[0]?.type, '');
       const combined = `${schoolNamePart} ${schoolTypePart}`.trim();
       fullSchoolNameFromMaster = combined || null;
+      logoUrlFromMaster = safeText(masterSchool?.rows?.[0]?.logo, '');
     } catch {
       fullSchoolNameFromMaster = null;
+      logoUrlFromMaster = null;
     }
     const schoolName = safeText(fullSchoolNameFromMaster || profile?.school_name, safeText(req.user?.school_name, 'School'));
 
     let logoBuffer = null;
     try {
-      logoBuffer = await getLogoBuffer(profile.logo_url);
+      // Keep tenant-safe local file resolution but add robust logo fallback sources.
+      const logoUrlCandidate = safeText(
+        req.user?.school_logo || profile?.logo_url || logoUrlFromMaster,
+        ''
+      );
+      logoBuffer = await getLogoBuffer(logoUrlCandidate);
     } catch {
       logoBuffer = null;
     }
