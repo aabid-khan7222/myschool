@@ -86,6 +86,20 @@ async function getLogoBuffer(logoUrl) {
   return null;
 }
 
+async function resolveFirstWorkingLogoBuffer(candidates) {
+  const seen = new Set();
+  for (const candidate of candidates) {
+    const value = String(candidate || '').trim();
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    const buffer = await getLogoBuffer(value);
+    if (buffer) {
+      return { buffer, source: value };
+    }
+  }
+  return { buffer: null, source: null };
+}
+
 function safeText(value, fallback = '-') {
   const v = String(value == null ? '' : value).trim();
   return v || fallback;
@@ -289,12 +303,15 @@ const downloadBonafide = async (req, res) => {
 
     let logoBuffer = null;
     try {
-      // Keep tenant-safe local file resolution but add robust logo fallback sources.
-      const logoUrlCandidate = safeText(
-        req.user?.school_logo || profile?.logo_url || logoUrlFromMaster || '/assets/img/logo-small.svg',
-        '/assets/img/logo-small.svg'
-      );
-      logoBuffer = await getLogoBuffer(logoUrlCandidate);
+      // Prefer current persisted sources over token/session data, then fall back to the bundled asset.
+      const logoCandidates = [
+        profile?.logo_url,
+        logoUrlFromMaster,
+        req.user?.school_logo,
+        '/assets/img/logo-small.svg',
+      ];
+      const resolvedLogo = await resolveFirstWorkingLogoBuffer(logoCandidates);
+      logoBuffer = resolvedLogo.buffer;
     } catch {
       logoBuffer = null;
     }

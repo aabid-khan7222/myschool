@@ -5,6 +5,7 @@ const serverConfig = require('../config/server');
 const { success, error: errorResponse } = require('../utils/responseHelper');
 const crypto = require('crypto');
 const { secureCookieBase } = require('../utils/cookiePolicy');
+const { getSchoolProfile } = require('../services/schoolProfileService');
 
 const AUTH_COOKIE_NAME = 'auth_token';
 const SESSION_COOKIE_NAME = 'sid';
@@ -353,6 +354,17 @@ const login = async (req, res) => {
         }
       } catch (e) {
         console.warn('getMe: could not load school logo from master_db:', e.message);
+      }
+    }
+    if (!String(schoolLogo || '').trim()) {
+      try {
+        const profile = await getSchoolProfile(tokenUser.school_name || null);
+        const profileLogo = String(profile?.logo_url || '').trim();
+        if (profileLogo) {
+          schoolLogo = profileLogo;
+        }
+      } catch (e) {
+        console.warn('getMe: could not load school logo from school_profile:', e.message);
       }
     }
 
