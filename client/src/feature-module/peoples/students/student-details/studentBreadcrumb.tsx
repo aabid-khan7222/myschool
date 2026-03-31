@@ -2,7 +2,7 @@ import { all_routes } from '../../../router/all_routes'
 import { Link, useLocation } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { selectUser } from '../../../../core/data/redux/authSlice'
-import { getDashboardForRole } from '../../../../core/utils/roleUtils'
+import { getDashboardForRole, isAdministrativeRole, isHeadmasterRole } from '../../../../core/utils/roleUtils'
 
 interface StudentBreadcrumbProps {
   studentId?: number | string
@@ -22,7 +22,7 @@ const StudentBreadcrumb = ({ studentId }: StudentBreadcrumbProps) => {
   const dashboardRoles = ['student', 'parent', 'guardian', 'teacher']
   const roleBasedBack = dashboardRoles.includes(roleLower) ? getDashboardForRole(role) : routes.studentList
   const backTo = state?.returnTo || roleBasedBack
-  const canEditStudent = roleLower === 'admin' || roleLower === 'teacher'
+  const canEditStudent = isHeadmasterRole(user) || isAdministrativeRole(user)
 
   return (
     <div className="col-md-12">

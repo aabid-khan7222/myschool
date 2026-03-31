@@ -38,6 +38,7 @@ const ADMINISTRATIVE_ALLOWED_PATH_PREFIXES = [
 
 const ADMINISTRATIVE_ALLOWED_EXACT_PATHS = new Set([
   all_routes.administrativeDashboard,
+  all_routes.bonafideGenerator,
   all_routes.chat,
   all_routes.callHistory,
   all_routes.calendar,
