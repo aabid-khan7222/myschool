@@ -6,6 +6,7 @@ const { query, masterQuery, getCurrentTenantDbName } = require('../config/databa
 const { error: errorResponse } = require('../utils/responseHelper');
 const { canAccessStudent } = require('../utils/accessControl');
 const { getSchoolProfile } = require('../services/schoolProfileService');
+const { resolveExistingLogoPath, sanitizeFilename, sanitizeTenant } = require('../utils/schoolLogoStorage');
 
 function formatDate(value) {
   if (!value) return '-';
@@ -45,13 +46,17 @@ function resolveLogoPathOrUrl(logoUrl) {
 
   if (value.startsWith('/api/school/profile/logo/')) {
     const parts = value.split('/').filter(Boolean);
-    const tenant = (parts[4] || '').replace(/[^a-zA-Z0-9_-]/g, '');
-    const file = (parts[5] || '').replace(/[^a-zA-Z0-9._-]/g, '');
+    const tenant = sanitizeTenant(parts[4] || '');
+    const file = sanitizeFilename(parts[5] || '');
     if (!tenant || !file) return null;
-    return path.join(process.cwd(), 'uploads', 'school-logos', tenant, file);
+    return resolveExistingLogoPath(tenant, file);
   }
   if (value.startsWith('/uploads/school-logos/')) {
-    return path.join(process.cwd(), value.replace(/^\/+/, ''));
+    const parts = value.split('/').filter(Boolean);
+    const tenant = sanitizeTenant(parts[2] || '');
+    const file = sanitizeFilename(parts[3] || '');
+    if (!tenant || !file) return null;
+    return resolveExistingLogoPath(tenant, file);
   }
   if (value.startsWith('/assets/') || value.startsWith('assets/')) {
     const rel = value.replace(/^\/+/, '');

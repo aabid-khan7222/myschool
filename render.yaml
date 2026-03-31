@@ -8,3 +8,10 @@ services:
     runtime: docker
     rootDir: server
     dockerfilePath: ./Dockerfile
+    envVars:
+      - key: SCHOOL_LOGO_STORAGE_ROOT
+        value: /var/data/myschool/school-logos
+    disk:
+      name: myschool-uploads
+      mountPath: /var/data
+      sizeGB: 1

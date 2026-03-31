@@ -4,6 +4,11 @@ const sharp = require('sharp');
 const { query, masterQuery } = require('../config/database');
 const { success, error: errorResponse } = require('../utils/responseHelper');
 const { getSchoolProfile, ensureSchoolProfile } = require('../services/schoolProfileService');
+const {
+  resolveExistingLogoPath,
+  sanitizeFilename,
+  sanitizeTenant,
+} = require('../utils/schoolLogoStorage');
 
 /** Resize large logos to fit within 512×512 (keeps aspect ratio); reduces upload failures and layout issues. */
 async function optimizeSchoolLogoInPlace(filePath) {
@@ -47,14 +52,8 @@ async function validateLogoImageShape(filePath) {
 }
 
 function normalizeLogoUrl(filePath) {
-  const normalized = String(filePath || '').replace(/\\/g, '/');
-  const marker = '/uploads/school-logos/';
-  const idx = normalized.toLowerCase().indexOf(marker);
-  if (idx < 0) return null;
-  const rel = normalized.slice(idx + marker.length).split('/').filter(Boolean);
-  if (rel.length < 2) return null;
-  const tenant = rel[0].replace(/[^a-zA-Z0-9_-]/g, '');
-  const filename = rel[rel.length - 1].replace(/[^a-zA-Z0-9._-]/g, '');
+  const tenant = sanitizeTenant(path.basename(path.dirname(String(filePath || ''))));
+  const filename = sanitizeFilename(path.basename(String(filePath || '')));
   if (!tenant || !filename) return null;
   return `/api/school/profile/logo/${tenant}/${filename}`;
 }
@@ -202,20 +201,16 @@ const uploadLogo = async (req, res) => {
 
 const getLogo = async (req, res) => {
   try {
-    const tenant = String(req.params.tenant || '').replace(/[^a-zA-Z0-9_-]/g, '');
-    const filename = path.basename(String(req.params.filename || '')).replace(/[^a-zA-Z0-9._-]/g, '');
+    const tenant = sanitizeTenant(req.params.tenant);
+    const filename = sanitizeFilename(req.params.filename);
     if (!tenant || !filename) {
       return errorResponse(res, 400, 'Invalid logo reference');
     }
-    const sessionTenant = String(req.tenant?.db_name || '').replace(/[^a-zA-Z0-9_-]/g, '');
+    const sessionTenant = sanitizeTenant(req.tenant?.db_name);
     if (!sessionTenant || tenant !== sessionTenant) {
       return errorResponse(res, 403, 'Access denied');
     }
-    const filePath = path.resolve(__dirname, '../../uploads/school-logos', tenant, filename);
-    const rootPath = path.resolve(__dirname, '../../uploads/school-logos');
-    if (!filePath.startsWith(rootPath)) {
-      return errorResponse(res, 403, 'Access denied');
-    }
+    const filePath = resolveExistingLogoPath(tenant, filename);
     if (!fs.existsSync(filePath)) {
       return errorResponse(res, 404, 'Logo not found');
     }
