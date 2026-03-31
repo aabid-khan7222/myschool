@@ -69,6 +69,7 @@ const BonafideCertificateLayout = ({
 
         <section className="bonafide-seal-wrap" aria-label="School seal area">
           <div className="bonafide-seal-space" />
+          <p className="bonafide-seal-label">School Seal</p>
         </section>
       </article>
     </div>
