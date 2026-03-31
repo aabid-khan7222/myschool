@@ -58,6 +58,21 @@ function normalizeLogoUrl(filePath) {
   return `/api/school/profile/logo/${tenant}/${filename}`;
 }
 
+function resolveFallbackLogoPath() {
+  const candidates = [
+    path.resolve(process.cwd(), '../client/public/assets/img/logo-small.svg'),
+    path.resolve(process.cwd(), 'client/public/assets/img/logo-small.svg'),
+  ];
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate)) return candidate;
+    } catch {
+      // ignore candidate and continue
+    }
+  }
+  return null;
+}
+
 const getProfile = async (req, res) => {
   try {
     const profile = await getSchoolProfile(req.user?.school_name || null);
@@ -212,6 +227,10 @@ const getLogo = async (req, res) => {
     }
     const filePath = resolveExistingLogoPath(tenant, filename);
     if (!fs.existsSync(filePath)) {
+      const fallbackPath = resolveFallbackLogoPath();
+      if (fallbackPath) {
+        return res.sendFile(fallbackPath);
+      }
       return errorResponse(res, 404, 'Logo not found');
     }
     return res.sendFile(filePath);
