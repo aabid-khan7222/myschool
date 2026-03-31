@@ -36,7 +36,6 @@ function formatDate(value?: string) {
 
 const BonafideGenerator = () => {
   const { user: currentUser } = useCurrentUser();
-  const [name, setName] = useState("");
   const [grNumber, setGrNumber] = useState("");
   const [result, setResult] = useState<BonafidePayload | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -62,14 +61,13 @@ const BonafideGenerator = () => {
 
   const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
-    const trimmedName = name.trim();
     const trimmedGr = grNumber.trim();
 
-    if (!trimmedName || !trimmedGr) {
+    if (!trimmedGr) {
       await Swal.fire({
         icon: "warning",
         title: "Required fields",
-        text: "Student Name and GR Number are required",
+        text: "GR Number is required",
       });
       return;
     }
@@ -84,7 +82,6 @@ const BonafideGenerator = () => {
 
     try {
       const res = await apiService.fetchStudentForBonafide({
-        name: trimmedName,
         gr_number: trimmedGr,
       });
       setResult(res?.data || null);
@@ -96,7 +93,7 @@ const BonafideGenerator = () => {
         await Swal.fire({
           icon: "error",
           title: "Student not found",
-          text: "Please verify Name and GR Number",
+          text: "Please verify GR Number",
         });
         return;
       }
@@ -140,19 +137,9 @@ const BonafideGenerator = () => {
             <div className="card bonafide-form-card">
               <div className="card-body p-4 p-md-5">
                 <h4 className="mb-1">Bonafide Certificate</h4>
-                <p className="text-muted mb-4">Search student by Name and GR Number to preview, print, or download.</p>
+                <p className="text-muted mb-4">Search student by GR Number to preview, print, or download.</p>
                 <form onSubmit={handleSearch}>
                   <div className="row g-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Student Name</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Enter student name"
-                      />
-                    </div>
                     <div className="col-md-6">
                       <label className="form-label">GR Number</label>
                       <input

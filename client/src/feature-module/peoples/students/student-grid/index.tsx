@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { all_routes } from '../../../router/all_routes'
 import ImageWithBasePath from '../../../../core/common/imageWithBasePath'
@@ -15,6 +15,7 @@ import { getDashboardForRole } from '../../../../core/utils/roleUtils'
 
 const StudentGrid = () => {
   const routes = all_routes
+  const navigate = useNavigate()
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null)
   const user = useSelector(selectUser)
   const role = (user?.role || '').toLowerCase()
@@ -26,7 +27,15 @@ const StudentGrid = () => {
   const studentsToShow = isStudentRole ? (currentStudent ? [currentStudent] : []) : students
   const gridLoading = isStudentRole ? currentStudentLoading : loading
   const gridError = isStudentRole ? currentStudentError : error
-  const backTo = isStudentRole ? getDashboardForRole(role) : routes.studentList
+  const fallbackBackTo = getDashboardForRole(user || role)
+
+  const handleBackClick = () => {
+    if (window.history.length > 1) {
+      navigate(-1)
+      return
+    }
+    navigate(fallbackBackTo)
+  }
 
   const transformStudent = (student: any) => ({
         id: student.id,
@@ -61,13 +70,14 @@ const StudentGrid = () => {
       {/* Page Header */}
       <div className="d-md-flex d-block align-items-center justify-content-between mb-3">
         <div className="my-auto mb-2">
-          <Link
-            to={backTo}
+          <button
+            type="button"
             className="btn btn-outline-secondary mb-2 d-inline-flex align-items-center"
+            onClick={handleBackClick}
           >
             <i className="ti ti-arrow-left me-1" />
             Back
-          </Link>
+          </button>
           <h3 className="page-title mb-1">Students</h3>
           <nav>
             <ol className="breadcrumb mb-0">

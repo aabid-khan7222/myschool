@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { all_routes } from "../../../router/all_routes";
 import type { TableData } from "../../../../core/data/interface";
@@ -40,6 +40,7 @@ const transformStudentToRow = (student: any) => ({
 
 const StudentList = () => {
   const routes = all_routes;
+  const navigate = useNavigate();
   const user = useSelector(selectUser);
   const role = (user?.role || "").toLowerCase();
   const isStudentRole = role === "student";
@@ -62,7 +63,15 @@ const StudentList = () => {
 
   const listLoading = isStudentRole ? currentStudentLoading : loading;
   const listError = isStudentRole ? currentStudentError : error;
-  const backTo = isStudentRole ? getDashboardForRole(role) : routes.studentGrid;
+  const fallbackBackTo = getDashboardForRole(user || role);
+
+  const handleBackClick = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate(fallbackBackTo);
+  };
 
   // Transform API data to match existing table structure
   const transformedData = studentsToShow.map((student: any) => transformStudentToRow(student));
@@ -280,13 +289,14 @@ const StudentList = () => {
           {/* Page Header */}
           <div className="d-md-flex d-block align-items-center justify-content-between mb-3">
             <div className="my-auto mb-2">
-              <Link
-                to={backTo}
+              <button
+                type="button"
                 className="btn btn-outline-secondary mb-2 d-inline-flex align-items-center"
+                onClick={handleBackClick}
               >
                 <i className="ti ti-arrow-left me-1" />
                 Back
-              </Link>
+              </button>
               <h3 className="page-title mb-1">Students List</h3>
               <nav>
                 <ol className="breadcrumb mb-0">
