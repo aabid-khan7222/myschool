@@ -36,7 +36,7 @@ const Sidebar = () => {
     openFilePicker: openSchoolLogoPicker,
     onFileChange: onSchoolLogoFileChange,
   } = useSchoolLogoUpload();
-  const dashboardLink = getDashboardForRole(user?.role);
+  const dashboardLink = getDashboardForRole(user);
 
   const [subOpen, setSubopen] = useState<any>("");
   const [subsidebar, setSubsidebar] = useState("");

@@ -41,7 +41,7 @@ export const AuthBootstrap = () => {
             [d.first_name, d.last_name].filter(Boolean).join(' ') ||
             d.username ||
             'User';
-          const role = d.display_role || d.role_name || 'User';
+          const role = d.role_name || d.display_role || 'User';
           dispatch(
             setAuthFromSession({
               user: {

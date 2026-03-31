@@ -116,6 +116,7 @@ const Feature = () => {
   useEffect(() => {
     if (
       location.pathname === routes.adminDashboard ||
+      location.pathname === routes.administrativeDashboard ||
       location.pathname === routes.teacherDashboard ||
       location.pathname === routes.studentDashboard ||
       location.pathname === routes.parentDashboard ||
@@ -180,8 +181,8 @@ const Feature = () => {
 
   // Set browser tab title by role (headmaster/teacher/student/parent/guardian)
   const roleForTitle =
-    (currentUser as { role?: string } | null)?.role ??
     reduxUser?.role ??
+    (currentUser as { role?: string } | null)?.role ??
     '';
   const schoolNameForTitle =
     (currentUser as { school_name?: string } | null)?.school_name ??

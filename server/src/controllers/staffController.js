@@ -1,5 +1,5 @@
 const { query } = require('../config/database');
-const { ROLES } = require('../config/roles');
+const { ADMIN_ROLE_IDS } = require('../config/roles');
 const { success, error: errorResponse } = require('../utils/responseHelper');
 
 // Get all staff members
@@ -60,7 +60,7 @@ const getStaffById = async (req, res) => {
     }
 
     const row = result.rows[0];
-    const isAdmin = roleId === ROLES.ADMIN;
+    const isAdmin = roleId != null && ADMIN_ROLE_IDS.includes(roleId);
     const isSelf = String(row.user_id) === String(requester.id);
     if (!isAdmin && !isSelf) {
       return errorResponse(res, 403, 'Access denied. Insufficient permissions.');

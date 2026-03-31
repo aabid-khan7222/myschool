@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { apiService } from '../services/apiService.js';
 import { selectUser } from '../data/redux/authSlice';
 import { selectSelectedAcademicYearId } from '../data/redux/academicYearSlice';
+import { isAdministrativeRole, isHeadmasterRole } from '../utils/roleUtils';
 
 export const useStudents = () => {
   const user = useSelector(selectUser);
@@ -19,7 +20,7 @@ export const useStudents = () => {
     const roleId = user.user_role_id ?? user.role_id;
     const roleName = (user.role ?? '').trim().toLowerCase();
     const isTeacher = roleId === 3 || roleName === 'teacher';
-    const canListStudents = isTeacher || roleId === 1 || roleName === 'admin';
+    const canListStudents = isTeacher || isHeadmasterRole(user) || isAdministrativeRole(user);
     if (!canListStudents) {
       setStudents([]);
       setLoading(false);

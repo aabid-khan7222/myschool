@@ -13,6 +13,7 @@ type BonafidePayload = {
     last_name: string;
     gr_number: string;
     admission_number: string;
+    date_of_birth: string;
   };
   class?: { class_name?: string };
   section?: { section_name?: string };
@@ -25,6 +26,13 @@ type CurrentUserShape = {
   school_type?: string;
   school_logo?: string;
 };
+
+function formatDate(value?: string) {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleDateString("en-GB");
+}
 
 const BonafideGenerator = () => {
   const { user: currentUser } = useCurrentUser();
@@ -192,7 +200,9 @@ const BonafideGenerator = () => {
                   className={result.class?.class_name || "-"}
                   sectionName={result.section?.section_name || ""}
                   academicYear={result.academic_year?.year_name || "Current Academic Year"}
-                  rollNumber={result.student.admission_number || "-"}
+                  grNumber={result.student.gr_number || "-"}
+                  admissionNumber={result.student.admission_number || "-"}
+                  dob={formatDate(result.student.date_of_birth)}
                   issueDate={issueDate}
                 />
               </div>

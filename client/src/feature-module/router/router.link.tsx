@@ -24,6 +24,7 @@ import LockScreen from "../auth/lockScreen";
 import EmailVerification2 from "../auth/emailVerification/emailVerification-2";
 import EmailVerification3 from "../auth/emailVerification/emailVerification-3";
 import AdminDashboard from "../mainMenu/adminDashboard";
+import AdministrativeDashboard from "../mainMenu/administrativeDashboard";
 import ParentDashboard from "../mainMenu/parentDashboard";
 import GuardianDashboard from "../mainMenu/guardianDashboard";
 import TeacherDashboard from "../mainMenu/teacherDashboard";
@@ -257,6 +258,11 @@ export const publicRoutes = [
   {
     path: routes.adminDashboard,
     element: <AdminDashboard />,
+    route: Route,
+  },
+  {
+    path: routes.administrativeDashboard,
+    element: <AdministrativeDashboard />,
     route: Route,
   },
   {

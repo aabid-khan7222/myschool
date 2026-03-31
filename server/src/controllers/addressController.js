@@ -1,5 +1,5 @@
 const { query } = require('../config/database');
-const { ROLES } = require('../config/roles');
+const { ADMIN_ROLE_IDS } = require('../config/roles');
 
 const getAuthContext = (req) => {
   const user = req.user || {};
@@ -7,6 +7,8 @@ const getAuthContext = (req) => {
   const roleId = user.role_id != null ? parseInt(user.role_id, 10) : null;
   return { userId, roleId };
 };
+
+const isAdminManager = (roleId) => roleId != null && ADMIN_ROLE_IDS.includes(roleId);
 
 // Create new address
 const createAddress = async (req, res) => {
@@ -31,7 +33,7 @@ const createAddress = async (req, res) => {
     let targetRoleId = role_id;
 
     // Non-admin users can only create/update addresses for themselves
-    if (authRoleId !== ROLES.ADMIN) {
+    if (!isAdminManager(authRoleId)) {
       targetUserId = authUserId;
       targetRoleId = authRoleId;
     }
@@ -108,15 +110,15 @@ const updateAddress = async (req, res) => {
     }
     const existingAddress = existing.rows[0];
 
-    if (authRoleId !== ROLES.ADMIN && parseInt(existingAddress.user_id, 10) !== authUserId) {
+    if (!isAdminManager(authRoleId) && parseInt(existingAddress.user_id, 10) !== authUserId) {
       return res.status(403).json({
         status: 'ERROR',
         message: 'Access denied'
       });
     }
 
-    const targetUserId = authRoleId === ROLES.ADMIN ? (user_id || existingAddress.user_id) : existingAddress.user_id;
-    const targetRoleId = authRoleId === ROLES.ADMIN ? (role_id || existingAddress.role_id) : existingAddress.role_id;
+    const targetUserId = isAdminManager(authRoleId) ? (user_id || existingAddress.user_id) : existingAddress.user_id;
+    const targetRoleId = isAdminManager(authRoleId) ? (role_id || existingAddress.role_id) : existingAddress.role_id;
 
     const result = await query(`
       UPDATE addresses SET
@@ -212,7 +214,7 @@ const getAddressById = async (req, res) => {
 
     const address = result.rows[0];
 
-    if (authRoleId !== ROLES.ADMIN && parseInt(address.user_id, 10) !== authUserId) {
+    if (!isAdminManager(authRoleId) && parseInt(address.user_id, 10) !== authUserId) {
       return res.status(403).json({
         status: 'ERROR',
         message: 'Access denied'
@@ -247,7 +249,7 @@ const getAddressesByUserId = async (req, res) => {
       });
     }
 
-    if (authRoleId !== ROLES.ADMIN && requestedUserId !== authUserId) {
+    if (!isAdminManager(authRoleId) && requestedUserId !== authUserId) {
       return res.status(403).json({
         status: 'ERROR',
         message: 'Access denied'
@@ -306,7 +308,7 @@ const deleteAddress = async (req, res) => {
     }
     const address = existing.rows[0];
 
-    if (authRoleId !== ROLES.ADMIN && parseInt(address.user_id, 10) !== authUserId) {
+    if (!isAdminManager(authRoleId) && parseInt(address.user_id, 10) !== authUserId) {
       return res.status(403).json({
         status: 'ERROR',
         message: 'Access denied'

@@ -7,21 +7,14 @@ import { useDispatch } from "react-redux";
 import { patchAuthUser } from "../../../core/data/redux/authSlice";
 import { useCurrentUser } from "../../../core/hooks/useCurrentUser";
 import { alertLogoUploadError, alertLogoUploadSuccess } from "../../../core/utils/schoolLogoUploadAlerts";
+import { isHeadmasterRole } from "../../../core/utils/roleUtils";
 import SchoolLogoImage from "../../../core/common/schoolLogoImage";
 
 const SchoolSettings = () => {
   const route = all_routes;
   const dispatch = useDispatch();
   const { user } = useCurrentUser();
-  const role = (user?.role || "").toString().toLowerCase();
-  const isAdmin = useMemo(() => {
-    if (role === "admin") return true;
-    const rid = Number(
-      (user as { user_role_id?: number; role_id?: number } | null)?.user_role_id ??
-        (user as { role_id?: number } | null)?.role_id
-    );
-    return Number.isFinite(rid) && rid === 1;
-  }, [role, user]);
+  const isAdmin = useMemo(() => isHeadmasterRole(user), [user]);
   const [schoolName, setSchoolName] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [loading, setLoading] = useState(true);

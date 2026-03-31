@@ -7,6 +7,7 @@ import { all_routes } from "../../feature-module/router/all_routes";
 
 const DASHBOARD_PATHS = [
   all_routes.adminDashboard,
+  all_routes.administrativeDashboard,
   all_routes.teacherDashboard,
   all_routes.studentDashboard,
   all_routes.parentDashboard,

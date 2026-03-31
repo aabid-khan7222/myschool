@@ -22,6 +22,7 @@ const ADMIN_ROLE_NAMES = ['admin', 'headmaster', 'administrative', 'administrato
 /** Any authenticated user (within a tenant) */
 const ALL_AUTHENTICATED_ROLES = [
   ROLES.ADMIN,
+  ROLES.ADMINISTRATIVE,
   ROLES.STUDENT,
   ROLES.TEACHER,
   ROLES.PARENT,
@@ -40,10 +41,10 @@ const ROLE_NAMES = {
 const LEAVE_APPROVER_ROLES = [ROLES.ADMIN];
 
 /** Roles that can manage fee collection (create, list all) */
-const FEE_MANAGER_ROLES = [ROLES.ADMIN];
+const FEE_MANAGER_ROLES = [ROLES.ADMIN, ROLES.ADMINISTRATIVE];
 
 /** Roles that can manage notice board (create, update, delete) */
-const NOTICE_MANAGER_ROLES = [ROLES.ADMIN];
+const NOTICE_MANAGER_ROLES = [ROLES.ADMIN, ROLES.ADMINISTRATIVE];
 
 /** Roles that can access admin dashboard stats (full system counts) */
 const ADMIN_DASHBOARD_ROLES = [ROLES.ADMIN];
@@ -52,28 +53,28 @@ const ADMIN_DASHBOARD_ROLES = [ROLES.ADMIN];
 const USER_MANAGER_ROLES = [ROLES.ADMIN];
 
 /** Roles that can list all students (not just /me or by class) */
-const STUDENT_LIST_ALL_ROLES = [ROLES.ADMIN, ROLES.TEACHER];
+const STUDENT_LIST_ALL_ROLES = [ROLES.ADMIN, ROLES.ADMINISTRATIVE, ROLES.TEACHER];
 
 /** Roles that can list all teachers */
-const TEACHER_LIST_ALL_ROLES = [ROLES.ADMIN];
+const TEACHER_LIST_ALL_ROLES = [ROLES.ADMIN, ROLES.ADMINISTRATIVE];
 
 /** Roles that can list all parents */
-const PARENT_LIST_ALL_ROLES = [ROLES.ADMIN];
+const PARENT_LIST_ALL_ROLES = [ROLES.ADMIN, ROLES.ADMINISTRATIVE];
 
 /** Roles that can list all guardians */
-const GUARDIAN_LIST_ALL_ROLES = [ROLES.ADMIN];
+const GUARDIAN_LIST_ALL_ROLES = [ROLES.ADMIN, ROLES.ADMINISTRATIVE];
 
 /** Roles that can create/update/delete school events (Headmaster + Teacher) */
-const EVENT_MANAGER_ROLES = [ROLES.ADMIN, ROLES.TEACHER];
+const EVENT_MANAGER_ROLES = [ROLES.ADMIN, ROLES.ADMINISTRATIVE, ROLES.TEACHER];
 
 /** Roles that can access getLeaveApplications (all/filtered list - admin view) */
-const LEAVE_LIST_ALL_ROLES = [ROLES.ADMIN];
+const LEAVE_LIST_ALL_ROLES = [ROLES.ADMIN, ROLES.ADMINISTRATIVE];
 
 /** Roles that can access fee collections list (all students with fee summary) */
-const FEE_COLLECTIONS_LIST_ROLES = [ROLES.ADMIN];
+const FEE_COLLECTIONS_LIST_ROLES = [ROLES.ADMIN, ROLES.ADMINISTRATIVE];
 
 /** Roles that can create students, teachers, parents, guardians */
-const PEOPLE_MANAGER_ROLES = [ROLES.ADMIN];
+const PEOPLE_MANAGER_ROLES = [ROLES.ADMIN, ROLES.ADMINISTRATIVE];
 
 module.exports = {
   ROLES,

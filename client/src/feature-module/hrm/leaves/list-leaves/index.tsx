@@ -9,12 +9,12 @@ import { all_routes } from "../../../router/all_routes";
 import TooltipOption from "../../../../core/common/tooltipOption";
 import { useCurrentUser } from "../../../../core/hooks/useCurrentUser";
 import { useLeaveApplications } from "../../../../core/hooks/useLeaveApplications";
+import { isAdministrativeRole, isHeadmasterRole } from "../../../../core/utils/roleUtils";
 
 const ListLeaves = () => {
   const routes = all_routes;
   const { user: currentUser } = useCurrentUser();
-  const role = (currentUser?.role ?? "").toString().toLowerCase();
-  const canUseAdminList = role === "admin";
+  const canUseAdminList = isHeadmasterRole(currentUser) || isAdministrativeRole(currentUser);
   const { leaveApplications, loading: leaveLoading, error: leaveError, refetch: refetchLeaves } = useLeaveApplications({
     limit: 50,
     canUseAdminList,

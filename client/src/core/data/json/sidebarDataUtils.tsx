@@ -1,19 +1,71 @@
 import { all_routes } from "../../../feature-module/router/all_routes";
 import { SidebarData } from "./sidebarData";
+import { isAdministrativeRole, isHeadmasterRole } from "../../utils/roleUtils";
 
 const routes = all_routes;
-const ADMIN_ROLE_ALIASES = new Set(['admin', 'headmaster', 'administrative', 'administrator']);
 
 /**
  * Role-specific dashboard labels and links for non-admin users
  */
 const ROLE_DASHBOARD_MAP: Record<string, { label: string; link: string }> = {
   Admin: { label: "Headmaster Dashboard", link: routes.adminDashboard },
+  Administrative: { label: "Administrative Dashboard", link: routes.administrativeDashboard },
   Teacher: { label: "Teacher Dashboard", link: routes.teacherDashboard },
   Student: { label: "Student Dashboard", link: routes.studentDashboard },
   Parent: { label: "Parent Dashboard", link: routes.parentDashboard },
   Guardian: { label: "Guardian Dashboard", link: routes.guardianDashboard },
 };
+
+const ADMINISTRATIVE_VISIBLE_SECTIONS = new Set([
+  "MAIN",
+  "Peoples",
+  "Academic",
+  "MANAGEMENT",
+  "HRM",
+  "Finance & Accounts",
+  "Announcements",
+  "Reports",
+  "Pages",
+  "Help",
+]);
+
+function buildAdministrativeSidebar() {
+  return SidebarData
+    .filter((section) => ADMINISTRATIVE_VISIBLE_SECTIONS.has(section.label))
+    .map((section) => {
+      const nextSection = {
+        ...section,
+        submenuItems: [...(section.submenuItems || [])],
+      };
+
+      if (section.label === "MAIN") {
+        nextSection.submenuItems = nextSection.submenuItems.map((item) => {
+          if (item.label !== "Dashboard") return item;
+          return {
+            ...item,
+            label: "Administrative Dashboard",
+            link: routes.administrativeDashboard,
+          };
+        });
+      }
+
+      if (section.label === "HRM") {
+        nextSection.submenuItems = nextSection.submenuItems.map((item) => {
+          if (item.label !== "Leaves" || !item.submenuItems) return item;
+          return {
+            ...item,
+            submenuItems: item.submenuItems.filter((sub) => sub.label !== "Approve Request"),
+          };
+        });
+      }
+
+      if (section.label === "Pages") {
+        nextSection.submenuItems = nextSection.submenuItems.filter((item) => item.label === "Profile");
+      }
+
+      return nextSection;
+    });
+}
 
 /**
  * Get sidebar data filtered by user role.
@@ -22,10 +74,13 @@ const ROLE_DASHBOARD_MAP: Record<string, { label: string; link: string }> = {
 export function getSidebarDataForRole(role: string | undefined | null): typeof SidebarData {
   const normalizedRole = (role || "Admin").trim();
   const roleKey = normalizedRole.charAt(0).toUpperCase() + normalizedRole.slice(1).toLowerCase();
-  const normalizedRoleLower = normalizedRole.toLowerCase();
 
-  if (ADMIN_ROLE_ALIASES.has(normalizedRoleLower)) {
+  if (isHeadmasterRole(role)) {
     return SidebarData;
+  }
+
+  if (isAdministrativeRole(role)) {
+    return buildAdministrativeSidebar();
   }
 
   const dashboardItem = ROLE_DASHBOARD_MAP[roleKey] || ROLE_DASHBOARD_MAP.Admin;

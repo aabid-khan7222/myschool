@@ -3,14 +3,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { apiService } from "../services/apiService";
 import { patchAuthUser, selectUser } from "../data/redux/authSlice";
 import { alertLogoUploadError, alertLogoUploadSuccess } from "../utils/schoolLogoUploadAlerts";
+import { isHeadmasterRole } from "../utils/roleUtils";
 
 function isUserHeadmaster(user: ReturnType<typeof selectUser>): boolean {
-  if (!user) return false;
-  const role = (user.role ?? "").toString().trim().toLowerCase();
-  if (role === "admin") return true;
-  const u = user as { user_role_id?: number; role_id?: number };
-  const rid = Number(u.user_role_id ?? u.role_id);
-  return Number.isFinite(rid) && rid === 1;
+  return isHeadmasterRole(user);
 }
 
 /**

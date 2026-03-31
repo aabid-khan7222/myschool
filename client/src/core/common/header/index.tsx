@@ -15,7 +15,7 @@ import {
 } from "../../data/redux/sidebarSlice";
 import { useState, useEffect, useRef } from "react";
 import { all_routes } from "../../../feature-module/router/all_routes";
-import { getDashboardForRole } from "../../utils/roleUtils";
+import { getDashboardForRole, getDisplayRoleLabel, isAdministrativeRole, isHeadmasterRole } from "../../utils/roleUtils";
 import { getSchoolLogoSrc, isMillatStyleLogoPath } from "../../utils/schoolLogo";
 import { useAcademicYears } from "../../hooks/useAcademicYears";
 import { useSchoolLogoUpload } from "../../hooks/useSchoolLogoUpload";
@@ -81,7 +81,8 @@ const Header = () => {
 
   // Show Academic Year dropdown only for Admin (Headmaster) and Teacher
   const roleNorm = (user?.role ?? '').trim().toLowerCase();
-  const showAcademicYearDropdown = roleNorm === 'admin' || roleNorm === 'teacher';
+  const showAcademicYearDropdown =
+    isHeadmasterRole(user) || isAdministrativeRole(user) || roleNorm === 'teacher';
 
   // Bootstrap: when years load and no selection stored, set to current year
   useEffect(() => {
@@ -91,7 +92,7 @@ const Header = () => {
     }
   }, [showAcademicYearDropdown, academicYearsList.length, selectedAcademicYearId, currentAcademicYear?.id, dispatch]);
 
-  const dashboardRoute = getDashboardForRole(user?.role);
+  const dashboardRoute = getDashboardForRole(user);
 
   const mobileSidebar = useSelector(
     (state: any) => state.sidebarSlice.mobileSidebar
@@ -598,7 +599,7 @@ const Header = () => {
                       <div>
                         <h6>{user?.displayName || "User"}</h6>
                         <p className="text-primary mb-0">
-                          {user?.role === "Admin" ? "Headmaster" : (user?.role || "Headmaster")}
+                          {getDisplayRoleLabel(user)}
                         </p>
                       </div>
                     </div>
@@ -612,15 +613,17 @@ const Header = () => {
                       <i className="ti ti-user-circle me-2" />
                       My Profile
                     </Link>
-                    <Link
-                      className="dropdown-item d-inline-flex align-items-center p-2"
-                      to={routes.securitysettings}
-                      role="menuitem"
-                      onClick={() => setUserProfileMenuOpen(false)}
-                    >
-                      <i className="ti ti-settings me-2" />
-                      Settings
-                    </Link>
+                    {isHeadmasterRole(user) && (
+                      <Link
+                        className="dropdown-item d-inline-flex align-items-center p-2"
+                        to={routes.securitysettings}
+                        role="menuitem"
+                        onClick={() => setUserProfileMenuOpen(false)}
+                      >
+                        <i className="ti ti-settings me-2" />
+                        Settings
+                      </Link>
+                    )}
                     <hr className="m-0" />
                     <Link
                       className="dropdown-item d-inline-flex align-items-center p-2"
@@ -661,14 +664,16 @@ const Header = () => {
             >
               My Profile
             </Link>
-            <Link
-              className="dropdown-item"
-              to={routes.securitysettings}
-              role="menuitem"
-              onClick={() => setMobileUserMenuOpen(false)}
-            >
-              Settings
-            </Link>
+            {isHeadmasterRole(user) && (
+              <Link
+                className="dropdown-item"
+                to={routes.securitysettings}
+                role="menuitem"
+                onClick={() => setMobileUserMenuOpen(false)}
+              >
+                Settings
+              </Link>
+            )}
             <Link
               className="dropdown-item"
               to="#"

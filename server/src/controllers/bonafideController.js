@@ -24,6 +24,7 @@ function parseRole(req) {
 function isAllowedBonafideRole(req) {
   const { roleName, roleId } = parseRole(req);
   if (roleName === 'admin' || roleId === 1) return true;
+  if (roleName === 'administrative' || roleId === 6) return true;
   if (roleName === 'student' || roleId === 2) return true;
   if (roleName === 'parent' || roleId === 4) return true;
   if (roleName === 'guardian' || roleId === 5) return true;
@@ -112,7 +113,6 @@ function drawCertificateLayout(doc, data) {
   const centerX = pageWidth / 2;
   const textColor = '#111827';
   const lineColor = '#4b5563';
-  const rollNumber = safeText(data.rollNumber, data.admissionNumber);
 
   doc.save().fillColor('#ffffff').rect(0, 0, pageWidth, pageHeight).fill().restore();
 
@@ -171,7 +171,13 @@ function drawCertificateLayout(doc, data) {
   doc.font('Helvetica-Bold').text(`${data.studentName}, `, commonTextOptions);
   doc.font('Helvetica').text('S/O ', commonTextOptions);
   doc.font('Helvetica-Bold').text(`${data.parentName} `, commonTextOptions);
-  doc.font('Helvetica').text(`bearing roll number ${rollNumber}, is a student of `, commonTextOptions);
+  doc.font('Helvetica').text('bearing GR Number ', commonTextOptions);
+  doc.font('Helvetica-Bold').text(`${safeText(data.grNumber)}, `, commonTextOptions);
+  doc.font('Helvetica').text('Admission Number ', commonTextOptions);
+  doc.font('Helvetica-Bold').text(`${safeText(data.admissionNumber)}, `, commonTextOptions);
+  doc.font('Helvetica').text('and Date of Birth ', commonTextOptions);
+  doc.font('Helvetica-Bold').text(`${safeText(data.dob)}, `, commonTextOptions);
+  doc.font('Helvetica').text('is a student of ', commonTextOptions);
   const classLine = data.sectionName ? `${data.className} - ${data.sectionName}` : data.className;
   doc.font('Helvetica-Bold').text(`class ${classLine} `, commonTextOptions);
   doc.font('Helvetica').text('for the academic year ', commonTextOptions);
@@ -245,6 +251,7 @@ const downloadBonafide = async (req, res) => {
          s.id,
          s.first_name,
          s.last_name,
+         s.gr_number,
          s.admission_number,
          s.date_of_birth,
          c.class_name,
@@ -338,6 +345,7 @@ const downloadBonafide = async (req, res) => {
       schoolSubtitle: '',
       studentName,
       parentName,
+      grNumber: safeText(student.gr_number),
       className: safeText(student.class_name),
       sectionName: safeText(student.section_name),
       academicYear: safeText(student.academic_year_name, 'Current Academic Year'),

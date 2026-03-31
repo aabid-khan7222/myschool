@@ -3,7 +3,6 @@
  * Use after authenticate/protectApi - req.user must have role_id
  */
 const { error: errorResponse } = require('../utils/responseHelper');
-const { ROLES, ADMIN_ROLE_IDS, ADMIN_ROLE_NAMES } = require('../config/roles');
 
 function parseRoleId(value) {
   const roleId = value != null ? parseInt(value, 10) : null;
@@ -12,15 +11,6 @@ function parseRoleId(value) {
 
 function parseRoleName(value) {
   return String(value || '').trim().toLowerCase();
-}
-
-function isAdminEquivalentUser(user) {
-  const roleId = parseRoleId(user?.role_id);
-  const roleName = parseRoleName(user?.role_name);
-  return (
-    (roleId != null && ADMIN_ROLE_IDS.includes(roleId)) ||
-    (roleName !== '' && ADMIN_ROLE_NAMES.includes(roleName))
-  );
 }
 
 /**
@@ -40,11 +30,8 @@ const requireRole = (allowedRoleIds) => {
     const normalizedAllowedIds = allowedRoleIds
       .map((id) => parseRoleId(id))
       .filter((id) => id != null);
-    const allowsAdminEquivalent =
-      normalizedAllowedIds.includes(ROLES.ADMIN) || normalizedAllowedIds.includes(ROLES.ADMINISTRATIVE);
     const isAllowedById = roleId != null && normalizedAllowedIds.includes(roleId);
-    const isAllowedByAdminAlias = allowsAdminEquivalent && isAdminEquivalentUser(user);
-    if (!isAllowedById && !isAllowedByAdminAlias) {
+    if (!isAllowedById) {
       return errorResponse(res, 403, 'Access denied. Insufficient permissions.');
     }
     next();
@@ -66,10 +53,8 @@ const requireRoleName = (allowedRoleNames) => {
     if (!roleName) {
       return errorResponse(res, 403, 'Access denied. Insufficient permissions.');
     }
-    const allowsAdminEquivalent = normalized.includes('admin');
     const isAllowedByName = normalized.includes(roleName);
-    const isAllowedByAdminAlias = allowsAdminEquivalent && isAdminEquivalentUser(user);
-    if (!isAllowedByName && !isAllowedByAdminAlias) {
+    if (!isAllowedByName) {
       return errorResponse(res, 403, 'Access denied. Insufficient permissions.');
     }
     next();

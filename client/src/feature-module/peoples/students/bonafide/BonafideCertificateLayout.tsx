@@ -9,7 +9,9 @@ type BonafideCertificateLayoutProps = {
   className: string;
   sectionName?: string;
   academicYear: string;
-  rollNumber: string;
+  grNumber: string;
+  admissionNumber: string;
+  dob: string;
   issueDate: string;
 };
 
@@ -22,7 +24,9 @@ const BonafideCertificateLayout = ({
   className,
   sectionName,
   academicYear,
-  rollNumber,
+  grNumber,
+  admissionNumber,
+  dob,
   issueDate,
 }: BonafideCertificateLayoutProps) => {
   const classLine = sectionName ? `${className} - ${sectionName}` : className;
@@ -49,9 +53,10 @@ const BonafideCertificateLayout = ({
         <section className="bonafide-body-wrap">
           <p className="bonafide-body">
             This is to certify that <strong>{studentName}</strong>, S/O{" "}
-            <strong>{parentName}</strong>, bearing roll number <strong>{rollNumber}</strong>, is a
-            student of <strong>class {classLine}</strong> for the academic year{" "}
-            <strong>{academicYear}</strong>. He is a bona fide student of{" "}
+            <strong>{parentName}</strong>, bearing GR Number <strong>{grNumber}</strong>,
+            Admission Number <strong>{admissionNumber}</strong>, and Date of Birth{" "}
+            <strong>{dob}</strong>, is a student of <strong>class {classLine}</strong> for the
+            academic year <strong>{academicYear}</strong>. He is a bona fide student of{" "}
             <strong>{schoolName}</strong>.
           </p>
         </section>
