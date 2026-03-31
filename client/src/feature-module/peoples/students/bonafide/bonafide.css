@@ -92,8 +92,12 @@
   letter-spacing: 0.2px;
 }
 
+.bonafide-bottom-section {
+  margin-top: auto;
+  padding-top: 56px; /* Body -> Footer */
+}
+
 .bonafide-footer {
-  margin-top: 56px; /* Body -> Footer */
   display: flex;
   justify-content: space-between;
   align-items: flex-start;

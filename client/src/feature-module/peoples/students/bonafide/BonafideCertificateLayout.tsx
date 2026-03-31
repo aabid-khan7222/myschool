@@ -56,21 +56,23 @@ const BonafideCertificateLayout = ({
           </p>
         </section>
 
-        <footer className="bonafide-footer">
-          <div className="bonafide-sign-block">
-            <div className="bonafide-sign-line" />
-            <p>Signature, Principal</p>
-          </div>
-          <div className="bonafide-sign-block bonafide-date-block">
-            <div className="bonafide-sign-line" />
-            <p>Date: {issueDate}</p>
-          </div>
-        </footer>
+        <div className="bonafide-bottom-section">
+          <footer className="bonafide-footer">
+            <div className="bonafide-sign-block">
+              <div className="bonafide-sign-line" />
+              <p>Signature, Principal</p>
+            </div>
+            <div className="bonafide-sign-block bonafide-date-block">
+              <div className="bonafide-sign-line" />
+              <p>Date: {issueDate}</p>
+            </div>
+          </footer>
 
-        <section className="bonafide-seal-wrap" aria-label="School seal area">
-          <div className="bonafide-seal-space" />
-          <p className="bonafide-seal-label">School Seal</p>
-        </section>
+          <section className="bonafide-seal-wrap" aria-label="School seal area">
+            <div className="bonafide-seal-space" />
+            <p className="bonafide-seal-label">School Seal</p>
+          </section>
+        </div>
       </article>
     </div>
   );
