@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import Table from "../../../core/common/dataTable/index";
 
 import { Link } from "react-router-dom";
@@ -19,8 +19,22 @@ const compareNumber = (left: unknown, right: unknown) =>
   Number(left ?? 0) - Number(right ?? 0);
 
 const ClassReport = () => {
-  const data = classreport;
-  const data2 = classstudentreport;
+  const data = useMemo(
+    () =>
+      classreport.map((row, index) => ({
+        ...row,
+        key: row.key ?? row.id ?? `class-report-${index}`,
+      })),
+    []
+  );
+  const data2 = useMemo(
+    () =>
+      classstudentreport.map((row, index) => ({
+        ...row,
+        key: row.key ?? row.admissionNo ?? `class-student-report-${index}`,
+      })),
+    []
+  );
   const routes = all_routes;
   const columns = [
     {

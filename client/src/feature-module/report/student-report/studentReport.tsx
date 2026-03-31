@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { all_routes } from "../../router/all_routes";
 import { studentreport } from "../../../core/data/json/student_report";
 import Table from "../../../core/common/dataTable/index";
@@ -21,7 +21,14 @@ const compareText = (left: unknown, right: unknown) =>
   String(left ?? "").localeCompare(String(right ?? ""));
 
 const StudentReport = () => {
-  const data = studentreport;
+  const data = useMemo(
+    () =>
+      studentreport.map((row, index) => ({
+        ...row,
+        key: row.key ?? row.admissionNo ?? `student-report-${index}`,
+      })),
+    []
+  );
   const routes = all_routes;
   const columns = [
     {
