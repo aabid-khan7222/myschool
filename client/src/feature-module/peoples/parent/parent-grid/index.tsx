@@ -27,6 +27,7 @@ const ParentGrid = () => {
   const academicYearId = useSelector(selectSelectedAcademicYearId);
   const role = user?.role || "Admin";
   const isParentRole = (role || "").toLowerCase() === "parent";
+  const canManageParents = ["admin", "headmaster", "administrative", "administrator"].includes((role || "").toLowerCase());
   const { parents, loading, error, refetch } = useParents({ forCurrentUser: isParentRole, academicYearId: isParentRole ? null : academicYearId });
   const dashboardRoute = getDashboardForRole(role);
 
@@ -81,7 +82,7 @@ const ParentGrid = () => {
             <div className="d-flex my-xl-auto right-content align-items-center flex-wrap">
             <TooltipOption />
 
-              {!isParentRole && (
+              {canManageParents && (
                 <div className="mb-2">
                   <Link
                     to="#"
@@ -265,7 +266,7 @@ const ParentGrid = () => {
                               View Parent
                             </Link>
                           </li>
-                          {!isParentRole && (
+                        {canManageParents && (
                             <>
                               <li>
                                 <Link

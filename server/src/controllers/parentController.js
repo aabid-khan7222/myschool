@@ -2,6 +2,7 @@ const { query, executeTransaction } = require('../config/database');
 const { parsePagination } = require('../utils/pagination');
 const { createParentUser } = require('../utils/createPersonUser');
 const { getParentsForUser } = require('../utils/parentUserMatch');
+const { getAuthContext, isAdmin, parseId } = require('../utils/accessControl');
 
 // Create new parent
 const createParent = async (req, res) => {
@@ -167,6 +168,104 @@ const getAllParents = async (req, res) => {
     const { page, limit, offset } = parsePagination(req.query);
     const academicYearId = req.query.academic_year_id ? parseInt(req.query.academic_year_id, 10) : null;
     const hasYearFilter = academicYearId != null && !Number.isNaN(academicYearId);
+    const ctx = getAuthContext(req);
+    const isTeacherRole = ctx.roleId === 3 || ctx.roleName === 'teacher';
+
+    if (isTeacherRole) {
+      if (!ctx.userId) {
+        return res.status(401).json({
+          status: 'ERROR',
+          message: 'Not authenticated',
+        });
+      }
+
+      const teacherCheck = await query(
+        `SELECT t.id
+         FROM teachers t
+         INNER JOIN staff st ON t.staff_id = st.id
+         WHERE st.user_id = $1 AND st.is_active = true
+         LIMIT 1`,
+        [ctx.userId]
+      );
+
+      if (!teacherCheck.rows.length) {
+        return res.status(403).json({
+          status: 'ERROR',
+          message: 'Access denied. User is not an active teacher.',
+        });
+      }
+
+      const teacherId = parseId(teacherCheck.rows[0].id);
+      const academicYearClause = hasYearFilter ? ' AND s.academic_year_id = $2' : '';
+      const teacherParams = hasYearFilter ? [teacherId, academicYearId] : [teacherId];
+      const scheduleYearClause = hasYearFilter
+        ? ' AND COALESCE(cs.academic_year_id, c.academic_year_id, s.academic_year_id) = $2'
+        : '';
+      const teacherClassYearClause = hasYearFilter
+        ? ' AND COALESCE(c.academic_year_id, s.academic_year_id) = $2'
+        : '';
+
+      const result = await query(
+        `SELECT
+          p.id,
+          p.student_id,
+          p.father_name,
+          p.father_email,
+          p.father_phone,
+          p.father_occupation,
+          p.father_image_url,
+          p.mother_name,
+          p.mother_email,
+          p.mother_phone,
+          p.mother_occupation,
+          p.mother_image_url,
+          p.created_at,
+          p.updated_at,
+          s.first_name as student_first_name,
+          s.last_name as student_last_name,
+          s.admission_number,
+          s.roll_number,
+          c.class_name,
+          sec.section_name
+        FROM parents p
+        INNER JOIN students s ON p.student_id = s.id
+        LEFT JOIN classes c ON s.class_id = c.id
+        LEFT JOIN sections sec ON s.section_id = sec.id
+        WHERE s.is_active = true
+          AND (
+            EXISTS (
+              SELECT 1 FROM class_schedules cs
+              WHERE cs.teacher_id = $1
+                AND cs.class_id = s.class_id
+                AND (cs.section_id = s.section_id OR cs.section_id IS NULL)
+                ${scheduleYearClause}
+            )
+            OR EXISTS (
+              SELECT 1 FROM teachers t
+              WHERE t.id = $1 AND t.class_id = s.class_id
+                ${teacherClassYearClause}
+            )
+          )${academicYearClause}
+        ORDER BY s.first_name ASC, s.last_name ASC`,
+        teacherParams
+      );
+
+      return res.status(200).json({
+        status: 'SUCCESS',
+        message: 'Parents fetched successfully',
+        data: result.rows,
+        count: result.rows.length,
+        pagination: { page: 1, limit: result.rows.length, total: result.rows.length, totalPages: 1 },
+      });
+    }
+
+    if (!isAdmin(ctx)) {
+      return res.status(403).json({
+        status: 'ERROR',
+        message: 'Access denied',
+      });
+    }
+
     const yearWhere = hasYearFilter ? ' AND s.academic_year_id = $1' : '';
     const countParams = hasYearFilter ? [academicYearId] : [];
     const listParams = hasYearFilter ? [academicYearId, limit, offset] : [limit, offset];

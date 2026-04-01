@@ -7,6 +7,7 @@ import TeacherSidebar from "./teacherSidebar";
 import TeacherBreadcrumb from "./teacherBreadcrumb";
 import { apiService } from "../../../../core/services/apiService";
 import { selectSelectedAcademicYearId } from "../../../../core/data/redux/academicYearSlice";
+import { useCurrentTeacher } from "../../../../core/hooks/useCurrentTeacher";
 
 interface TeacherDetailsLocationState {
   teacherId?: number;
@@ -44,10 +45,11 @@ const TeachersRoutine = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const academicYearId = useSelector(selectSelectedAcademicYearId);
+  const { teacher: currentTeacher, loading: currentTeacherLoading } = useCurrentTeacher();
   const state = location.state as TeacherDetailsLocationState | null;
-  const teacherId = state?.teacherId ?? state?.teacher?.id;
+  const teacherId = state?.teacherId ?? state?.teacher?.id ?? currentTeacher?.id;
   const [teacher, setTeacher] = useState<any>(state?.teacher ?? null);
-  const [loading, setLoading] = useState(!!teacherId);
+  const [loading, setLoading] = useState(Boolean(state?.teacherId ?? state?.teacher?.id));
   const [routine, setRoutine] = useState<RoutineItem[]>([]);
   const [breaks, setBreaks] = useState<BreakItem[]>([]);
   const [routineLoading, setRoutineLoading] = useState(false);
@@ -55,10 +57,17 @@ const TeachersRoutine = () => {
   // Redirect to Teacher List if no teacherId is provided (e.g., clicked from sidebar)
   // MUST be before any early returns to follow Rules of Hooks
   useEffect(() => {
-    if (!teacherId && !loading) {
+    if (!teacherId && !loading && !currentTeacherLoading) {
       navigate(routes.teacherList, { replace: true });
     }
-  }, [teacherId, loading, navigate, routes.teacherList]);
+  }, [teacherId, loading, currentTeacherLoading, navigate, routes.teacherList]);
+
+  useEffect(() => {
+    if (!state?.teacher && currentTeacher) {
+      setTeacher(currentTeacher);
+      setLoading(false);
+    }
+  }, [state?.teacher, currentTeacher]);
 
   // Always fetch full teacher by ID when teacherId is available to ensure we have complete data
   // This works whether coming from grid (partial teacher) or list (full teacher)
@@ -80,7 +89,7 @@ const TeachersRoutine = () => {
     if (teacherId) {
       setRoutineLoading(true);
       apiService
-        .getTeacherRoutine(teacherId)
+        .getTeacherRoutine(teacherId, { academicYearId })
         .then((res: any) => {
           if (res?.data) {
             setRoutine(res.data.routine || []);
