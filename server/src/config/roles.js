@@ -31,6 +31,7 @@ const ALL_AUTHENTICATED_ROLES = [
 
 const ROLE_NAMES = {
   [ROLES.ADMIN]: 'Admin',
+  [ROLES.ADMINISTRATIVE]: 'Administrative',
   [ROLES.STUDENT]: 'Student',
   [ROLES.TEACHER]: 'Teacher',
   [ROLES.PARENT]: 'Parent',

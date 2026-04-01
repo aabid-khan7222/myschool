@@ -79,16 +79,6 @@ function buildTeacherSidebar() {
             { label: "Bonafide", link: routes.bonafideGenerator },
           ],
         },
-        {
-          label: "Teachers",
-          icon: "ti ti-users",
-          submenu: true,
-          showSubRoute: false,
-          submenuItems: [
-            { label: "Teacher List", link: routes.teacherList },
-            { label: "Routine", link: routes.teachersRoutine },
-          ],
-        },
       ],
     },
     {
