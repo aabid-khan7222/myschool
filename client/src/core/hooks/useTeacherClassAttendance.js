@@ -8,7 +8,7 @@ import { apiService } from '../services/apiService';
  * @param {{ days?: number; offset?: number }} options - days (7=This Week, 30=Last Month), offset (7=Last Week only)
  */
 export function useTeacherClassAttendance(teacherId, options = {}) {
-  const { days, offset } = options;
+  const { days, offset, academicYearId } = options;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,7 +18,7 @@ export function useTeacherClassAttendance(teacherId, options = {}) {
     try {
       setLoading(true);
       setError(null);
-      const res = await apiService.getTeacherClassAttendance(teacherId, { days, offset });
+      const res = await apiService.getTeacherClassAttendance(teacherId, { days, offset, academicYearId });
       if (res?.status === 'SUCCESS' && res.data) {
         const payload = res.data;
         const records = Array.isArray(payload?.records) ? payload.records : (Array.isArray(payload) ? payload : []);
@@ -46,7 +46,7 @@ export function useTeacherClassAttendance(teacherId, options = {}) {
       try {
         setLoading(true);
         setError(null);
-        const res = await apiService.getTeacherClassAttendance(teacherId, { days, offset });
+        const res = await apiService.getTeacherClassAttendance(teacherId, { days, offset, academicYearId });
         if (mounted && res?.status === 'SUCCESS' && res.data) {
           const payload = res.data;
           const records = Array.isArray(payload?.records) ? payload.records : (Array.isArray(payload) ? payload : []);
@@ -65,7 +65,7 @@ export function useTeacherClassAttendance(teacherId, options = {}) {
       }
     })();
     return () => { mounted = false; };
-  }, [teacherId, days, offset]);
+  }, [teacherId, days, offset, academicYearId]);
 
   return { data, loading, error, refetch };
 }

@@ -44,7 +44,7 @@ const TeacherDashboard = () => {
   const { routine, loading: routineLoading } = useTeacherRoutine(teacher?.id ?? null, { academicYearId });
   const { data: attendanceData, loading: attendanceLoading, error: attendanceError } = useTeacherClassAttendance(
     teacher?.id ?? null,
-    attendanceOptions[attendanceRange]
+    { ...attendanceOptions[attendanceRange], academicYearId }
   );
   const { data: syllabusData } = useClassSyllabus({ academicYearId });
   const { leaveApplications: myLeaves, loading: leaveLoading } = useLeaveApplications({ studentOnly: true, limit: 10 });
@@ -316,8 +316,7 @@ const TeacherDashboard = () => {
                           </div>
                         </div>
                         <Link
-                          to={routes.editTeacher}
-                          state={teacher ? { teacherId: teacher.id, teacher, returnTo: routes.teacherDashboard } : undefined}
+                          to={routes.profile}
                           className="btn btn-primary flex-shrink-0 mb-3"
                         >
                           Edit Profile

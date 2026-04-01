@@ -364,9 +364,13 @@ const downloadBonafide = async (req, res) => {
 const fetchStudentForBonafide = async (req, res) => {
   try {
     const grNumber = String(req.body?.gr_number || '').trim();
+    const academicYearId = Number(req.body?.academic_year_id);
 
     if (!grNumber) {
       return errorResponse(res, 400, 'GR number is required');
+    }
+    if (!Number.isInteger(academicYearId) || academicYearId <= 0) {
+      return errorResponse(res, 400, 'Academic year is required');
     }
 
     const studentRes = await query(
@@ -392,10 +396,11 @@ const fetchStudentForBonafide = async (req, res) => {
        LEFT JOIN academic_years ay ON s.academic_year_id = ay.id
        LEFT JOIN parents p ON s.parent_id = p.id
        WHERE s.is_active = true
+         AND s.academic_year_id = $2
          AND LOWER(TRIM(COALESCE(s.gr_number, ''))) = LOWER(TRIM($1))
        ORDER BY s.id DESC
        LIMIT 1`,
-      [grNumber]
+      [grNumber, academicYearId]
     );
 
     if (!studentRes.rows || studentRes.rows.length === 0) {

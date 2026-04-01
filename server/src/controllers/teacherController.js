@@ -359,7 +359,7 @@ const getTeacherRoutine = async (req, res) => {
 
     const academicYearId = req.query.academic_year_id ? parseInt(req.query.academic_year_id, 10) : null;
     const hasYearFilter = academicYearId != null && !Number.isNaN(academicYearId);
-    const yearClause = hasYearFilter ? ' AND c.academic_year_id = $2' : '';
+    const yearClause = hasYearFilter ? ' AND COALESCE(cs.academic_year_id, c.academic_year_id) = $2' : '';
     const scheduleParams = hasYearFilter ? [id, academicYearId] : [id];
 
     // Get class schedules for this teacher
@@ -754,6 +754,8 @@ const getTeacherClassAttendance = async (req, res) => {
 
     const days = parseInt(req.query.days, 10);
     const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
+    const academicYearId = req.query.academic_year_id ? parseInt(req.query.academic_year_id, 10) : null;
+    const hasAcademicYearFilter = academicYearId != null && !Number.isNaN(academicYearId);
     let dateFilter = '';
     let params = [teacherId];
     if (days > 0 && days <= 365) {
@@ -766,7 +768,11 @@ const getTeacherClassAttendance = async (req, res) => {
         params = [teacherId, days];
       }
     }
+    if (hasAcademicYearFilter) {
+      params.push(academicYearId);
+    }
     const rowLimit = days === 0 ? 5000 : 500; // All Time: higher limit to fetch more records
+    const academicYearFilter = hasAcademicYearFilter ? `AND s.academic_year_id = $${params.length}` : '';
 
     // Use EXISTS to avoid duplicates; include BOTH class_schedules AND teachers.class_id
     const result = await query(
@@ -786,6 +792,7 @@ const getTeacherClassAttendance = async (req, res) => {
            WHERE t.id = $1 AND t.class_id = a.class_id
          )
        )
+       ${academicYearFilter}
        ${dateFilter}
        ORDER BY a.attendance_date DESC
        LIMIT ${rowLimit}`,

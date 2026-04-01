@@ -29,6 +29,190 @@ const ADMINISTRATIVE_VISIBLE_SECTIONS = new Set([
   "Help",
 ]);
 
+function buildTeacherSidebar() {
+  return [
+    {
+      label: "MAIN",
+      submenuOpen: true,
+      showSubRoute: false,
+      submenuHdr: "Main",
+      submenuItems: [
+        {
+          label: "Teacher Dashboard",
+          icon: "ti ti-layout-dashboard",
+          link: routes.teacherDashboard,
+          submenu: false,
+          showSubRoute: false,
+        },
+        {
+          label: "Application",
+          icon: "ti ti-layout-list",
+          submenu: true,
+          showSubRoute: false,
+          submenuItems: [
+            { label: "Chat", link: routes.chat, showSubRoute: false },
+            { label: "Call", link: routes.callHistory, showSubRoute: false },
+            { label: "Calendar", link: routes.calendar, showSubRoute: false },
+            { label: "Email", link: routes.email, showSubRoute: false },
+            { label: "To Do", link: routes.todo, showSubRoute: false },
+            { label: "Notes", link: routes.notes, showSubRoute: false },
+            { label: "File Manager", link: routes.fileManager, showSubRoute: false },
+          ],
+        },
+      ],
+    },
+    {
+      label: "Peoples",
+      submenuOpen: true,
+      showSubRoute: false,
+      submenuHdr: "Peoples",
+      submenuItems: [
+        {
+          label: "Students",
+          icon: "ti ti-school",
+          submenu: true,
+          showSubRoute: false,
+          submenuItems: [
+            { label: "All Students", link: routes.studentGrid },
+            { label: "Students List", link: routes.studentList },
+            { label: "Students Details", link: routes.studentList },
+            { label: "Bonafide", link: routes.bonafideGenerator },
+          ],
+        },
+        {
+          label: "Teachers",
+          icon: "ti ti-users",
+          submenu: true,
+          showSubRoute: false,
+          submenuItems: [
+            { label: "Teacher List", link: routes.teacherList },
+            { label: "Routine", link: routes.teachersRoutine },
+          ],
+        },
+      ],
+    },
+    {
+      label: "Academic",
+      submenuOpen: true,
+      showSubRoute: false,
+      submenuHdr: "Academic",
+      submenuItems: [
+        {
+          label: "Classes",
+          icon: "ti ti-school-bell",
+          submenu: true,
+          showSubRoute: false,
+          submenuItems: [
+            { label: "All Classes", link: routes.classes },
+            { label: "Schedule", link: routes.sheduleClasses },
+          ],
+        },
+        {
+          label: "Class Routine",
+          link: routes.classRoutine,
+          icon: "ti ti-bell-school",
+          showSubRoute: false,
+          submenu: false,
+        },
+        {
+          label: "Syllabus",
+          link: routes.classSyllabus,
+          icon: "ti ti-book-upload",
+          showSubRoute: false,
+          submenu: false,
+        },
+        {
+          label: "Time Table",
+          link: routes.classTimetable,
+          icon: "ti ti-table",
+          showSubRoute: false,
+          submenu: false,
+        },
+        {
+          label: "Home Work",
+          link: routes.classHomeWork,
+          icon: "ti ti-license",
+          showSubRoute: false,
+          submenu: false,
+        },
+      ],
+    },
+    {
+      label: "Announcements",
+      submenuOpen: true,
+      showSubRoute: false,
+      submenuHdr: "Announcements",
+      submenuItems: [
+        {
+          label: "Events",
+          link: routes.events,
+          icon: "ti ti-speakerphone",
+          showSubRoute: false,
+          submenu: false,
+        },
+        {
+          label: "Notice Board",
+          link: routes.noticeBoard,
+          icon: "ti ti-note",
+          showSubRoute: false,
+          submenu: false,
+        },
+      ],
+    },
+    {
+      label: "Reports",
+      submenuOpen: true,
+      showSubRoute: false,
+      submenuHdr: "Reports",
+      submenuItems: [
+        {
+          label: "Attendance Report",
+          link: routes.attendanceReport,
+          icon: "ti ti-chart-bar",
+          showSubRoute: false,
+          submenu: false,
+        },
+        {
+          label: "Student Attendance",
+          link: routes.studentAttendanceType,
+          icon: "ti ti-report-analytics",
+          showSubRoute: false,
+          submenu: false,
+        },
+        {
+          label: "Grade Report",
+          link: routes.gradeReport,
+          icon: "ti ti-school",
+          showSubRoute: false,
+          submenu: false,
+        },
+        {
+          label: "Student Report",
+          link: routes.studentReport,
+          icon: "ti ti-file-description",
+          showSubRoute: false,
+          submenu: false,
+        },
+      ],
+    },
+    {
+      label: "Pages",
+      submenuOpen: true,
+      showSubRoute: false,
+      submenuHdr: "Pages",
+      submenuItems: [
+        {
+          label: "Profile",
+          icon: "ti ti-user-circle",
+          link: routes.profile,
+          submenu: false,
+          showSubRoute: false,
+        },
+      ],
+    },
+  ];
+}
+
 function buildAdministrativeSidebar() {
   return SidebarData
     .filter((section) => ADMINISTRATIVE_VISIBLE_SECTIONS.has(section.label))
@@ -81,6 +265,10 @@ export function getSidebarDataForRole(role: string | undefined | null): typeof S
 
   if (isAdministrativeRole(role)) {
     return buildAdministrativeSidebar();
+  }
+
+  if (roleKey === "Teacher") {
+    return buildTeacherSidebar();
   }
 
   const dashboardItem = ROLE_DASHBOARD_MAP[roleKey] || ROLE_DASHBOARD_MAP.Admin;

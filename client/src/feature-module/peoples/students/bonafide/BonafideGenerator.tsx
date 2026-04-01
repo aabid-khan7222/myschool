@@ -1,7 +1,9 @@
 import { FormEvent, useMemo, useState } from "react";
 import Swal from "sweetalert2";
+import { useSelector } from "react-redux";
 import { apiService } from "../../../../core/services/apiService";
 import { useCurrentUser } from "../../../../core/hooks/useCurrentUser";
+import { selectSelectedAcademicYearId } from "../../../../core/data/redux/academicYearSlice";
 import { getSchoolLogoSrc } from "../../../../core/utils/schoolLogo";
 import BonafideCertificateLayout from "./BonafideCertificateLayout";
 import "./bonafide.css";
@@ -36,6 +38,7 @@ function formatDate(value?: string) {
 
 const BonafideGenerator = () => {
   const { user: currentUser } = useCurrentUser();
+  const selectedAcademicYearId = useSelector(selectSelectedAcademicYearId);
   const [grNumber, setGrNumber] = useState("");
   const [result, setResult] = useState<BonafidePayload | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -72,6 +75,15 @@ const BonafideGenerator = () => {
       return;
     }
 
+    if (selectedAcademicYearId == null) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Academic year required",
+        text: "Please select an academic year first",
+      });
+      return;
+    }
+
     Swal.fire({
       title: "Fetching student details...",
       allowOutsideClick: false,
@@ -83,6 +95,7 @@ const BonafideGenerator = () => {
     try {
       const res = await apiService.fetchStudentForBonafide({
         gr_number: trimmedGr,
+        academic_year_id: selectedAcademicYearId,
       });
       setResult(res?.data || null);
       Swal.close();
@@ -93,7 +106,7 @@ const BonafideGenerator = () => {
         await Swal.fire({
           icon: "error",
           title: "Student not found",
-          text: "Please verify GR Number",
+          text: "Please verify GR Number for the selected academic year",
         });
         return;
       }

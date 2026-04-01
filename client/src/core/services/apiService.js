@@ -533,6 +533,7 @@ class ApiService {
     const searchParams = new URLSearchParams();
     if (params.days != null) searchParams.set('days', params.days);
     if (params.offset != null) searchParams.set('offset', params.offset);
+    if (params.academicYearId != null) searchParams.set('academic_year_id', params.academicYearId);
     const qs = searchParams.toString();
     return this.makeRequest(`/teachers/${teacherId}/class-attendance${qs ? `?${qs}` : ''}`);
   }
@@ -1269,8 +1270,11 @@ class ApiService {
   }
 
   // Class Syllabus
-  async getClassSyllabus() {
-    return this.makeRequest('/class-syllabus');
+  async getClassSyllabus(params = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.academicYearId != null) searchParams.set('academic_year_id', params.academicYearId);
+    const qs = searchParams.toString();
+    return this.makeRequest(`/class-syllabus${qs ? `?${qs}` : ''}`);
   }
 
   async getClassSyllabusById(id) {
