@@ -5,14 +5,21 @@ import { apiService } from '../services/apiService';
  * @param {Object} options
  * @param {boolean} [options.forCurrentUser=false] - When true (e.g. Parent role), fetches only logged-in parent's data
  * @param {number|null} [options.academicYearId] - When set (headmaster), only parents whose student is in this academic year
+ * @param {boolean} [options.enabled=true] - When false, skips fetching
  */
 export const useParents = (options = {}) => {
-  const { forCurrentUser = false, academicYearId = null } = options;
+  const { forCurrentUser = false, academicYearId = null, enabled = true } = options;
   const [parents, setParents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const fetchParents = async () => {
+    if (!enabled) {
+      setParents([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
@@ -66,7 +73,7 @@ export const useParents = (options = {}) => {
 
   useEffect(() => {
     fetchParents();
-  }, [forCurrentUser, academicYearId]);
+  }, [forCurrentUser, academicYearId, enabled]);
 
   return {
     parents,

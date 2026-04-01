@@ -1,13 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { all_routes } from "../../../router/all_routes";
 import StudentModals from "../studentModals";
 import StudentSidebar from "./studentSidebar";
 import StudentBreadcrumb from "./studentBreadcrumb";
-import { apiService } from "../../../../core/services/apiService";
-import { useCurrentStudent } from "../../../../core/hooks/useCurrentStudent";
-import { useCurrentUser } from "../../../../core/hooks/useCurrentUser";
 import { useClassSchedules } from "../../../../core/hooks/useClassSchedules";
+import { useLinkedStudentContext } from "../../../../core/hooks/useLinkedStudentContext";
 
 interface StudentDetailsLocationState {
   studentId?: number;
@@ -20,47 +18,10 @@ const StudentTimeTable = () => {
   const routes = all_routes;
   const location = useLocation();
   const state = location.state as StudentDetailsLocationState | null;
-  const { user: currentUser } = useCurrentUser();
-  const { student: currentStudent, loading: currentStudentLoading } = useCurrentStudent();
   const { data: scheduleData, loading: scheduleLoading, error: scheduleError } = useClassSchedules();
-  const role = (currentUser?.role || "").toString().toLowerCase();
-  const isStudentRole = role === "student";
-
-  const studentId = state?.studentId ?? state?.student?.id ?? (isStudentRole && currentStudent ? currentStudent.id : null);
-  const [student, setStudent] = useState<any>(state?.student ?? (isStudentRole ? currentStudent : null));
-  const [loading, setLoading] = useState(
-    (!!studentId && !state?.student && !(isStudentRole && currentStudent)) ||
-    (isStudentRole && !studentId && currentStudentLoading)
-  );
-
-  useEffect(() => {
-    if (!studentId) {
-      if (state?.student) setStudent(state.student);
-      else if (isStudentRole && currentStudent) setStudent(currentStudent);
-      return;
-    }
-    if (state?.student && state.student.id === studentId) {
-      setStudent(state.student);
-      setLoading(false);
-      return;
-    }
-    if (isStudentRole && currentStudent?.id === studentId) {
-      setStudent(currentStudent);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    apiService
-      .getStudentById(studentId)
-      .then((res: any) => {
-        if (res?.data) setStudent(res.data);
-        else setStudent(null);
-      })
-      .catch(() => {
-        setStudent(null);
-      })
-      .finally(() => setLoading(false));
-  }, [studentId, state?.student, isStudentRole, currentStudent]);
+  const { student, loading } = useLinkedStudentContext({
+    locationState: state,
+  });
 
   const weeklySchedule = useMemo(() => {
     const className = String(student?.class_name || student?.class || "").trim().toLowerCase();
@@ -99,7 +60,7 @@ const StudentTimeTable = () => {
   }, [weeklySchedule]);
 
   const activeDays = weeklySchedule.filter((entry) => entry.classes.length > 0).length;
-  const showLoading = loading || (isStudentRole && !student && !state?.student && currentStudentLoading);
+  const showLoading = loading;
 
   if (showLoading) {
     return (

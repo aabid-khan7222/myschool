@@ -9,6 +9,7 @@ import { useStudentExamResults } from "../../../core/hooks/useStudentExamResults
 import { useStudentAttendance } from "../../../core/hooks/useStudentAttendance";
 import { useClassSchedules } from "../../../core/hooks/useClassSchedules";
 import { useEvents } from "../../../core/hooks/useEvents";
+import { useNoticeBoard } from "../../../core/hooks/useNoticeBoard";
 import { EventsCard } from "../shared/EventsCard";
 
 type StatsRangeKey = "thisMonth" | "thisYear" | "lastWeek";
@@ -63,8 +64,6 @@ const ParentDashboard = () => {
 
   const [statisticsRange, setStatisticsRange] = useState<StatsRangeKey>("thisMonth");
   const [leaveRange, setLeaveRange] = useState<LeaveRangeKey>("thisMonth");
-  const [homeWorkSubject, setHomeWorkSubject] = useState<string>("all");
-
   const { leaveApplications: myLeaves, loading: leaveLoading, error: leaveError } = useLeaveApplications({
     parentChildren: true,
     limit: 50,
@@ -74,6 +73,7 @@ const ParentDashboard = () => {
   const { data: examResultsData } = useStudentExamResults(selectedChild?.student_id ?? null);
   const { data: attendanceData } = useStudentAttendance(selectedChild?.student_id ?? null);
   const { data: allSchedules } = useClassSchedules();
+  const { notices, loading: noticeLoading } = useNoticeBoard({ limit: 6 });
 
   // Filtered leaves by date range
   const filteredLeaves = useMemo(() => {
@@ -114,18 +114,15 @@ const ParentDashboard = () => {
     return { avgPercentage: avgPct, passCount, totalExams: examsInRange.length };
   }, [examResultsData, statisticsRange]);
 
-  // Unique subjects from class schedules for selected child's class/section (Home Works filter)
-  const homeWorkSubjects = useMemo(() => {
+  const todaysSchedule = useMemo(() => {
     if (!selectedChild || !allSchedules?.length) return [];
-    const classMatch = (selectedChild as { class_name?: string }).class_name;
-    const sectionMatch = (selectedChild as { section_name?: string }).section_name;
-    const subs = new Set<string>();
-    allSchedules.forEach((s: { class?: string; section?: string; subject?: string }) => {
-      const classOk = !classMatch || String(s.class || "").toLowerCase() === String(classMatch || "").toLowerCase();
-      const sectionOk = !sectionMatch || String(s.section || "").toLowerCase() === String(sectionMatch || "").toLowerCase();
-      if (classOk && sectionOk && s.subject?.trim()) subs.add(s.subject.trim());
+    const todayName = new Date().toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+    return allSchedules.filter((item: { class?: string; section?: string; day?: string }) => {
+      const classOk = String(item.class || "").trim().toLowerCase() === String(selectedChild.class_name || "").trim().toLowerCase();
+      const sectionOk = String(item.section || "").trim().toLowerCase() === String(selectedChild.section_name || "").trim().toLowerCase();
+      const dayOk = String(item.day || "").trim().toLowerCase() === todayName;
+      return classOk && sectionOk && dayOk;
     });
-    return Array.from(subs).sort();
   }, [selectedChild, allSchedules]);
 
   // Leave counts by type (from real leave data - use filtered for selected child)
@@ -303,20 +300,23 @@ const ParentDashboard = () => {
                       </Link>
                     </div>
                   )}
-                  <div className="d-flex bg-white border rounded flex-wrap justify-content-between align-items-center p-3 row-gap-2 mb-4 animate-card">
-                    <div className="d-flex align-items-center">
-                      <span className="avatar avatar-sm bg-light-500 me-2 rounded">
-                        <i className="ti ti-message-up text-dark fs-16" />
-                      </span>
-                      <h6>Raise a Request</h6>
+                  {selectedChild?.student_id && (
+                    <div className="d-flex bg-white border rounded flex-wrap justify-content-between align-items-center p-3 row-gap-2 mb-4 animate-card">
+                      <div className="d-flex align-items-center">
+                        <span className="avatar avatar-sm bg-light-500 me-2 rounded">
+                          <i className="ti ti-table text-dark fs-16" />
+                        </span>
+                        <h6>View Time Table</h6>
+                      </div>
+                      <Link
+                        to={routes.studentTimeTable}
+                        state={{ studentId: selectedChild.student_id, returnTo: routes.parentDashboard }}
+                        className="badge rounded-circle arrow d-flex align-items-center justify-content-center"
+                      >
+                        <i className="ti ti-chevron-right fs-14" />
+                      </Link>
                     </div>
-                    <Link
-                      to={routes.approveRequest}
-                      className="badge rounded-circle arrow d-flex align-items-center justify-content-center"
-                    >
-                      <i className="ti ti-chevron-right fs-14" />
-                    </Link>
-                  </div>
+                  )}
                 </div>
                 <div className="col-xl-4 col-md-6">
                   <div className="card bg-success-transparent border-3 border-white text-center p-3">
@@ -548,55 +548,48 @@ const ParentDashboard = () => {
               </div>
             </div>
             {/* /Leave Status */}
-            {/* Home Works */}
+            {/* Today's Schedule */}
             <div className="col-xxl-4  col-xl-6 d-flex">
               <div className="card flex-fill">
                 <div className="card-header d-flex align-items-center justify-content-between">
-                  <h4 className="card-titile">Home Works</h4>
-                  <div className="dropdown">
-                    <button
-                      type="button"
-                      className="btn btn-light dropdown-toggle"
-                      data-bs-toggle="dropdown"
-                      aria-expanded="false"
+                  <h4 className="card-titile">Today's Time Table</h4>
+                  {selectedChild?.student_id && (
+                    <Link
+                      to={routes.studentTimeTable}
+                      state={{ studentId: selectedChild.student_id, returnTo: routes.parentDashboard }}
+                      className="fw-medium"
                     >
-                      <i className="ti ti-book-2 me-2" />
-                      {homeWorkSubject === "all" ? "All Subject" : homeWorkSubject}
-                    </button>
-                    <ul className="dropdown-menu mt-2 p-3">
-                      <li>
-                        <button type="button" className="dropdown-item rounded-1" onClick={() => setHomeWorkSubject("all")}>
-                          All Subject
-                        </button>
-                      </li>
-                      {homeWorkSubjects.map((subj) => (
-                        <li key={subj}>
-                          <button
-                            type="button"
-                            className="dropdown-item rounded-1"
-                            onClick={() => setHomeWorkSubject(subj)}
-                          >
-                            {subj}
-                          </button>
-                        </li>
-                      ))}
-                      {homeWorkSubjects.length === 0 && (
-                        <li>
-                          <span className="dropdown-item text-muted">No subjects in schedule</span>
-                        </li>
-                      )}
-                    </ul>
-                  </div>
+                      View All
+                    </Link>
+                  )}
                 </div>
                 <div className="card-body py-1">
-                  <div className="alert alert-info d-flex align-items-center mb-0" role="alert">
-                    <i className="ti ti-info-circle me-2 fs-18" />
-                    <span>No homework assigned. Homework will appear here once assigned.</span>
-                  </div>
+                  {!selectedChild?.student_id || todaysSchedule.length === 0 ? (
+                    <div className="alert alert-info d-flex align-items-center mb-0" role="alert">
+                      <i className="ti ti-info-circle me-2 fs-18" />
+                      <span>
+                        {selectedChild?.student_id
+                          ? "No timetable entries are available for today."
+                          : "Select a child to view today's timetable."}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="d-flex flex-column gap-3">
+                      {todaysSchedule.slice(0, 4).map((item: { id?: number; subject?: string; startTime?: string; endTime?: string; teacher?: string }, idx: number) => (
+                        <div key={item.id ?? idx} className="border rounded p-3">
+                          <h6 className="mb-1">{item.subject || "Subject"}</h6>
+                          <p className="mb-1 text-muted">
+                            {item.startTime || "—"} - {item.endTime || "—"}
+                          </p>
+                          <p className="mb-0 small">{item.teacher || "Teacher not assigned"}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-            {/* /Home Works */}
+            {/* /Today's Schedule */}
             {/* Fees Reminder */}
             <div className="col-xxl-4 col-xl-12 d-flex">
               <div className="card flex-fill">
@@ -721,24 +714,28 @@ const ParentDashboard = () => {
                   </Link>
                 </div>
                 <div className="card-body">
-                  {!upcomingEvents?.length ? (
+                  {noticeLoading ? (
+                    <div className="text-center py-3">
+                      <div className="spinner-border spinner-border-sm text-primary" role="status" />
+                    </div>
+                  ) : !notices?.length ? (
                     <div className="alert alert-info d-flex align-items-center mb-0" role="alert">
                       <i className="ti ti-info-circle me-2 fs-18" />
-                      <span>No notices or events available.</span>
+                      <span>No notices available.</span>
                     </div>
                   ) : (
                     <div className="notice-widget">
-                      {upcomingEvents.slice(0, 6).map((evt: { id?: number; title?: string; start_date?: string }) => (
-                        <div key={evt.id} className="d-flex align-items-center justify-content-between mb-4">
+                      {notices.slice(0, 6).map((notice: { id?: number; title?: string; addedOn?: string; created_at?: string }) => (
+                        <div key={notice.id} className="d-flex align-items-center justify-content-between mb-4">
                           <div className="d-flex align-items-center overflow-hidden me-2">
                             <span className="bg-primary-transparent avatar avatar-md me-2 rounded-circle flex-shrink-0">
                               <i className="ti ti-calendar fs-16" />
                             </span>
                             <div className="overflow-hidden">
-                              <h6 className="text-truncate mb-1">{evt.title || "Notice"}</h6>
+                              <h6 className="text-truncate mb-1">{notice.title || "Notice"}</h6>
                               <p className="mb-0">
                                 <i className="ti ti-calendar me-2" />
-                                Added on : {evt.start_date ? new Date(evt.start_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                                Added on : {notice.addedOn || (notice.created_at ? new Date(notice.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—")}
                               </p>
                             </div>
                           </div>

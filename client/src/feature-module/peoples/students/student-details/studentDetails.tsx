@@ -1,13 +1,10 @@
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { useState, useEffect } from 'react'
 import ImageWithBasePath from '../../../../core/common/imageWithBasePath'
 import { all_routes } from '../../../router/all_routes'
 import StudentModals from '../studentModals'
 import StudentSidebar from './studentSidebar'
 import StudentBreadcrumb from './studentBreadcrumb'
-import { apiService } from '../../../../core/services/apiService'
-import { useCurrentStudent } from '../../../../core/hooks/useCurrentStudent'
-import { useCurrentUser } from '../../../../core/hooks/useCurrentUser'
+import { useLinkedStudentContext } from '../../../../core/hooks/useLinkedStudentContext'
 
 interface StudentDetailsLocationState {
   studentId?: number
@@ -19,53 +16,11 @@ const StudentDetails = () => {
   const { id: paramId } = useParams<{ id: string }>()
   const location = useLocation()
   const state = location.state as StudentDetailsLocationState | null
-  const { user: currentUser } = useCurrentUser()
-  const { student: currentStudent, loading: currentStudentLoading } = useCurrentStudent()
-  const cu = currentUser as { role?: string } | null
-  const cs = currentStudent as { id?: number } | null
-  const role = (cu?.role || '').toString().toLowerCase()
-  const isStudentRole = role === 'student'
-
-  const studentId = paramId != null ? (Number(paramId) || null) : state?.studentId ?? state?.student?.id ?? (isStudentRole && cs ? cs.id : null)
-  const [student, setStudent] = useState<any>(state?.student ?? (isStudentRole ? currentStudent : null))
-  const [loading, setLoading] = useState(
-    (!!studentId && !state?.student && !(isStudentRole && currentStudent)) ||
-    (isStudentRole && !studentId && currentStudentLoading)
-  )
-  const [loadError, setLoadError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!studentId) {
-      if (state?.student) setStudent(state.student)
-      else if (isStudentRole && currentStudent) setStudent(currentStudent)
-      return
-    }
-    if (isStudentRole && cs && cs.id === studentId) {
-      setStudent(currentStudent)
-      setLoading(false)
-      return
-    }
-    // Use state.student for immediate display, but always fetch full details from API
-    if (state?.student && state.student.id === studentId) {
-      setStudent(state.student)
-    }
-    setLoading(true)
-    setLoadError(null)
-    apiService
-      .getStudentById(studentId)
-      .then((res: any) => {
-        const studentData = res?.data ?? res?.data?.student ?? null
-        if (studentData && typeof studentData === 'object') setStudent(studentData)
-        else if (!state?.student || state.student.id !== studentId) setStudent(null)
-      })
-      .catch((err: unknown) => {
-        setLoadError((err as Error)?.message ?? 'Failed to load student')
-        if (!state?.student || state.student.id !== studentId) setStudent(null)
-      })
-      .finally(() => setLoading(false))
-  }, [studentId, state?.student, isStudentRole, currentStudent])
-
-  const showLoading = loading || (isStudentRole && !student && !state?.student && currentStudentLoading)
+  const { studentId, student, loading, loadError } = useLinkedStudentContext({
+    locationState: state,
+    routeStudentId: paramId,
+  })
+  const showLoading = loading
   if (showLoading) {
     return (
       <div className="page-wrapper">

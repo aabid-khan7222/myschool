@@ -6,7 +6,8 @@ import StudentSidebar from "./studentSidebar";
 import StudentBreadcrumb from "./studentBreadcrumb";
 import { apiService } from "../../../../core/services/apiService";
 import { useCurrentStudent } from "../../../../core/hooks/useCurrentStudent";
-import { useCurrentUser } from "../../../../core/hooks/useCurrentUser";
+import { useSelector } from "react-redux";
+import { selectUser } from "../../../../core/data/redux/authSlice";
 
 interface StudentDetailsLocationState {
   studentId?: number;
@@ -17,7 +18,7 @@ const StudentLibrary = () => {
   const routes = all_routes;
   const location = useLocation();
   const state = location.state as StudentDetailsLocationState | null;
-  const { user: currentUser } = useCurrentUser();
+  const currentUser = useSelector(selectUser);
   const { student: currentStudent, loading: currentStudentLoading } = useCurrentStudent();
   const role = (currentUser?.role || "").toString().toLowerCase();
   const isStudentRole = role === "student";

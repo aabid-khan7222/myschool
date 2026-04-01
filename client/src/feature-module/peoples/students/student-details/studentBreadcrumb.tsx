@@ -21,8 +21,10 @@ const StudentBreadcrumb = ({ studentId }: StudentBreadcrumbProps) => {
   const roleLower = (role || '').trim().toLowerCase()
   const dashboardRoles = ['student', 'parent', 'guardian', 'teacher']
   const roleBasedBack = dashboardRoles.includes(roleLower) ? getDashboardForRole(role) : routes.studentList
+  const dashboardLink = getDashboardForRole(role)
   const backTo = state?.returnTo || roleBasedBack
   const canEditStudent = isHeadmasterRole(user) || isAdministrativeRole(user)
+  const sectionLabel = roleLower === 'parent' || roleLower === 'guardian' ? 'Child Profile' : 'Student'
 
   return (
     <div className="col-md-12">
@@ -39,10 +41,10 @@ const StudentBreadcrumb = ({ studentId }: StudentBreadcrumbProps) => {
           <nav>
             <ol className="breadcrumb mb-0">
               <li className="breadcrumb-item">
-                <Link to={routes.adminDashboard}>Dashboard</Link>
+                <Link to={dashboardLink}>Dashboard</Link>
               </li>
               <li className="breadcrumb-item">
-                <Link to={routes.studentList}>Student</Link>
+                {canEditStudent ? <Link to={routes.studentList}>Student</Link> : sectionLabel}
               </li>
               <li className="breadcrumb-item active" aria-current="page">
                 Student Details
@@ -51,15 +53,17 @@ const StudentBreadcrumb = ({ studentId }: StudentBreadcrumbProps) => {
           </nav>
         </div>
         <div className="d-flex my-xl-auto right-content align-items-center  flex-wrap">
-          <Link
-            to="#"
-            className="btn btn-light me-2 mb-2"
-            data-bs-toggle="modal"
-            data-bs-target="#login_detail"
-          >
-            <i className="ti ti-lock me-2" />
-            Login Details
-          </Link>
+          {canEditStudent && (
+            <Link
+              to="#"
+              className="btn btn-light me-2 mb-2"
+              data-bs-toggle="modal"
+              data-bs-target="#login_detail"
+            >
+              <i className="ti ti-lock me-2" />
+              Login Details
+            </Link>
+          )}
           {canEditStudent && studentId != null && studentId !== '' && (
             <Link
               to={`${routes.editStudent}/${studentId}`}

@@ -1,14 +1,12 @@
 
 import { Link, useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
 import { all_routes } from "../../../router/all_routes";
 import StudentModals from "../studentModals";
 import StudentSidebar from "./studentSidebar";
 import StudentBreadcrumb from "./studentBreadcrumb";
-import { apiService } from "../../../../core/services/apiService";
-import { useCurrentStudent } from "../../../../core/hooks/useCurrentStudent";
-import { useCurrentUser } from "../../../../core/hooks/useCurrentUser";
+import { useAcademicYears } from "../../../../core/hooks/useAcademicYears";
 import { useStudentFees } from "../../../../core/hooks/useStudentFees";
+import { useLinkedStudentContext } from "../../../../core/hooks/useLinkedStudentContext";
 
 interface StudentDetailsLocationState {
   studentId?: number;
@@ -19,49 +17,17 @@ const StudentFees = () => {
   const routes = all_routes;
   const location = useLocation();
   const state = location.state as StudentDetailsLocationState | null;
-  const { user: currentUser } = useCurrentUser();
-  const { student: currentStudent, loading: currentStudentLoading } = useCurrentStudent();
-  const role = (currentUser?.role || "").toString().toLowerCase();
-  const isStudentRole = role === "student";
+  const { studentId, student, loading } = useLinkedStudentContext({
+    locationState: state,
+  });
 
-  const studentId = state?.studentId ?? state?.student?.id ?? (isStudentRole && currentStudent ? currentStudent.id : null);
-  const [student, setStudent] = useState<any>(state?.student ?? (isStudentRole ? currentStudent : null));
-  const [loading, setLoading] = useState(
-    (!!studentId && !state?.student && !(isStudentRole && currentStudent)) ||
-    (isStudentRole && !studentId && currentStudentLoading)
-  );
-
-  useEffect(() => {
-    if (!studentId) {
-      if (state?.student) setStudent(state.student);
-      else if (isStudentRole && currentStudent) setStudent(currentStudent);
-      return;
-    }
-    if (state?.student && state.student.id === studentId) {
-      setStudent(state.student);
-      setLoading(false);
-      return;
-    }
-    if (isStudentRole && currentStudent?.id === studentId) {
-      setStudent(currentStudent);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    apiService
-      .getStudentById(studentId)
-      .then((res: any) => {
-        if (res?.data) setStudent(res.data);
-        else setStudent(null);
-      })
-      .catch(() => {
-        setStudent(null);
-      })
-      .finally(() => setLoading(false));
-  }, [studentId, state?.student, isStudentRole, currentStudent]);
-
+  const { academicYears } = useAcademicYears();
   const { data: feeData, loading: feeLoading, refetch: refetchFees } = useStudentFees(studentId ?? student?.id ?? null);
-  const showLoading = loading || (isStudentRole && !student && !state?.student && currentStudentLoading);
+  const currentAcademicYear =
+    (academicYears || []).find((year: { is_current?: boolean }) => year?.is_current) ??
+    (academicYears || [])[0] ??
+    null;
+  const showLoading = loading;
   if (showLoading) {
     return (
       <div className="page-wrapper">
@@ -147,36 +113,9 @@ const StudentFees = () => {
                   <div className="card">
                     <div className="card-header d-flex align-items-center justify-content-between flex-wrap pb-0">
                       <h4 className="mb-3">Fees</h4>
-                      <div className="d-flex align-items-center flex-wrap">
-                        <div className="dropdown mb-3 me-2">
-                          <Link
-                            to=""
-                            className="btn btn-outline-light bg-white dropdown-toggle"
-                            data-bs-toggle="dropdown"
-                            data-bs-auto-close="outside"
-                          >
-                            <i className="ti ti-calendar-due me-2" />
-                            Year : 2024 / 2025
-                          </Link>
-                          <ul className="dropdown-menu p-3">
-                            <li>
-                              <Link to="" className="dropdown-item rounded-1">
-                                Year : 2024 / 2025
-                              </Link>
-                            </li>
-                            <li>
-                              <Link to="" className="dropdown-item rounded-1">
-                                Year : 2023 / 2024
-                              </Link>
-                            </li>
-                            <li>
-                              <Link to="" className="dropdown-item rounded-1">
-                                Year : 2022 / 2023
-                              </Link>
-                            </li>
-                          </ul>
-                        </div>
-                      </div>
+                      <span className="badge badge-soft-primary mb-3">
+                        {currentAcademicYear?.year_name ? `Academic Year: ${currentAcademicYear.year_name}` : "Academic Year not available"}
+                      </span>
                     </div>
                     <div className="card-body p-0 py-3">
                       {feeLoading && (
@@ -247,8 +186,8 @@ const StudentFees = () => {
                                             })
                                           : "-"}
                                       </td>
-                                      <td>0</td>
-                                      <td>0</td>
+                                      <td>{row.discountAmount != null ? Number(row.discountAmount).toFixed(2) : "-"}</td>
+                                      <td>{row.fineAmount != null ? Number(row.fineAmount).toFixed(2) : "-"}</td>
                                     </tr>
                                   ))}
                                   <tr>
@@ -262,8 +201,8 @@ const StudentFees = () => {
                                     <td className="bg-dark" />
                                     <td className="bg-dark" />
                                     <td className="bg-dark" />
-                                    <td className="bg-dark text-white">0</td>
-                                    <td className="bg-dark text-white">0</td>
+                                    <td className="bg-dark text-white">-</td>
+                                    <td className="bg-dark text-white">-</td>
                                   </tr>
                                 </>
                               ) : (

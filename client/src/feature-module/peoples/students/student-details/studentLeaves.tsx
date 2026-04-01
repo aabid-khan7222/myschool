@@ -1,18 +1,17 @@
 
 import { Link, useLocation } from "react-router-dom";
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { all_routes } from "../../../router/all_routes";
 import StudentModals from "../studentModals";
 import StudentSidebar from "./studentSidebar";
 import StudentBreadcrumb from "./studentBreadcrumb";
 import Table from "../../../../core/common/dataTable/index";
 import type { TableData } from "../../../../core/data/interface";
-import { apiService } from "../../../../core/services/apiService";
 import { useLeaveApplications } from "../../../../core/hooks/useLeaveApplications";
 import { useGuardianWardLeaves } from "../../../../core/hooks/useGuardianWardLeaves";
 import { useStudentAttendance } from "../../../../core/hooks/useStudentAttendance";
-import { useCurrentUser } from "../../../../core/hooks/useCurrentUser";
-import { useCurrentStudent } from "../../../../core/hooks/useCurrentStudent";
+import { useAcademicYears } from "../../../../core/hooks/useAcademicYears";
+import { useLinkedStudentContext } from "../../../../core/hooks/useLinkedStudentContext";
 
 interface StudentDetailsLocationState {
   studentId?: number;
@@ -64,17 +63,14 @@ const StudentLeaves = () => {
   const routes = all_routes;
   const location = useLocation();
   const state = location.state as StudentDetailsLocationState | null;
-  const { user: currentUser } = useCurrentUser();
-  const { student: currentStudent, loading: currentStudentLoading } = useCurrentStudent();
-  const role = (currentUser?.role || "").toString().toLowerCase();
-  const isStudentRole = role === "student";
-
-  const studentId = state?.studentId ?? state?.student?.id ?? (isStudentRole && currentStudent ? currentStudent.id : null);
-  const [student, setStudent] = useState<any>(state?.student ?? (isStudentRole ? currentStudent : null));
-  const [loading, setLoading] = useState(
-    (!!studentId && !state?.student && !(isStudentRole && currentStudent)) ||
-    (isStudentRole && !studentId && currentStudentLoading)
-  );
+  const { studentId, student, loading, role } = useLinkedStudentContext({
+    locationState: state,
+  });
+  const { academicYears } = useAcademicYears();
+  const currentAcademicYear =
+    (academicYears || []).find((year: { is_current?: boolean }) => year?.is_current) ??
+    (academicYears || [])[0] ??
+    null;
 
   // studentOnly = student; parentChildren = parent; studentId+canUseAdminList = admin/teacher
   // canUseAdminList: avoid 403 when role loading - never call admin endpoint until role is confirmed
@@ -114,36 +110,7 @@ const StudentLeaves = () => {
   const attendanceSummary = attendanceData?.summary ?? { present: 0, absent: 0, halfDay: 0, late: 0 };
   const hasAttendance = attendanceRecords.length > 0;
 
-  useEffect(() => {
-    if (!studentId) {
-      if (state?.student) setStudent(state.student);
-      else if (isStudentRole && currentStudent) setStudent(currentStudent);
-      return;
-    }
-    if (state?.student && state.student.id === studentId) {
-      setStudent(state.student);
-      setLoading(false);
-      return;
-    }
-    if (isStudentRole && currentStudent?.id === studentId) {
-      setStudent(currentStudent);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    apiService
-      .getStudentById(studentId)
-      .then((res: any) => {
-        if (res?.data) setStudent(res.data);
-        else setStudent(null);
-      })
-      .catch(() => {
-        setStudent(null);
-      })
-      .finally(() => setLoading(false));
-  }, [studentId, state?.student, isStudentRole, currentStudent]);
-
-  const showLoading = loading || (isStudentRole && !student && !state?.student && currentStudentLoading);
+  const showLoading = loading;
   if (showLoading) {
     return (
       <div className="page-wrapper">
@@ -450,43 +417,9 @@ const StudentLeaves = () => {
                                 <i className="ti ti-refresh-dot" />
                               </Link>
                             </div>
-                            <div className="dropdown mb-3">
-                              <Link
-                                to="#"
-                                className="btn btn-outline-light bg-white dropdown-toggle"
-                                data-bs-toggle="dropdown"
-                                data-bs-auto-close="outside"
-                              >
-                                <i className="ti ti-calendar-due me-2" />
-                                Year : 2024 / 2025
-                              </Link>
-                              <ul className="dropdown-menu p-3">
-                                <li>
-                                  <Link
-                                    to="#"
-                                    className="dropdown-item rounded-1"
-                                  >
-                                    Year : 2024 / 2025
-                                  </Link>
-                                </li>
-                                <li>
-                                  <Link
-                                    to="#"
-                                    className="dropdown-item rounded-1"
-                                  >
-                                    Year : 2023 / 2024
-                                  </Link>
-                                </li>
-                                <li>
-                                  <Link
-                                    to="#"
-                                    className="dropdown-item rounded-1"
-                                  >
-                                    Year : 2022 / 2023
-                                  </Link>
-                                </li>
-                              </ul>
-                            </div>
+                            <span className="badge badge-soft-primary mb-3">
+                              {currentAcademicYear?.year_name ? `Academic Year: ${currentAcademicYear.year_name}` : "Academic Year not available"}
+                            </span>
                           </div>
                         </div>
                         <div className="card-body pb-1">
@@ -569,74 +502,9 @@ const StudentLeaves = () => {
                       <div className="card">
                         <div className="card-header d-flex align-items-center justify-content-between flex-wrap pb-1">
                           <h4 className="mb-3">Leave &amp; Attendance</h4>
-                          <div className="d-flex align-items-center flex-wrap">
-                            <div className="dropdown mb-3 me-3">
-                              <Link
-                                to="#"
-                                className="btn btn-outline-light border-white bg-white dropdown-toggle shadow-md"
-                                data-bs-toggle="dropdown"
-                              >
-                                <i className="ti ti-calendar-due me-2" />
-                                This Year
-                              </Link>
-                              <ul className="dropdown-menu p-3">
-                                <li>
-                                  <Link
-                                    to="#"
-                                    className="dropdown-item rounded-1"
-                                  >
-                                    This Year
-                                  </Link>
-                                </li>
-                                <li>
-                                  <Link
-                                    to="#"
-                                    className="dropdown-item rounded-1"
-                                  >
-                                    This Month
-                                  </Link>
-                                </li>
-                                <li>
-                                  <Link
-                                    to="#"
-                                    className="dropdown-item rounded-1"
-                                  >
-                                    This Week
-                                  </Link>
-                                </li>
-                              </ul>
-                            </div>
-                            <div className="dropdown mb-3">
-                              <Link
-                                to="#"
-                                className="dropdown-toggle btn btn-light fw-medium d-inline-flex align-items-center"
-                                data-bs-toggle="dropdown"
-                              >
-                                <i className="ti ti-file-export me-2" />
-                                Export
-                              </Link>
-                              <ul className="dropdown-menu  dropdown-menu-end p-3">
-                                <li>
-                                  <Link
-                                    to="#"
-                                    className="dropdown-item rounded-1"
-                                  >
-                                    <i className="ti ti-file-type-pdf me-2" />
-                                    Export as PDF
-                                  </Link>
-                                </li>
-                                <li>
-                                  <Link
-                                    to="#"
-                                    className="dropdown-item rounded-1"
-                                  >
-                                    <i className="ti ti-file-type-xls me-2" />
-                                    Export as Excel{" "}
-                                  </Link>
-                                </li>
-                              </ul>
-                            </div>
-                          </div>
+                          <p className="text-muted mb-3">
+                            Showing real attendance records for the selected student.
+                          </p>
                         </div>
                         <div className="card-body p-0 py-3">
                           <div className="px-3">

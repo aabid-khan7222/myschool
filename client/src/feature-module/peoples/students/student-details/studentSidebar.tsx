@@ -1,7 +1,8 @@
 
 import { Link } from "react-router-dom";
 import ImageWithBasePath from "../../../../core/common/imageWithBasePath";
-import { useCurrentUser } from "../../../../core/hooks/useCurrentUser";
+import { useSelector } from "react-redux";
+import { selectUser } from "../../../../core/data/redux/authSlice";
 
 interface StudentSidebarProps {
   student?: {
@@ -44,7 +45,7 @@ interface StudentSidebarProps {
 }
 
 const StudentSidebar = ({ student }: StudentSidebarProps) => {
-  const { user: currentUser } = useCurrentUser();
+  const currentUser = useSelector(selectUser);
   const role = String(currentUser?.role || "").trim().toLowerCase();
   const canCollectFees = role === "admin" || role === "administrative";
   const displayName = student
